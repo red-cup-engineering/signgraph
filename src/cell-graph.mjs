@@ -52,18 +52,43 @@ export function relationGraph(section) {
     return relationGraphOfCells(section.entries.map((entry) => entry.cell));
 }
 
-/** The flow network of a section: its terms and one oriented edge per cell, subject to object
- *  (reflexive cells are not edges), for metrologic's boundary operator and conservation law. */
-export function flowNetwork(section) {
-    const graph = relationGraph(section);
+/**
+ * The same oriented flow network as flowNetwork(section), directly from held
+ * SignCells rather than a separately materialized SectionCarrier. In contrast
+ * to the symmetric relationGraphOfCells, this retains the sign of the boundary
+ * operator: each edge is subject -> object, fromIndex -> toIndex.
+ *
+ * This matters for causal proof graphs. A symmetric Laplacian can answer
+ * connectivity or diffusion questions, but it cannot distinguish "source
+ * proves conclusion" from the reversed (and generally invalid) claim.
+ * The flow is still a SignGraph READING of existing cells, not a new journal,
+ * an authenticated source, an inference, or authority to produce an order.
+ *
+ * Reflexive predications remain vertices but have zero boundary and therefore
+ * no directed edge. Duplicate predications remain distinct incidence edges,
+ * as they already do in flowNetwork(section).
+ */
+export function flowNetworkOfCells(cells) {
+    const graph = relationGraphOfCells(cells);
     const indexOf = (term) => graph.terms.findIndex((candidate) => coincides(candidate, term));
     const edges = [];
-    for (const entry of section.entries) {
-        const fromIndex = indexOf(entry.cell.subject);
-        const toIndex = indexOf(entry.cell.object);
-        if (fromIndex === toIndex)
-            continue;
-        edges.push(Object.freeze({ kind: "signgraph.flowNetwork.edge", from: graph.terms[fromIndex], to: graph.terms[toIndex], fromIndex, toIndex }));
+    for (const value of cells) {
+        const fromIndex = indexOf(value.subject);
+        const toIndex = indexOf(value.object);
+        if (fromIndex === toIndex) continue;
+        edges.push(Object.freeze({
+            kind: "signgraph.flowNetwork.edge",
+            from: graph.terms[fromIndex], to: graph.terms[toIndex],
+            fromIndex, toIndex,
+        }));
     }
-    return Object.freeze({ kind: "signgraph.flowNetwork", graph, terms: graph.terms, edges: Object.freeze(edges) });
+    return Object.freeze({
+        kind: "signgraph.flowNetwork",
+        graph, terms: graph.terms, edges: Object.freeze(edges),
+    });
+}
+
+/** The flow network of a section delegates to its SignCell source carrier. */
+export function flowNetwork(section) {
+    return flowNetworkOfCells(section.entries.map((entry) => entry.cell));
 }

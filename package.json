@@ -39,10 +39,10 @@
     "@red-cup-engineering/json-schema-services-section": "workspace:*",
     "@red-cup-engineering/json-services-section": "workspace:*",
     "@red-cup-engineering/eavt-services-section": "workspace:*",
-    "@red-cup-engineering/computer-content-address-engineering-services-section": "workspace:*",
     "@red-cup-engineering/computer-content-engineering-services-section": "workspace:*",
     "@red-cup-engineering/xml-document-rendering-service": "workspace:*",
     "@red-cup-engineering/relating": "workspace:*",
+    "@red-cup-engineering/computer-content-address-engineering-services-section": "workspace:*",
     "@red-cup-engineering/computer-data-engineering-services-section": "workspace:*",
     "@red-cup-engineering/exact-number-data-service": "workspace:*"
   },
