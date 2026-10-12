@@ -12,13 +12,20 @@ what networking is. Pure.
 
 ## What lives here
 
-- `cell-graph` — `cellGraph(cells, observations)` builds the Chu-space
-  relation of a cell set under a list of named, total observations
-  (`{ name, evaluate(cell) }`), over metrologic's generic Chu-relation
-  math (`bilattice-relation`) and SignCell's `cellCoincides` as point
-  sameness. Re-exports `transpose`, `dual`, `checkRelationTransform`,
-  `relationTransform`, `composeTransforms`, `dualTransform` from that
-  math, unchanged, for organizing and comparing two such graphs.
+- `cell-graph` — `cellGraph(cells, observations)` builds the Chu
+  relation of held SignCells under named, total observations
+  (`{ name, evaluate(cell) }`) using metrologic's `chuSpaceOfEntries`
+  and SignCell's canonical coincidence. Its `relationGraphOfCells`
+  reads symmetric adjacency: it is suitable for connectivity, undirected
+  Laplacians and diffusion, but **does not prove causal direction**.
+  `flowNetworkOfCells` projects the existing oriented flow-network directly
+  from SignCells, and `flowNetwork(section)` delegates to that reading.
+  Every non-reflexive cell contributes the subject→object incidence with
+  boundary ∂[a→b]=[b]−[a]. Reversing a link changes the boundary even when
+  the symmetric relation graph is unchanged. Parallel cells retain
+  distinct incidence edges; loops retain vertices but have zero boundary.
+  No second graph type, signer, evidence authority or new execution path
+  is introduced by these projections.
 - `graph` — the deterministic typed directed-multigraph carrier and its
   traversal, cycle, path, merge, and text-rendering operations.
 - `cellular-sheaf` — cellular sheaves on a graph (vector stalks on vertices and edges, restriction matrices on
