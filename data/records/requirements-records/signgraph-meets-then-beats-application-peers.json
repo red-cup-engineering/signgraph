@@ -1,0 +1,56 @@
+{
+  "id": "signgraph-meets-then-beats-application-peers",
+  "name": "SignGraph meets then beats its application peers",
+  "kind": "requirement",
+  "raised-by": "emsenn",
+  "asks": "signgraph: langgraph",
+  "comparison": {
+    "required-of": "561-group",
+    "subject": {
+      "kind": "package",
+      "name": "@red-cup-engineering/signgraph"
+    },
+    "relation": "meet-then-beat",
+    "against": [
+      {
+        "name": "LangGraph",
+        "domain": "stateful agent graph workflows and queryable graph knowledge"
+      },
+      {
+        "name": "Oxigraph",
+        "domain": "stateful agent graph workflows and queryable graph knowledge"
+      }
+    ]
+  },
+  "met-when": [
+    {
+      "cell": "signgraph-meets-then-beats-application-peers:meet",
+      "target": "held",
+      "says": "SignGraph demonstrates parity with each named target on its relevant user workflows against identified baselines and workloads, with independent receiving evidence."
+    },
+    {
+      "cell": "signgraph-meets-then-beats-application-peers:beat",
+      "target": "held",
+      "says": "After parity is established for each target, SignGraph demonstrates a material user-relevant improvement under comparable conditions while retaining parity capabilities."
+    }
+  ],
+  "x-provenance": {
+    "recorded-by": "codex",
+    "recorded-on": "2026-10-15",
+    "leader-source": "lib/emsenn/services/561-group/services/561-group-services-section/data/records/leader-source-records/2026-10-15-application-meet-then-beat-expansion.json",
+    "target-selection-authority": "You should use your own best thinking and ambitions to say what each should meet-then-beat",
+    "leader-named-targets": [
+      "LangGraph"
+    ],
+    "agent-selected-targets": [
+      "Oxigraph"
+    ],
+    "intended-capability": "One evidence-bearing graph substrate for executable workflows and queryable knowledge, preserving provenance and contested state.",
+    "derivation": "The subject is grounded in the observed owner or explicitly desired application. Target selections extend the Leader's named comparisons under the quoted delegation. Existing requirements remain additive. Manifest descriptions describe current source and do not determine the intended design.",
+    "qualification-gaps": [
+      "Target identities and capability domains are selected; exact baseline versions, workloads, measures and receiving operations remain to be specified.",
+      "No comparative receiving command or evidence is attached; satisfaction remains unsettled. Native schema admission remains unreceived after the previously recorded semantic-content-identity export failure."
+    ],
+    "admission": "Authored requirement data; not an assertion of signed live-enterprise admission or achieved parity."
+  }
+}

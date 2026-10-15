@@ -4,7 +4,8 @@
   "type": "module",
   "description": "SignCell and SignChain sites, transport, relations and graph projections.",
   "files": [
-    "src"
+    "src",
+    "data/records/requirements-records"
   ],
   "exports": {
     "./package.json": "./package.json",
