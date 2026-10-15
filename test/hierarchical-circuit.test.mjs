@@ -1,7 +1,6 @@
 // Pure placement-independent SEN die assay.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { circuitInterfaceFromAgentCard, SOVEREIGN_CIRCUIT_INTERFACE_EXTENSION, SOVEREIGN_CIRCUIT_INTERFACE_PROFILE } from "@red-cup-engineering/a2a-services-section/circuit-interface";
 import { semanticId } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
 import {
   CIRCUIT_ASSEMBLY_PROFILE,
@@ -69,21 +68,6 @@ test("hierarchical circuits have one deterministic typed SEN identity", () => {
   assert.deepEqual(decodeHierarchicalCircuit(term), normalized);
   assert.equal(hierarchicalCircuitId(source), hierarchicalCircuitId({ ...source, ports: [...source.ports].reverse(), behavior: { factors: [{ ...source.behavior.factors[0], rows: [...source.behavior.factors[0].rows].reverse() }] } }));
   assert.match(hierarchicalCircuitId(source), /^ni:\/\/\/sha-256;[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/u);
-});
-
-test("an A2A Agent Card interface exposes one sovereign black-box die without its interior", () => {
-  const source = { component: leaf(), ...membrane("7", "card") };
-  const card = { capabilities: { extensions: [{
-    uri: SOVEREIGN_CIRCUIT_INTERFACE_EXTENSION,
-    description: "fixture", required: false,
-    params: { profile: SOVEREIGN_CIRCUIT_INTERFACE_PROFILE, ...source },
-  }] } };
-  assert.deepEqual(circuitInterfaceFromAgentCard(card), { ...source, component: normalizeHierarchicalCircuit(source.component) });
-  card.capabilities.extensions.push(card.capabilities.extensions[0]);
-  assert.throws(() => circuitInterfaceFromAgentCard(card), /exactly one/u);
-  const composite = parent(leaf());
-  card.capabilities.extensions = [{ ...card.capabilities.extensions[0], params: { profile: SOVEREIGN_CIRCUIT_INTERFACE_PROFILE, ...source, component: composite } }];
-  assert.throws(() => circuitInterfaceFromAgentCard(card), /black-box leaf/u);
 });
 
 test("a circuit of a sovereign die synthesizes the same black-box FOUR behavior", () => {

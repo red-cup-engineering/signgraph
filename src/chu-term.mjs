@@ -58,7 +58,8 @@ const negateReadingName = (value) => readingFamilies.knowledge.reduce(
  *
  * @example
  * ```js
- * import { evaluateRunTerm, chu } from "@red-cup-engineering/relating";
+ * import { evaluateRunTerm } from "@red-cup-engineering/computer-code-engineering-services-section/semiotic-expression-notation/eval";
+ * import { chuDualTerm } from "@red-cup-engineering/signgraph/chu-term";
  *
  * const space = {
  *   pts: ["a", "b"],
@@ -69,7 +70,7 @@ const negateReadingName = (value) => readingFamilies.knowledge.reduce(
  *   ],
  * };
  *
- * evaluateRunTerm(chu.dual, space);
+ * evaluateRunTerm(chuDualTerm, space);
  * // {
  * //   pts: ["x"],
  * //   sts: ["a", "b"],
@@ -121,15 +122,16 @@ export const chuDualTerm = tm.lam(  // space = var(0)
  *
  * @example
  * ```js
- * import { evaluateRunTerm, chu } from "@red-cup-engineering/relating";
+ * import { evaluateRunTerm } from "@red-cup-engineering/computer-code-engineering-services-section/semiotic-expression-notation/eval";
+ * import { chuLookupTerm } from "@red-cup-engineering/signgraph/chu-term";
  *
  * const space = {
  *   pts: ["a"], sts: ["x"],
  *   r: [{ pt: "a", st: "x", reading: active }],
  * };
  *
- * evaluateRunTerm(chu.lookup, { space, pt: "a", st: "x" }); // active
- * evaluateRunTerm(chu.lookup, { space, pt: "a", st: "y" }); // absurd (not found)
+ * evaluateRunTerm(chuLookupTerm, { space, pt: "a", st: "x" }); // active
+ * evaluateRunTerm(chuLookupTerm, { space, pt: "a", st: "y" }); // absurd (not found)
  * ```
  */
 export const chuLookupTerm = tm.lam(  // input = {pt, space, st} = var(0)
@@ -176,9 +178,10 @@ export const chuLookupTerm = tm.lam(  // input = {pt, space, st} = var(0)
  *
  * @example
  * ```js
- * import { evaluateRunTerm, chu } from "@red-cup-engineering/relating";
+ * import { evaluateRunTerm } from "@red-cup-engineering/computer-code-engineering-services-section/semiotic-expression-notation/eval";
+ * import { chuDualInvolutionTerm } from "@red-cup-engineering/signgraph/chu-term";
  *
- * evaluateRunTerm(chu.dualInvolution, {
+ * evaluateRunTerm(chuDualInvolutionTerm, {
  *   pts: ["a"], sts: ["x"],
  *   r: [{ pt: "a", st: "x", reading: active }],
  * }); // true
