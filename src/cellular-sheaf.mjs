@@ -37,7 +37,11 @@ const numberOfEntry = (entry) => {
     return entry;
   }
   const [n, d] = ratPairOfEntry(entry);
-  return Number(n) / Number(d);
+  const projected = Number(n) / Number(d);
+  if (!Number.isFinite(projected)) {
+    throw new RangeError("cellularSheaf: exact restriction cannot be represented in finite host arithmetic");
+  }
+  return projected;
 };
 
 /** Build a frozen, validated cellular sheaf on a graph.
@@ -71,7 +75,13 @@ export function cellularSheaf({ vertices, edges }) {
       if (!Array.isArray(matrix) || matrix.length !== dim || !matrix.every((row) => Array.isArray(row) && row.length === vertexDim)) {
         throw new RangeError(`cellularSheaf: restriction ${side} of an edge must be ${dim} × ${vertexDim}`);
       }
-      for (const row of matrix) for (const entry of row) numberOfEntry(entry);
+      // Validate exact rational carriers WITHOUT projecting them to a double:
+      // a large exact ratio must remain available to rational cohomology,
+      // even if the numeric Laplacian cannot represent that carrier.
+      for (const row of matrix) for (const entry of row) {
+        if (typeof entry === "number") numberOfEntry(entry);
+        else ratPairOfEntry(entry);
+      }
       return freezeMatrix(matrix);
     };
     const restrict = Object.freeze({ from: check(edge.restrict?.from, vs[fi].dim, "from"), to: check(edge.restrict?.to, vs[ti].dim, "to") });
@@ -162,7 +172,11 @@ export function apply(matrix, x) {
 const gramLaplacian = (sheaf, entries) => {
   const rows = Array.from({ length: sheaf.c0 }, () => new Map());
   for (const row of entries) {
-    for (const [i, a] of row) for (const [j, b] of row) rows[i].set(j, (rows[i].get(j) ?? 0) + a * b);
+    for (const [i, a] of row) for (const [j, b] of row) {
+      const value = (rows[i].get(j) ?? 0) + a * b;
+      if (!Number.isFinite(value)) throw new RangeError("cellularSheaf: numerical Laplacian exceeded finite host arithmetic");
+      rows[i].set(j, value);
+    }
   }
   return sparse(sheaf.c0, sheaf.c0, rows.map(rowOf));
 };
@@ -240,6 +254,9 @@ export function weightedSheafDirichlet(sheaf, metrics, x) {
   let energy = 0;
   const perEdge = sheaf.edges.map((edge, e) => {
     const residual = deltaX.slice(sheaf.edgeOffsets[e], sheaf.edgeOffsets[e] + edge.dim), C = factors[e];
+    if (residual.some((value) => !Number.isFinite(value))) {
+      throw new RangeError("weightedSheafDirichlet: numerical coboundary residual is not finite");
+    }
     let edgeEnergy = 0;
     for (let i = 0; i < edge.dim; i += 1) {
       let value = 0;
@@ -247,6 +264,9 @@ export function weightedSheafDirichlet(sheaf, metrics, x) {
       edgeEnergy += value * value;
     }
     energy += edgeEnergy;
+    if (!Number.isFinite(edgeEnergy) || !Number.isFinite(energy)) {
+      throw new RangeError("weightedSheafDirichlet: numerical edge energy exceeded finite host arithmetic");
+    }
     return Object.freeze({ id: edge.id, energy: edgeEnergy, residual: Object.freeze(residual) });
   });
   return Object.freeze({ energy, perEdge: Object.freeze(perEdge) });
