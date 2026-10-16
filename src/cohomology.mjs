@@ -159,13 +159,32 @@ function pricedCell(cellName, group, readings) {
     local.push(stance);
   }
   const sources = [...bySource.keys()].sort();
-  const stated = (source) => bySource.get(source);
   const names = readings ? [cellName] : [...new Set(group.map((statement) => statement.stance))].sort();
-  const told = new Map(sources.map((source) => [source, readings
-    ? new Map([[cellName, stated(source).map(sidesOfReading).reduce(([f, a], [g, b]) => [f || g, a || b], [false, false])]])
-    : new Map(names.map((name) => [name, stated(source).includes(name) ? [true, false] : [false, true]]))]));
-  const measurements = Object.freeze(names.map((name) => {
-    const tally = record(sources.filter((source) => told.get(source).get(name)[0]).length, sources.filter((source) => told.get(source).get(name)[1]).length);
+  // Each source is one context, regardless of how often it repeated a stance.
+  // Count its local record once and derive both tally legs without a second
+  // sources × measurements scan (or quadratic repeated includes checks).
+  const positives = new Map(names.map(name => [name, 0]));
+  let negativeClaims = 0;
+  if (readings) {
+    for (const local of bySource.values()) {
+      let forIt = false, againstIt = false;
+      for (const name of local) {
+        const [f, a] = sidesOfReading(name);
+        forIt ||= f; againstIt ||= a;
+      }
+      if (forIt) positives.set(cellName, positives.get(cellName) + 1);
+      if (againstIt) negativeClaims++;
+    }
+  } else {
+    for (const local of bySource.values()) {
+      const name = local[0]; // single-valued by the admission above
+      positives.set(name, positives.get(name) + 1);
+    }
+  }
+  const measurements = Object.freeze(names.map(name => {
+    const trueCount = positives.get(name);
+    const falseCount = readings ? negativeClaims : sources.length - trueCount;
+    const tally = record(trueCount, falseCount);
     return Object.freeze({ measurement: name, record: tally, reading: readingOfRecord(tally), mass: topMass(tally) });
   }));
   const top = measurements.filter((measurement) => measurement.mass > 0).length;
