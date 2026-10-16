@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "SignCell and SignChain sites, transport, relations and graph projections.",
   "files": [
@@ -32,7 +32,8 @@
     "./paths": "./src/paths.mjs",
     "./cellular-sheaf": "./src/cellular-sheaf.mjs",
     "./operations": "./src/operations.mjs",
-    "./embedding": "./src/embedding.mjs"
+    "./embedding": "./src/embedding.mjs",
+    "./bit-sheaf": "./src/bit-sheaf.mjs"
   },
   "dependencies": {
     "@red-cup-engineering/uri-services-section": "0.1.1",
