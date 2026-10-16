@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * SignGraph holonomy JSONL: one bounded request/receipt per line.
+ * SignGraph native JSONL: one bounded engineering operation/receipt per line.
  * No network, files, mutation, remote writes, or ambient selection of an
  * experiment. Operators and agents can pipe explicit geometry and
  * measurements through this installed Engineering capability.
@@ -8,7 +8,7 @@
 import { once } from "node:events";
 import { executeOperation, operations } from "../src/operations.mjs";
 
-const usage = `signgraph-holonomy (JSONL on standard input)
+const usage = `signgraph-operations / signgraph-holonomy (JSONL on standard input)
 Input: {"operation":"signgraph.holonomy.topology","input":{"vertices":[],"edges":[],"faces":[]}}
 Operations: ${Object.values(operations).map(op => op.id).join(", ")}
 Each input line produces one JSON receipt. Malformed requests emit a
@@ -53,18 +53,18 @@ if (process.argv.includes("--help")) {
     if (line.length === 0 && !overBudget) continue;
     index += 1;
     if (index > 1024) {
-      await write({ ok: false, line: index, error: "signgraph holonomy batch exceeds 1024 requests" });
+      await write({ ok: false, line: index, error: "signgraph operations batch exceeds 1024 requests" });
       process.exitCode = 1;
       break;
     }
     try {
       if (overBudget)
-        throw new RangeError("signgraph holonomy request exceeds the 64KiB input budget");
+        throw new RangeError("signgraph operations request exceeds the 64KiB input budget");
       const request = JSON.parse(line);
       if (!request || typeof request !== "object" || Array.isArray(request) ||
           Object.keys(request).some(k => k !== "operation" && k !== "input") ||
           typeof request.operation !== "string")
-        throw new TypeError("signgraph holonomy requires {operation, input}");
+        throw new TypeError("signgraph operations require {operation, input}");
       await write({
         ok: true, line: index, operation: request.operation,
         receipt: executeOperation(request.operation, request.input),
@@ -73,7 +73,7 @@ if (process.argv.includes("--help")) {
       process.exitCode = 1;
       await write({
         ok: false, line: index,
-        error: error instanceof Error ? error.message : "signgraph holonomy request refused",
+        error: error instanceof Error ? error.message : "signgraph operations request refused",
       });
     }
   }
