@@ -27,17 +27,23 @@ function admitPatch(p) {
 const patch = (address,totalBits,fromBit,bits) =>
   Object.freeze({ kind:"signgraph.bitPatch",address,totalBits,fromBit,bits:Object.freeze([...bits]) });
 
-/** Name the *whole* byte content while extracting a bounded finite bit interval. */
-export function bitPatchOfBytes(bytes,{fromBit=0,bitCount}={}) {
-  if (!(bytes instanceof Uint8Array)) fail("Uint8Array media bytes required");
-  // Data owns canonical NI naming, MSB-first raw-bit values and byte custody.
-  // SignGraph owns only the finite geometric restriction / gluing operators.
-  const source = markResource(bytes);
-  const totalBits = source.bitLength;
+/** Restrict a Data-owned mark resource without re-encoding or re-reading raw
+ * bytes. This receives Data's admitted carrier, not a caller-built patch.
+ * Its original NI identity is preserved across multiple host-owned charts. */
+export function bitPatchOfResource(resource,{fromBit=0,bitCount}={}) {
+  if (resource?.kind !== "lspace.mark-resource")
+    fail("a Data-owned mark resource is required");
+  const totalBits = resource.bitLength;
   const count = bitCount ?? Math.min(MAX_BIT_SECTION,totalBits-fromBit);
   finiteInterval(fromBit,count,totalBits);
-  return patch(source.address,totalBits,fromBit,
-    bitValues(source,{offset:fromBit,count}));
+  return patch(resource.address,totalBits,fromBit,
+    bitValues(resource,{offset:fromBit,count}));
+}
+
+/** Name the whole byte content and obtain the same native patch from it. */
+export function bitPatchOfBytes(bytes,selection={}) {
+  if (!(bytes instanceof Uint8Array)) fail("Uint8Array media bytes required");
+  return bitPatchOfResource(markResource(bytes),selection);
 }
 
 /** Functorial restriction to a contained interval of the same address. */
