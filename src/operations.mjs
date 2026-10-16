@@ -14,6 +14,8 @@ import {
   cellular2Complex, cellular3Complex, burgersOfComplex, affineHolonomyOfComplex,
 } from "./cohomology.mjs";
 import { geometricReceiving, metricSquareOfVector } from "./embedding.mjs";
+import { planConnectedBarExchanges } from "./cellular-sheaf.mjs";
+import { hierarchicalCircuitId, normalizeHierarchicalCircuit, planCombinationalCircuit } from "./hierarchical-circuit.mjs";
 
 export const LIMITS = Object.freeze({
   vertices: 64,
@@ -22,6 +24,9 @@ export const LIMITS = Object.freeze({
   faceSteps: 2048,
   volumes: 32,
   volumeSteps: 2048,
+  circuitComponents: 32,
+  circuitInstances: 64,
+  barExchanges: 32,
 });
 
 /** Bound the actual structural work before allocating incidence matrices. */
@@ -34,6 +39,29 @@ function bounded(input, operation) {
   const bytes = new TextEncoder().encode(JSON.stringify(input)).length;
   if (bytes > 65536)
     throw new RangeError("signgraph operation exceeds the 64KiB input work budget");
+  if (operation === "signgraph.rigidity.connected-exchange") {
+    if (Object.keys(input).some(key => !["points", "beforeBars", "afterBars", "dimension"].includes(key)))
+      throw new TypeError("signgraph rigidity operation has undeclared input fields");
+    if (!Array.isArray(input.points) || !Array.isArray(input.beforeBars) ||
+        !Array.isArray(input.afterBars) || ![2, 3].includes(input.dimension))
+      throw new TypeError("signgraph rigidity operation needs points, both bar arrays and a 2D/3D dimension");
+    if (input.points.length > LIMITS.vertices || input.beforeBars.length > LIMITS.edges ||
+        input.afterBars.length > LIMITS.edges)
+      throw new RangeError("signgraph rigidity operation exceeds the finite geometry work budget");
+    return;
+  }
+  if (operation === "signgraph.eda.tensor-wavefront") {
+    if (Object.keys(input).some(key => !["circuit", "components"].includes(key)))
+      throw new TypeError("signgraph EDA operation has undeclared input fields");
+    if (!input.circuit || typeof input.circuit !== "object" || Array.isArray(input.circuit) ||
+        !Array.isArray(input.components))
+      throw new TypeError("signgraph EDA operation needs a circuit and component sequence");
+    if (input.components.length > LIMITS.circuitComponents ||
+        input.circuit.instances?.length > LIMITS.circuitInstances ||
+        input.components.some(child => child?.instances?.length > LIMITS.circuitInstances))
+      throw new RangeError("signgraph EDA operation exceeds the finite circuit work budget");
+    return;
+  }
   const allowed = new Set([
     "vertices", "edges", "faces", "volumes",
     ...(operation === "signgraph.holonomy.geometry" ? ["positions", "metric", "edgeDisplacements"] : []),
@@ -192,6 +220,48 @@ export const operations = Object.freeze({
         });
       }
       return Object.freeze(result);
+    },
+  }),
+  rigidity: Object.freeze({
+    id: "signgraph.rigidity.connected-exchange",
+    description: "Fabricate connected one-bar-at-a-time count-preserving graph exchanges with exact rigidity changes; no chemical feasibility or rate is claimed.",
+    inputSchema: Object.freeze({
+      type: "object", additionalProperties: false,
+      required: Object.freeze(["points", "beforeBars", "afterBars", "dimension"]),
+      properties: Object.freeze({
+        points: { type: "array", maxItems: LIMITS.vertices },
+        beforeBars: { type: "array", maxItems: LIMITS.edges },
+        afterBars: { type: "array", maxItems: LIMITS.edges },
+        dimension: { type: "integer", enum: [2, 3] },
+      }),
+    }),
+    execute(input) {
+      bounded(input, this.id);
+      return planConnectedBarExchanges(input);
+    },
+  }),
+  eda: Object.freeze({
+    id: "signgraph.eda.tensor-wavefront",
+    description: "Fabricate bounded combinational execution waves from the existing exact-source tensor circuit graph; reject cycles and consensus nets.",
+    inputSchema: Object.freeze({
+      type: "object", additionalProperties: false,
+      required: Object.freeze(["circuit", "components"]),
+      properties: Object.freeze({
+        circuit: { type: "object" },
+        components: { type: "array", maxItems: LIMITS.circuitComponents },
+      }),
+    }),
+    execute(input) {
+      bounded(input, this.id);
+      const library = new Map();
+      for (const source of input.components) {
+        const component = normalizeHierarchicalCircuit(source);
+        const identity = hierarchicalCircuitId(component);
+        if (library.has(identity))
+          throw new TypeError("signgraph EDA operation repeats a component source");
+        library.set(identity, component);
+      }
+      return planCombinationalCircuit(input.circuit, library);
     },
   }),
   affine: Object.freeze({
