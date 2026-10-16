@@ -260,6 +260,64 @@ function elaborate(circuit, library) {
   return instances;
 }
 
+
+/** Derive the earliest independent instance waves for a verified-pinout
+ * tensor-only hierarchical circuit. This is an EDA *kinematic* plan: the
+ * actual FOUR behavior still needs verifyCircuitEquivalence, and no netlist,
+ * build, timing, physical placement or hardware authority is fabricated here.
+ *
+ * Stateful/consensus par nets have no zero-delay combinational schedule;
+ * refuse that input rather than treating a least fixed point as acyclic HDL.
+ */
+export function planCombinationalCircuit(circuitSource, library = new Map()) {
+  const circuit = normalizeHierarchicalCircuit(circuitSource);
+  const instances = elaborate(circuit, library);
+  if (circuit.nets.some(net => net.mode !== "tensor"))
+    fail("noncombinational-net", "a par net requires a stateful/consensus fabricator, not a tensor schedule");
+
+  const names = [...instances.keys()].sort(utf8Compare);
+  const parents = new Map(names.map(name => [name, new Set()]));
+  const children = new Map(names.map(name => [name, new Set()]));
+  for (const net of circuit.nets) {
+    const source = net.driver.instance;
+    if (source === null) continue;
+    for (const sink of net.sinks) {
+      const target = sink.instance;
+      if (target === null) continue;
+      if (source === target)
+        fail("combinational-cycle", `a tensor net feeds instance ${source} back into itself`);
+      children.get(source).add(target);
+      parents.get(target).add(source);
+    }
+  }
+
+  const edges = Object.freeze(names.flatMap(from =>
+    [...children.get(from)].sort(utf8Compare).map(to => Object.freeze({ from, to }))));
+  const remaining = new Map(names.map(name => [name, parents.get(name).size]));
+  let frontier = names.filter(name => remaining.get(name) === 0);
+  const waves = [];
+  let processed = 0;
+  while (frontier.length > 0) {
+    waves.push(Object.freeze([...frontier]));
+    processed += frontier.length;
+    const next = [];
+    for (const name of frontier) for (const target of children.get(name)) {
+      const outstanding = remaining.get(target) - 1;
+      remaining.set(target, outstanding);
+      if (outstanding === 0) next.push(target);
+    }
+    frontier = next.sort(utf8Compare);
+  }
+  if (processed !== names.length)
+    fail("combinational-cycle", "tensor dependency cycle has no finite combinational wavefront");
+  return Object.freeze({
+    kind: "signgraph.circuitCombinationalPlan.v1",
+    circuit: hierarchicalCircuitId(circuit), admissionLevel: "structural-only",
+    mode: "tensor", instanceCount: names.length, dependencies: edges,
+    waves: Object.freeze(waves), parallelRounds: waves.length,
+  });
+}
+
 function settleValuation(circuit, instances, input) {
   const values = new Map(circuit.nets.map(({ name }) => [name, FOUR_VALUES[0]]));
   const netBySink = new Map(), netByDriver = new Map();
