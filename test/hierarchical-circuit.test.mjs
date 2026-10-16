@@ -10,6 +10,7 @@ import {
   encodeHierarchicalCircuit,
   hierarchicalCircuitId,
   normalizeHierarchicalCircuit,
+  planCombinationalCircuit,
   readCircuitContext,
   synthesizeCircuitBehavior,
   verifyCircuitFamily,
@@ -181,5 +182,73 @@ test("factorized behavior refuses overlaps, omissions, and false independence", 
   assert.throws(() => normalizeHierarchicalCircuit(source), /more than one behavior factor/u);
   const omitted = leaf(); omitted.behavior = { factors: [] };
   assert.throws(() => normalizeHierarchicalCircuit(omitted), /omit input pin/u);
+});
+
+
+test("EDA tensor synthesis has a deterministic finite instance wavefront, not an assumed causal metric", () => {
+  const child = normalizeHierarchicalCircuit(leaf()), component = hierarchicalCircuitId(child);
+  const input = { instance: null, port: "a" }, output = { instance: null, port: "z" };
+  const circuit = {
+    profile: HIERARCHICAL_CIRCUIT_PROFILE, law: id("serial-tensor-law"),
+    ports: [pin("a", "input"), pin("z", "output")],
+    instances: [{ name: "right", component }, { name: "left", component }],
+    nets: [
+      { name: "second", driver: { instance: "left", port: "z" }, sinks: [{ instance: "right", port: "a" }], mode: "tensor", chain: null, contract: null },
+      { name: "out", driver: { instance: "right", port: "z" }, sinks: [output], mode: "tensor", chain: null, contract: null },
+      { name: "in", driver: input, sinks: [{ instance: "left", port: "a" }], mode: "tensor", chain: null, contract: null },
+    ],
+    behavior: behavior(),
+  };
+  const library = new Map([[component, child]]);
+  assert.equal(verifyCircuitEquivalence(circuit, library).equivalent, true);
+  const plan = planCombinationalCircuit(circuit, library);
+  assert.equal(plan.kind, "signgraph.circuitCombinationalPlan.v1");
+  assert.equal(plan.admissionLevel, "structural-only");
+  assert.equal(plan.instanceCount, 2);
+  assert.equal(plan.parallelRounds, 2);
+  assert.deepEqual(plan.dependencies, [{ from: "left", to: "right" }]);
+  assert.deepEqual(plan.waves, [["left"], ["right"]]);
+  assert.ok(Object.isFrozen(plan) && Object.isFrozen(plan.waves[0]));
+  const reordered = { ...circuit, instances: [...circuit.instances].reverse(), nets: [...circuit.nets].reverse() };
+  assert.equal(plan.circuit, planCombinationalCircuit(reordered, library).circuit);
+  assert.deepEqual(plan.waves, planCombinationalCircuit(reordered, library).waves);
+
+  const parallel = {
+    ...circuit, law: id("parallel-tensor-law"),
+    ports: [pin("a1", "input"), pin("z1", "output"), pin("a2", "input"), pin("z2", "output")],
+    nets: [
+      { name: "left-in", driver: { instance: null, port: "a1" }, sinks: [{ instance: "left", port: "a" }], mode: "tensor", chain: null, contract: null },
+      { name: "right-in", driver: { instance: null, port: "a2" }, sinks: [{ instance: "right", port: "a" }], mode: "tensor", chain: null, contract: null },
+      { name: "left-out", driver: { instance: "left", port: "z" }, sinks: [{ instance: null, port: "z1" }], mode: "tensor", chain: null, contract: null },
+      { name: "right-out", driver: { instance: "right", port: "z" }, sinks: [{ instance: null, port: "z2" }], mode: "tensor", chain: null, contract: null },
+    ],
+    behavior: { factors: [
+      { inputs: ["a1"], outputs: ["z1"], rows: rows() },
+      { inputs: ["a2"], outputs: ["z2"], rows: rows() },
+    ] },
+  };
+  assert.equal(verifyCircuitEquivalence(parallel, library).equivalent, true);
+  assert.deepEqual(planCombinationalCircuit(parallel, library).waves, [["left", "right"]]);
+
+  const cycle = { ...circuit, law: id("cyclic-tensor-law"), ports: [],
+    nets: [
+      { name: "left-to-right", driver: { instance: "left", port: "z" }, sinks: [{ instance: "right", port: "a" }], mode: "tensor", chain: null, contract: null },
+      { name: "right-to-left", driver: { instance: "right", port: "z" }, sinks: [{ instance: "left", port: "a" }], mode: "tensor", chain: null, contract: null },
+    ],
+    behavior: { factors: [] },
+  };
+  assert.throws(() => planCombinationalCircuit(cycle, library), /tensor dependency cycle/);
+
+  const parChild = normalizeHierarchicalCircuit({ ...leaf(),
+    ports: [pin("a", "input", "par"), pin("z", "output", "par")] });
+  const parLibrary = new Map([[hierarchicalCircuitId(parChild), parChild]]);
+  const par = { ...parent(parChild), ports: [pin("a", "input", "par"), pin("z", "output", "par")],
+    instances: [{ name: "die", component: hierarchicalCircuitId(parChild) }],
+    nets: parent(parChild).nets.map(net => ({
+      ...net, mode: "par", chain: "eip155:31337", contract: id("consensus-contract"),
+    })),
+  };
+  assert.throws(() => planCombinationalCircuit(par, parLibrary), /stateful\/consensus fabricator/);
+  assert.throws(() => planCombinationalCircuit(circuit, new Map()), /not available for synthesis/);
 });
 
