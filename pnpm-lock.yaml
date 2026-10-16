@@ -36,11 +36,11 @@ importers:
         specifier: 0.4.0
         version: 0.4.0
       '@red-cup-engineering/signcell':
+        specifier: 0.4.0
+        version: 0.4.0
+      '@red-cup-engineering/signchain':
         specifier: 0.2.0
         version: 0.2.0
-      '@red-cup-engineering/signchain':
-        specifier: 0.1.0
-        version: 0.1.0
       '@red-cup-engineering/uri-services-section':
         specifier: 0.1.1
         version: 0.1.1
@@ -149,8 +149,11 @@ packages:
   '@red-cup-engineering/signcell@0.2.0':
     resolution: {integrity: sha512-SE91f1OrKZ566DZj2U/EFpRLUYi+6vDFPkU3lzWS9qAijd1r7lfn6sla1qRKrOMqUYBCo74IZzVHmvb4FFRInw==}
 
-  '@red-cup-engineering/signchain@0.1.0':
-    resolution: {integrity: sha512-RkLBOCA8hmp5rINKgJywAFrHOlS77TE4Sj1/zC8ori+bPjaN7yxYTN42iL90b6l4NfRasdZNeMn8gbIpOsM2Zg==}
+  '@red-cup-engineering/signcell@0.4.0':
+    resolution: {integrity: sha512-VfGyU46S1y0QDlcgYLSYnKZgVbL7Ocn8oWDf2Gw3iYTI8Qgvm2IF2X+oTLu7iOJyWrwlLXnfdXqMROO1Ll4h/Q==}
+
+  '@red-cup-engineering/signchain@0.2.0':
+    resolution: {integrity: sha512-rI8Z10v5EhnbWzoH+EoigShA1XDRF+tmyvuxEXRY78Q9MuYJ3a8UtHPmJUVeBE0iEccQw3Eb16rnZD44pxJ9IA==}
 
   '@red-cup-engineering/uri-services-section@0.1.1':
     resolution: {integrity: sha512-y5Ipia5hTOLT/0lzEX+DAC/qtfT7ey17jNT/2dh7r0fqromCUxUOQiJOYaapXXWqe79T1sCEmICjukFuLvizmw==}
@@ -360,7 +363,14 @@ snapshots:
       '@red-cup-engineering/computer-data-engineering-services-section': 0.2.0
       '@red-cup-engineering/json-schema-services-section': 0.5.0
 
-  '@red-cup-engineering/signchain@0.1.0':
+  '@red-cup-engineering/signcell@0.4.0':
+    dependencies:
+      '@red-cup-engineering/cbor-services-section': 0.1.1
+      '@red-cup-engineering/computer-content-address-engineering-services-section': 0.2.0
+      '@red-cup-engineering/computer-data-engineering-services-section': 0.2.0
+      '@red-cup-engineering/json-schema-services-section': 0.5.0
+
+  '@red-cup-engineering/signchain@0.2.0':
     dependencies:
       '@red-cup-engineering/computer-content-address-engineering-services-section': 0.2.0
       '@red-cup-engineering/computer-data-engineering-services-section': 0.2.0
@@ -369,7 +379,7 @@ snapshots:
       '@red-cup-engineering/json-schema-services-section': 0.5.0
       '@red-cup-engineering/metrologic': 0.4.0
       '@red-cup-engineering/semiotic-eavt-services-section': 0.1.0
-      '@red-cup-engineering/signcell': 0.2.0
+      '@red-cup-engineering/signcell': 0.4.0
 
   '@red-cup-engineering/uri-services-section@0.1.1':
     dependencies:
