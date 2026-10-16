@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { at as chuAt, chuSpace } from "@red-cup-engineering/metrologic/chu";
 import { readingFamilies } from "@red-cup-engineering/computer-data-engineering-services-section/four";
-import { converse, predicateFiber, specialization } from "../src/fiber.mjs";
+import { converse, fiberFusion, fiberResiduum, fiberLeqTruth, predicateFiber, specialization } from "../src/fiber.mjs";
 
 test("a predicate fiber owns its addressed context, independent of mutable source references", () => {
   const s = { id: "s" }, o = { id: "o" }, label = { p: "links" }, entities = [s, o], pairs = [[s, o]];
@@ -37,4 +37,30 @@ test("finite FOUR fiber preserves both Chu incidence coordinates and local restr
   assert.deepEqual(local.pairs, [["a", "b"]]);
   assert.equal(local.at("a", "b"), "potential");
   assert.equal(local.at("b", "a"), "absurd");
+});
+
+test("cellwise FOUR operations refuse foreign entity contexts while retaining sparse unknowns", () => {
+  // An identical-looking claim in a different territory cannot silently
+  // enter this fiber by treating absent subject/object pairs as unknown.
+  const local = predicateFiber("jurisdiction", ["A", "B"], () => "potential");
+  const foreign = predicateFiber("jurisdiction", ["A", "C"], () => "active");
+  for (const operation of [fiberFusion, fiberResiduum, fiberLeqTruth]) {
+    assert.throws(() => operation(local, foreign), /distinct entity contexts cannot compose/);
+    assert.throws(() => operation(foreign, local), /distinct entity contexts cannot compose/);
+  }
+  // No positional coercion: a lawful permutation of the same addressed
+  // domain is compatible, including in an order comparison.
+  const reindexed = predicateFiber("jurisdiction", ["B", "A"], () => "active");
+  assert.equal(fiberFusion(local, reindexed).kind, "signgraph.fiber");
+  assert.equal(fiberResiduum(local, reindexed).kind, "signgraph.fiber");
+  assert.equal(typeof fiberLeqTruth(local, reindexed), "boolean");
+
+  // A sparse support within the SAME context remains lawful; unlisted pairs
+  // still mean ⊥ₖ rather than false testimony or a fabricated witness.
+  const sparse = predicateFiber("jurisdiction", ["A", "B"], () => "active", [["A", "B"]]);
+  assert.equal(sparse.at("B", "A"), "absurd");
+  assert.equal(fiberFusion(local, sparse).kind, "signgraph.fiber");
+  assert.equal(fiberResiduum(local, sparse).kind, "signgraph.fiber");
+  assert.equal(typeof fiberLeqTruth(local, sparse), "boolean");
+  assert.throws(() => fiberFusion(local, {}), /two predicate fibers are required/);
 });
