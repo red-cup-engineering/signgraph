@@ -194,8 +194,25 @@ function pricedCell(cellName, group, readings) {
  * name; otherwise every cell is a register and every stance one of its values.
  */
 export function pricedNerve(statements, { readings = false } = {}) {
+  if (!Array.isArray(statements)) throw new TypeError("signgraph: a cover must be an array of witnessed source statements");
   const byCell = new Map();
-  for (const statement of statements) byCell.set(statement.cell, [...(byCell.get(statement.cell) ?? []), statement]);
+  for (const statement of statements) {
+    // Enforce the existing FederatedCoverStatement carrier before interpreting
+    // a claim as a sovereign local section. An absent source is NOT a
+    // contributor named "undefined", nor is an absent stance an agreement.
+    if (statement === null || typeof statement !== "object" || Array.isArray(statement)
+        || ["source", "cell", "stance"].some(key =>
+          typeof statement[key] !== "string" || statement[key].length === 0)
+        || (statement.witness !== undefined &&
+          (typeof statement.witness !== "string" || statement.witness.length === 0))
+        || Object.keys(statement).some(key => !["source", "cell", "stance", "witness"].includes(key)))
+      throw new TypeError("signgraph: invalid federated source/cell/stance statement");
+    // The same cell can have many independent witnesses. Append in O(1)
+    // instead of cloning its growing history on every arrival (quadratic).
+    let group = byCell.get(statement.cell);
+    if (group === undefined) { group = []; byCell.set(statement.cell, group); }
+    group.push(statement);
+  }
   const cells = [...byCell.entries()].sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)).map(([cellName, group]) => pricedCell(cellName, group, readings));
   const obstructions = Object.freeze(cells.filter((entry) => entry.top > 0));
   const sum = (leg) => cells.reduce((total, entry) => total + entry[leg], 0);
