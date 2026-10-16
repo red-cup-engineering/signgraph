@@ -13,11 +13,21 @@ import { coincides } from "@red-cup-engineering/signcell/cell";
 
 const labels = (edge) => (Array.isArray(edge.predicate) ? edge.predicate : [edge.predicate]);
 
-/** One round of composition: every edge, plus each composite of two distinct edges meeting at an entity. */
+/**
+ * One finite round of path composition, including repeated traversal of
+ * the SAME generating self-loop. Free-path composition is defined by matching
+ * endpoints, not by distinct positions in an input list; a loop e:x→x
+ * admits e·e. This is one bounded round, not an unbounded closure of cycles.
+ */
 export function compose(edges) {
   const composites = [];
-  edges.forEach((left, i) => edges.forEach((right, j) => {
-    if (i !== j && coincides(left.object, right.subject)) composites.push(Object.freeze({ subject: left.subject, predicate: Object.freeze([...labels(left), ...labels(right)]), object: right.object }));
+  edges.forEach(left => edges.forEach(right => {
+    if (coincides(left.object, right.subject))
+      composites.push(Object.freeze({
+        subject: left.subject,
+        predicate: Object.freeze([...labels(left), ...labels(right)]),
+        object: right.object,
+      }));
   }));
   return Object.freeze([...edges, ...composites]);
 }
