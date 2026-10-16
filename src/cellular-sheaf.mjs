@@ -490,6 +490,99 @@ export function compareFixedCountRigidity({ before, after, dimension } = {}) {
   });
 }
 
+/**
+ * Fabricate a minimum-length sequence of graph-edge replacements between two
+ * connected simple bar frameworks at ONE shared point configuration.
+ *
+ * This is a bounded COMBINATORIAL model of count-preserving associative
+ * exchange: each step removes one obsolete edge and adds one requested edge,
+ * keeps the number of vertices/bars constant, and preserves connectivity.
+ * We select the first admissible pair deterministically, rather than assuming
+ * that a chemical exchange, activation energy, rate, strain tolerance, or
+ * stereochemical transition is possible. Those are external Science inputs.
+ *
+ * Unlike a before/after index check, this returns actual intermediate
+ * bar lists and exact-rational rigidity readings for a consuming simulator.
+ * Because every step adds one missing target bar and loses no target bar,
+ * the number of steps is the minimum possible in this single-replacement
+ * graph model; it says nothing about physically feasible shortest paths.
+ */
+export function planConnectedBarExchanges({ points, beforeBars, afterBars, dimension } = {}) {
+  // Reuse the exact owner admission rather than duplicate coordinate/edge
+  // parsing. A single points array prohibits an unnoticed embedding change.
+  const initial = compareFixedCountRigidity({
+    before: { points, bars: beforeBars }, after: { points, bars: afterBars }, dimension,
+  });
+  const n = initial.vertices, m = initial.bars;
+  if (n > 64 || m > 128)
+    throw new RangeError("connected bar exchange exceeds the bounded geometry profile");
+  const canonical = ([a, b]) => a < b ? [a, b] : [b, a];
+  const order = ([a, b], [c, d]) => a - c || b - d;
+  const key = ([a, b]) => a + ":" + b;
+  const sorted = bars => bars.map(canonical).sort(order);
+  let current = sorted(beforeBars);
+  const target = sorted(afterBars), desired = new Set(target.map(key));
+  const connected = bars => {
+    if (n === 0) return false;
+    const neighbors = Array.from({ length: n }, () => []);
+    for (const [a, b] of bars) { neighbors[a].push(b); neighbors[b].push(a); }
+    const visited = new Set([0]), pending = [0];
+    for (let pos = 0; pos < pending.length; pos++) {
+      for (const other of neighbors[pending[pos]]) if (!visited.has(other)) {
+        visited.add(other); pending.push(other);
+      }
+    }
+    return visited.size === n;
+  };
+  if (!connected(current) || !connected(target))
+    throw new RangeError("connected bar exchange requires connected input and target networks");
+  const actual = new Set(current.map(key));
+  const missing = target.filter(bar => !actual.has(key(bar)));
+  if (missing.length > 32)
+    throw new RangeError("connected bar exchange exceeds the bounded 32-swap profile");
+  const exchanges = [];
+  while (missing.length > 0) {
+    const obsolete = current.filter(bar => !desired.has(key(bar)));
+    let choice = null;
+    for (const newBar of missing) {
+      for (const oldBar of obsolete) {
+        const candidate = current.filter(bar => key(bar) !== key(oldBar)).concat([newBar]).sort(order);
+        if (connected(candidate)) { choice = { oldBar, newBar, candidate }; break; }
+      }
+      if (choice) break;
+    }
+    if (!choice) throw new RangeError("no connected count-preserving exchange can advance the source network");
+    const step = compareFixedCountRigidity({
+      before: { points, bars: current }, after: { points, bars: choice.candidate }, dimension,
+    });
+    exchanges.push(Object.freeze({
+      broken: Object.freeze([...choice.oldBar]),
+      formed: Object.freeze([...choice.newBar]),
+      resultBars: Object.freeze(choice.candidate.map(bar => Object.freeze([...bar]))),
+      rankDelta: step.rankDelta,
+      mechanismsDelta: step.mechanismsDelta,
+      rigidityChanged: step.rigidityChanged,
+      rigidity: step.after,
+    }));
+    current = choice.candidate;
+    const added = missing.findIndex(bar => key(bar) === key(choice.newBar));
+    missing.splice(added, 1);
+  }
+  if (current.length !== target.length || current.some((bar, index) => key(bar) !== key(target[index])))
+    throw new TypeError("bar exchange failed to realize the exact target network");
+  return Object.freeze({
+    kind: "signgraph.connectedBarExchangePath.v1",
+    graphKind: "simple-embedded-bar-joint",
+    dimension, vertices: n, bars: m,
+    eulerIndex: n - m, meanCoordination: 2 * m / n,
+    minimumSwapCount: exchanges.length,
+    startRigidity: initial.before,
+    finalRigidity: initial.after,
+    exchanges: Object.freeze(exchanges),
+    scope: "connected exact-rational graph kinematics; no chemical pathways, rates or physical rigidity assays",
+  });
+}
+
 // — the dual: loads, and the transpose of the coboundary —
 
 /** Mᵀ y for a sparse matrix, summing in row order (deterministic). */
