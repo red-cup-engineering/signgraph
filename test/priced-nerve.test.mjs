@@ -66,6 +66,28 @@ test("hundreds of distinct actor stances preserve the original merge result unde
   assert.deepEqual(pricedNerve(actors.reverse()), read);
 });
 
+test("large gyrobifastidial federations tally each independent SSE once", () => {
+  const independent = Array.from({ length: 1200 }, (_, i) =>
+    at(`SSE-${i}`, "contract", i % 3 ? "refine" : "counter"));
+  const registered = pricedNerve(independent);
+  assert.equal(registered.top, 2);
+  assert.equal(registered.mass, 800);
+  assert.equal(registered.rank, 1199);
+  assert.deepEqual(pricedNerve([...independent].reverse()), registered);
+  // FOUR remains a *claim*, not an invalid multi-value register. Repetition
+  // and changed arrival order cannot inflate its single-source local tally.
+  const testimony = [
+    at("SSE-west", "border", "potential"),
+    at("SSE-west", "border", "potential"),
+    at("SSE-west", "border", "active"),
+    at("SSE-east", "border", "absurd"),
+  ];
+  const evidence = pricedNerve(testimony, { readings: true });
+  assert.equal(evidence.top, 1);
+  assert.equal(evidence.mass, 1);
+  assert.deepEqual(pricedNerve([...testimony].reverse(), { readings: true }), evidence);
+});
+
 test("a FOUR-valued claim may carry both sides locally; that is not an invalid register", () => {
   const forIt = at("enterprise:west", "can-cross", "potential");
   const against = at("enterprise:west", "can-cross", "active");
