@@ -374,6 +374,12 @@ export function synthesizeCircuitBehavior(circuitSource, library = new Map()) {
   const outputIndex = new Map(outputPorts.map((port, index) => [port.name, index]));
   const factors = [...groups.values()].filter(({ inputs, outputs }) => inputs.length + outputs.length > 0).map(({ inputs, outputs }) => {
     inputs.sort(utf8Compare); outputs.sort(utf8Compare);
+    // The parent of individually legal small factors can become one connected
+    // factor with too many external inputs. Refuse BEFORE allocating 4^n
+    // truth-table rows or invoking any child evaluator: the same six-input
+    // bound already governs normalizeRows and the accepted circuit carrier.
+    if (inputs.length > 6) fail("circuit-limit",
+      "synthesized behavior factor may expose at most six FOUR inputs");
     const rows = enumerateValuations(inputs.length).map((valuation) => {
       const wholeInput = inputPorts.map(() => FOUR_VALUES[0]);
       inputs.forEach((name, index) => { wholeInput[inputIndex.get(name)] = valuation[index]; });
