@@ -162,6 +162,14 @@ test("bounded native materials and tensor EDA operations fabricate real outputs 
   assert.deepEqual(plan.waves, [["first"], ["second"]]);
   assert.throws(() => executeOperation("signgraph.eda.tensor-wavefront",
     { circuit, components: [source, source] }), /repeats a component source/);
+  const unselected = { ...source, law: id("other-source-with-no-circuit-consumer") };
+  assert.throws(() => executeOperation("signgraph.eda.tensor-wavefront",
+    { circuit, components: [source, unselected] }), /unselected component source/);
+  const damagedComponent = { ...source, instances: [{ name: "missing", component: id("unreceived-child") }] };
+  const boundToDamaged = { ...circuit, instances: circuit.instances.map(instance =>
+    ({ ...instance, component: hierarchicalCircuitId(damagedComponent) })) };
+  assert.throws(() => executeOperation("signgraph.eda.tensor-wavefront",
+    { circuit: boundToDamaged, components: [damagedComponent] }), /component source is absent/);
   assert.throws(() => executeOperation("signgraph.eda.tensor-wavefront",
     { circuit, components: [source], token: "borrowed" }), /undeclared input fields/);
   assert.throws(() => executeOperation("signgraph.eda.tensor-wavefront",
