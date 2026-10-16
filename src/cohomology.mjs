@@ -145,20 +145,21 @@ export const federatedCoverStatementSchema = Object.freeze({
  * 0-cells, each source's incidence with each measurement it covers as a 1-cell.
  */
 function pricedCell(cellName, group, readings) {
-  if (!readings) {
-    // A register section is a partial FUNCTION source × cell → stance.
-    // Two distinct values from one source are not a second sovereign witness
-    // and cannot become a zero-price gluing. FOUR-valued multiple testimony
-    // belongs to the explicit readings mode instead.
-    const local = new Map();
-    for (const { source, stance } of group) {
-      if (local.has(source) && local.get(source) !== stance)
-        throw new TypeError("signgraph: one source cannot assign two values to the same register cell");
-      local.set(source, stance);
-    }
+  // Index each local section ONCE, rather than re-filtering the whole
+  // federation for every participating SSE (formerly quadratic per cell).
+  const bySource = new Map();
+  for (const { source, stance } of group) {
+    let local = bySource.get(source);
+    if (local === undefined) { local = []; bySource.set(source, local); }
+    // A register is a partial FUNCTION source × cell → stance. Different
+    // stances from one SSE are not independent opinions or gluing witnesses;
+    // FOUR claims deliberately use readings mode instead.
+    if (!readings && local.length > 0 && local[0] !== stance)
+      throw new TypeError("signgraph: one source cannot assign two values to the same register cell");
+    local.push(stance);
   }
-  const sources = [...new Set(group.map((statement) => statement.source))].sort();
-  const stated = (source) => group.filter((statement) => statement.source === source).map((statement) => statement.stance);
+  const sources = [...bySource.keys()].sort();
+  const stated = (source) => bySource.get(source);
   const names = readings ? [cellName] : [...new Set(group.map((statement) => statement.stance))].sort();
   const told = new Map(sources.map((source) => [source, readings
     ? new Map([[cellName, stated(source).map(sidesOfReading).reduce(([f, a], [g, b]) => [f || g, a || b], [false, false])]])
