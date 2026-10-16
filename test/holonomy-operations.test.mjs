@@ -3,8 +3,6 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { operations, LIMITS, executeOperation } from "../src/operations.mjs";
-import { semanticId } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
-import { hierarchicalCircuitId } from "../src/hierarchical-circuit.mjs";
 
 const triangle = () => ({
   vertices: ["a", "b", "c"],
@@ -16,22 +14,17 @@ const triangle = () => ({
   faces: [{ id: "f", boundary: ["ab", "bc", "ca"].map(edge => ({ edge, direction: 1 })) }],
 });
 
-test("six native graph/EDA operations share bounded typed admission and an executable selector", () => {
+test("three reusable operations share one structural admission, with machine-readable schemas", () => {
   assert.deepEqual(Object.values(operations).map(op => op.id), [
     "signgraph.holonomy.topology",
     "signgraph.holonomy.burgers",
     "signgraph.holonomy.geometry",
-    "signgraph.rigidity.connected-exchange",
-    "signgraph.eda.tensor-wavefront",
     "signgraph.holonomy.affine",
   ]);
   for (const op of Object.values(operations)) {
     assert.equal(op.inputSchema.type, "object");
     assert.equal(op.inputSchema.additionalProperties, false);
-    if (op.id.startsWith("signgraph.holonomy."))
-      assert.deepEqual(op.inputSchema.required.slice(0, 3), ["vertices", "edges", "faces"]);
-    else
-      assert.ok(["signgraph.rigidity.connected-exchange", "signgraph.eda.tensor-wavefront"].includes(op.id));
+    assert.deepEqual(op.inputSchema.required.slice(0, 3), ["vertices", "edges", "faces"]);
     assert.equal(typeof op.execute, "function");
   }
   const receipt = executeOperation("signgraph.holonomy.topology", triangle());
@@ -108,76 +101,6 @@ test("operation work limits and undeclared data fail before expensive rank elimi
     ...base, edgeDisplacements: null,
   }), /for each edge/);
   assert.throws(() => executeOperation("signgraph.holonomy.invalid", base), /not installed/);
-});
-
-
-test("bounded native materials and tensor EDA operations fabricate real outputs and refuse invalid work", () => {
-  const points = [[0, 0], [2, 0], [0, 3], [3, 4], [5, 2]];
-  const beforeBars = [[0, 1], [0, 2], [1, 2], [0, 3], [1, 3], [1, 4], [2, 4]];
-  const afterBars = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3], [3, 4]];
-  const result = executeOperation("signgraph.rigidity.connected-exchange",
-    { points, beforeBars, afterBars, dimension: 2 });
-  assert.equal(result.minimumSwapCount, 2);
-  assert.equal(result.startRigidity.cohomology.rank, 7);
-  assert.equal(result.finalRigidity.cohomology.rank, 6);
-  assert.deepEqual(result.exchanges.map(step => step.formed), [[2, 3], [3, 4]]);
-  assert.throws(() => executeOperation("signgraph.rigidity.connected-exchange",
-    { points, beforeBars, afterBars, dimension: 2, authority: "invented" }),
-    /undeclared input fields/);
-  assert.throws(() => executeOperation("signgraph.rigidity.connected-exchange",
-    { points, beforeBars, afterBars: afterBars.slice(1), dimension: 2 }), /conserved vertex and bar counts/);
-
-  const id = label => semanticId(["mark", label]);
-  const valuation = [
-    {positiveEvidence:false,negativeEvidence:false},
-    {positiveEvidence:true,negativeEvidence:false},
-    {positiveEvidence:false,negativeEvidence:true},
-    {positiveEvidence:true,negativeEvidence:true},
-  ];
-  const pin = (name, direction) =>
-    ({ name, direction, mode: "tensor", predicate: id("predicate"), carrier: id("FOUR") });
-  const source = {
-    profile: "org.emsenn.sen.hierarchical-circuit.v3", law: id("leaf"),
-    ports: [pin("a", "input"), pin("z", "output")], instances: [], nets: [],
-    behavior: { factors: [{ inputs: ["a"], outputs: ["z"],
-      rows: valuation.map(value => ({ input: [value], output: [value] })) }] },
-  };
-  const dieId = hierarchicalCircuitId(source);
-  const wire = (name, driver, sinks) => ({ name, driver, sinks,
-    mode: "tensor", chain: null, contract: null });
-  const circuit = {
-    profile: source.profile, law: id("two-stage"),
-    ports: [pin("a", "input"), pin("z", "output")],
-    instances: [{ name: "second", component: dieId }, { name: "first", component: dieId }],
-    nets: [
-      wire("in", { instance: null, port: "a" }, [{ instance: "first", port: "a" }]),
-      wire("link", { instance: "first", port: "z" }, [{ instance: "second", port: "a" }]),
-      wire("out", { instance: "second", port: "z" }, [{ instance: null, port: "z" }]),
-    ],
-    behavior: source.behavior,
-  };
-  const plan = executeOperation("signgraph.eda.tensor-wavefront", { circuit, components: [source] });
-  assert.equal(plan.kind, "signgraph.circuitCombinationalPlan.v1");
-  assert.equal(plan.admissionLevel, "structural-only");
-  assert.deepEqual(plan.waves, [["first"], ["second"]]);
-  assert.throws(() => executeOperation("signgraph.eda.tensor-wavefront",
-    { circuit, components: [source, source] }), /repeats a component source/);
-  const unselected = { ...source, law: id("other-source-with-no-circuit-consumer") };
-  assert.throws(() => executeOperation("signgraph.eda.tensor-wavefront",
-    { circuit, components: [source, unselected] }), /unselected component source/);
-  const damagedComponent = { ...source, instances: [{ name: "missing", component: id("unreceived-child") }],
-    nets: [
-      wire("nested-in", { instance: null, port: "a" }, [{ instance: "missing", port: "a" }]),
-      wire("nested-out", { instance: "missing", port: "z" }, [{ instance: null, port: "z" }]),
-    ] };
-  const boundToDamaged = { ...circuit, instances: circuit.instances.map(instance =>
-    ({ ...instance, component: hierarchicalCircuitId(damagedComponent) })) };
-  assert.throws(() => executeOperation("signgraph.eda.tensor-wavefront",
-    { circuit: boundToDamaged, components: [damagedComponent] }), /component source is absent/);
-  assert.throws(() => executeOperation("signgraph.eda.tensor-wavefront",
-    { circuit, components: [source], token: "borrowed" }), /undeclared input fields/);
-  assert.throws(() => executeOperation("signgraph.eda.tensor-wavefront",
-    { circuit, components: Array(33).fill(source) }), /finite circuit work budget/);
 });
 
 const bin = fileURLToPath(new URL("../scripts/holonomy.mjs", import.meta.url));

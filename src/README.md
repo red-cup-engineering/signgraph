@@ -61,15 +61,14 @@ what networking is. Pure.
   rigidity. Use `@red-cup-engineering/signgraph/cellular-sheaf`.
   It does not assert that a chemical associative exchange realizes a
   candidate graph or that crystallinity or mechanical strength is measured.
-- `hierarchical-circuit` — typed SEN die composition and exact finite FOUR
-  behavioral synthesis. `planCombinationalCircuit(circuit, library)`
-  additionally fabricates a deterministic, finite tensor-only instance
-  dependency wavefront from the actual pin-wired netlist; independent
-  instances share a wave. It refuses directed combinational feedback and
-  par/consensus nets instead of inventing a timing or stateful execution
-  model. The existing `verifyCircuitEquivalence` independently establishes
-  actual declared behavioral equivalence. Use
-  `@red-cup-engineering/signgraph/hierarchical-circuit`.
+- `hierarchical-circuit` — the established pure typed relation model
+  for SEN circuit-shaped diagrams and finite FOUR-valued semantics.
+  `planCombinationalCircuit` remains a pure graph-order projection for
+  existing callers, not the owner of Electronic Design Automation or its
+  fabrication machinery. Constructive, evidence-aware synthesis belongs in
+  SignCraft, where consumers supply their own lawful constraints.
+  `verifyCircuitEquivalence` checks only the modeled behavior, not a
+  physical or deployed circuit.
 - `cohomology` — `cellular2Complex({vertices, edges, faces})` extends the
   existing graph incidence to **oriented 2-cells**. Every face must
   attach by a composable closed walk, `δ¹δ⁰=0` is checked, and exact rational
@@ -104,13 +103,29 @@ what networking is. Pure.
   (`@red-cup-engineering/eavt-services-section/relation-web`), which is data: content-addressed
   relation observations over plain JSON terms, with no cell, valuation or FOUR.
 
+## Pure functional boundary
+
+SignGraph's reusable core constructs and transforms relations, Chu spaces,
+diagrams, incidences, sheaves and cohomology from explicit inputs. It does not
+own EDA, protein-folding, materials manufacturing, payment, provider dispatch,
+credentials or any execution of an external process. SignCraft composes the
+native sign structures through evidence-sensitive generative transformations.
+A graph metric, even with a specialized example, does not acquire the
+authority to synthesize or fabricate its consuming domain.
+
+The four preexisting holonomy JSONL operations are retained as legacy
+compatibility surfaces for already selected consumers. They should be
+extracted to their competent engineering operations owner without changing
+their mathematical core; new application-specific dispatch operations are
+not admitted to this library.
+
 ## Operational holonomy receiving
 
-`./operations` exposes six bounded, read-only Engineering operations:
+`./operations` retains four historical, read-only holonomy adapter operations:
 `signgraph.holonomy.topology`, `signgraph.holonomy.burgers`,
-`signgraph.holonomy.affine`, `signgraph.holonomy.geometry`,
-`signgraph.eda.tensor-wavefront`, and `signgraph.rigidity.connected-exchange`. They reuse the same SignGraph 2-complex
-admission and exact algebra. Callers in Operations, Corporate, Public,
+`signgraph.holonomy.affine`, and `signgraph.holonomy.geometry`.
+These project the SignGraph 2-complex and its exact algebra; they are
+compatibility adapters, not new semiotic or fabrication primitives. Callers in Operations, Corporate, Public,
 or an agent-hosting platform supply particular vertices, oriented edges,
 oriented face walks, and—when appropriate—one measured displacement or
 sixfold affine motion per edge. The optional geometry operation accepts an
@@ -146,41 +161,6 @@ be independently received; committing this source does not cause
 automatic installation. This is a planar sixfold lattice model, not
 yet a theorem equating J26's three-dimensional honeycomb with a
 two-dimensional Burgers lattice or with temperature.
-
-## Executable EDA and connected-material work
-
-`signgraph-operations` is an alias for the existing headless JSONL entrypoint
-`signgraph-holonomy`. Both dispatch through the *same* `./operations` registry.
-The two new operations accept only explicitly supplied, bounded carrier data;
-neither creates credentials, deploys a circuit or heats a real material.
-
-`signgraph.eda.tensor-wavefront` consumes `{circuit,components}` where
-`circuit` and each component obey the original
-`org.emsenn.sen.hierarchical-circuit.v3` contract. It returns exact source
-identity and a deterministic combinational wavefront, refusing missing
-components, cycles, par/consensus and excess capacity. It is structural:
-the separate `verifyCircuitEquivalence` still decides declared FOUR behavior.
-
-`signgraph.rigidity.connected-exchange` consumes a *shared* exact-coordinate
-`points` array, `beforeBars`, `afterBars` and `dimension` (2 or 3).
-It constructs a minimum-length sequence of graph substitutions that preserves
-the vertex count, bar count and connectedness at each intermediate state,
-returning each fabricated bar set and its rational rigidity reading.
-It refuses duplicate bars, disconnected endpoints and over-budget work.
-These are **graph** exchanges; chemical mechanism, topology-freezing
-temperature, timescale, kinetic barrier and elastic constitutive law are
-external scientific questions.
-
-Example of a real two-exchange request:
-
-```sh
-printf '%s\\n' '{"operation":"signgraph.rigidity.connected-exchange","input":{"dimension":2,"points":[[0,0],[2,0],[0,3],[3,4],[5,2]],"beforeBars":[[0,1],[0,2],[1,2],[0,3],[1,3],[1,4],[2,4]],"afterBars":[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3],[3,4]]}}' | signgraph-operations
-```
-
-The original four holonomy operations remain unchanged. The current package
-`test:holonomy` selection now includes the existing EDA and cellular-sheaf
-tests for these new execution paths; the source commit is not itself a
-registry publication or an installed MetroPlat operation.
 
 ## J26 volume completion and Burgers/Stokes receiving
 

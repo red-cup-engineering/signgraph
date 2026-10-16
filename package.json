@@ -64,7 +64,6 @@
     "@red-cup-engineering/computer-code-engineering-services-section": "0.1.2"
   },
   "bin": {
-    "signgraph-holonomy": "scripts/holonomy.mjs",
-    "signgraph-operations": "scripts/holonomy.mjs"
+    "signgraph-holonomy": "scripts/holonomy.mjs"
   }
 }
