@@ -4,7 +4,7 @@ import { cell } from "@red-cup-engineering/signcell/cell";
 import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
   apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf,
-  diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
+  compareFixedCountRigidity, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
 } from "../src/cellular-sheaf.mjs";
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} !~ ${b}`);
@@ -164,6 +164,52 @@ test("rigidity: triangle rigid, open square flexes, braced square has a self-str
   // Maxwell: m = dN − C − E + stresses
   assert.equal(braced.mechanisms - braced.selfStresses, 2 * 4 - 3 - 6);
   assert.equal(open.mechanisms - open.selfStresses, 2 * 4 - 3 - 4);
+});
+
+test("fixed-count embedded exchange can change rigidity without changing the Euler index", () => {
+  // Lenticule's five-joint exact counterexample: these snapshots both have
+  // 7 undirected bars and 5 joints, but distinct rigidity-matrix ranks.
+  const points = [[0, 0], [2, 0], [0, 3], [3, 4], [5, 2]];
+  const rigid = { points, bars: [[0, 1], [0, 2], [1, 2], [0, 3], [1, 3], [1, 4], [2, 4]] };
+  const flexible = { points, bars: [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3], [3, 4]] };
+  const change = compareFixedCountRigidity({ before: rigid, after: flexible, dimension: 2 });
+  assert.equal(change.vertices, 5);
+  assert.equal(change.bars, 7);
+  assert.equal(change.eulerIndex, -2);
+  assert.equal(change.meanCoordination, 14 / 5);
+  assert.equal(change.before.cohomology.rank, 7);
+  assert.equal(change.after.cohomology.rank, 6);
+  assert.equal(change.before.mechanisms, 0);
+  assert.equal(change.after.mechanisms, 1);
+  assert.equal(change.before.selfStresses, 0);
+  assert.equal(change.after.selfStresses, 1);
+  assert.equal(change.rankDelta, -1);
+  assert.equal(change.mechanismsDelta, 1);
+  assert.equal(change.rigidityChanged, true);
+  assert.equal(change.before.infinitesimallyRigid, true);
+  assert.equal(change.after.infinitesimallyRigid, false);
+  assert.ok(Object.isFrozen(change));
+
+  const same = compareFixedCountRigidity({ before: rigid, after: rigid, dimension: 2 });
+  assert.equal(same.rankDelta, 0);
+  assert.equal(same.mechanismsDelta, 0);
+  assert.equal(same.rigidityChanged, false);
+
+  const reverse = compareFixedCountRigidity({ before: flexible, after: rigid, dimension: 2 });
+  assert.equal(reverse.rankDelta, 1);
+  assert.equal(reverse.mechanismsDelta, -1);
+  assert.equal(reverse.rigidityChanged, true);
+
+  assert.throws(() => compareFixedCountRigidity({ before: rigid,
+    after: { ...flexible, bars: flexible.bars.slice(1) }, dimension: 2 }), /conserved vertex and bar counts/);
+  assert.throws(() => compareFixedCountRigidity({ before: rigid,
+    after: { ...flexible, points: flexible.points.slice(1) }, dimension: 2 }), /invalid bar endpoints|conserved vertex and bar counts/);
+  assert.throws(() => compareFixedCountRigidity({ before: rigid,
+    after: { ...flexible, bars: [[0, 1], [1, 0]] }, dimension: 2 }), /duplicate undirected bar/);
+  assert.throws(() => compareFixedCountRigidity({ before: rigid,
+    after: { ...flexible, bars: [[0, 5], ...flexible.bars.slice(1)] }, dimension: 2 }), /invalid bar endpoints/);
+  assert.throws(() => compareFixedCountRigidity({ before: rigid, after: flexible, dimension: 4 }),
+    /dimension 2 or 3/);
 });
 
 test("rigidity numerics: normalized (unit direction) sheaf diffuses to a rigid motion", () => {
