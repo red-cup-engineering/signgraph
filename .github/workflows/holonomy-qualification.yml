@@ -1,0 +1,58 @@
+# Qualify the actual owning SignGraph source, not a staged PR or
+# a hand-rewritten numeric sketch. An installed platform is received separately.
+name: SignGraph holonomy qualification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "test/**"
+      - "package.json"
+      - ".github/workflows/holonomy-qualification.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "test/**"
+      - "package.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signgraph-holonomy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-receiving:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash --noprofile --norc -e -o pipefail {0}
+    steps:
+      - name: Checkout the exact owning source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.19.0'
+          package-manager-cache: false
+      - name: Identify source under qualification
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          printf 'Commit: %s\\n' "$GITHUB_SHA"
+          node --version
+      - name: Install exact declared house-package dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Check executable syntax
+        run: npm run check:holonomy
+      - name: Execute bounded operations and CLI receiving
+        run: npm run test:holonomy
+      - name: Check the entire owning SignGraph suite
+        run: npm test

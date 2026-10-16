@@ -86,6 +86,46 @@ what networking is. Pure.
   (`@red-cup-engineering/eavt-services-section/relation-web`), which is data: content-addressed
   relation observations over plain JSON terms, with no cell, valuation or FOUR.
 
+## Operational holonomy receiving
+
+`./operations` exposes three bounded, read-only Engineering operations:
+`signgraph.holonomy.topology`, `signgraph.holonomy.burgers`, and
+`signgraph.holonomy.affine`. They reuse the same SignGraph 2-complex
+admission and exact algebra. Callers in Operations, Corporate, Public,
+or an agent-hosting platform supply particular vertices, oriented edges,
+oriented face walks, and—when appropriate—one measured displacement or
+sixfold affine motion per edge. No material instance, physical
+thermometry, remote execution, or built-in J26 geometry is invented.
+
+An installed package also exposes the executable `signgraph-holonomy`
+for newline-delimited JSON requests and receipts. For example:
+
+```sh
+printf '%s\\n' '{"operation":"signgraph.holonomy.affine","input":{"vertices":["p"],"edges":[{"id":"a","from":"p","to":"p"}],"faces":[{"id":"disk","boundary":[{"edge":"a","direction":1},{"edge":"a","direction":1}]}],"edgeMotions":[{"rotation":3,"translation":[0,0]}]}}' | signgraph-holonomy
+```
+
+This one-cell projective-plane carrier has **rational** first Betti
+number zero yet has order-two, globally nontrivial sixfold rotational
+monodromy. The CLI must not suppress that result merely because the
+rational rank vanishes: ordinary linear cohomology and finite-order
+nonabelian holonomy are different invariants.
+
+The CLI emits one JSON receipt for each request, continues after individual
+refusals, and exits nonzero if any request fails. A single request is
+at most 64 KiB, a batch at most 1024 requests; the operation admits
+at most 64 vertices, 128 edges, 64 faces and 2048 oriented steps.
+These bounded estimates precede exact rational elimination. Receipts
+report the input shape, rational ranks, local face residues, and
+nonabelian monodromy when requested—not installation/qualification claims.
+
+`npm run check:holonomy` checks syntax and `npm run test:holonomy`
+runs the existing cellular/affine regressions plus operation and CLI
+receiving. A published artifact and running MetroPlat instance must
+be independently received; committing this source does not cause
+automatic installation. This is a planar sixfold lattice model, not
+yet a theorem equating J26's three-dimensional honeycomb with a
+two-dimensional Burgers lattice or with temperature.
+
 ## Depends on
 
 `@lenticule-science/metrologic` for mathematics, SignCell for cells, and

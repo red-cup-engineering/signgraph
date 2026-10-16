@@ -1,0 +1,58 @@
+#!/usr/bin/env node
+/**
+ * SignGraph holonomy JSONL: one bounded request/receipt per line.
+ * No network, files, mutation, remote writes, or ambient selection of an
+ * experiment. Operators and agents can pipe explicit geometry and
+ * measurements through this installed Engineering capability.
+ */
+import { createInterface } from "node:readline";
+import { once } from "node:events";
+import { executeOperation, operations } from "../src/operations.mjs";
+
+const usage = `signgraph-holonomy (JSONL on standard input)
+Input: {"operation":"signgraph.holonomy.topology","input":{"vertices":[],"edges":[],"faces":[]}}
+Operations: ${Object.values(operations).map(op => op.id).join(", ")}
+Each input line produces one JSON receipt. Malformed requests emit a
+bounded error receipt and cause exit status 1, without hiding later lines.`;
+
+if (process.argv.includes("--help")) {
+  process.stdout.write(usage + "\n");
+} else if (process.argv.length !== 2) {
+  process.stderr.write(usage + "\n");
+  process.exitCode = 2;
+} else {
+  const write = async receipt => {
+    if (!process.stdout.write(JSON.stringify(receipt) + "\n"))
+      await once(process.stdout, "drain");
+  };
+  let index = 0;
+  const stdin = createInterface({ input: process.stdin, crlfDelay: Infinity });
+  for await (const line of stdin) {
+    if (line.length === 0) continue;
+    index += 1;
+    if (index > 1024) {
+      await write({ ok: false, line: index, error: "signgraph holonomy batch exceeds 1024 requests" });
+      process.exitCode = 1;
+      break;
+    }
+    try {
+      if (Buffer.byteLength(line, "utf8") > 65536)
+        throw new RangeError("signgraph holonomy request exceeds the 64KiB input budget");
+      const request = JSON.parse(line);
+      if (!request || typeof request !== "object" || Array.isArray(request) ||
+          Object.keys(request).some(k => k !== "operation" && k !== "input") ||
+          typeof request.operation !== "string")
+        throw new TypeError("signgraph holonomy requires {operation, input}");
+      await write({
+        ok: true, line: index, operation: request.operation,
+        receipt: executeOperation(request.operation, request.input),
+      });
+    } catch (error) {
+      process.exitCode = 1;
+      await write({
+        ok: false, line: index,
+        error: error instanceof Error ? error.message : "signgraph holonomy request refused",
+      });
+    }
+  }
+}
