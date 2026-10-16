@@ -145,6 +145,18 @@ export const federatedCoverStatementSchema = Object.freeze({
  * 0-cells, each source's incidence with each measurement it covers as a 1-cell.
  */
 function pricedCell(cellName, group, readings) {
+  if (!readings) {
+    // A register section is a partial FUNCTION source × cell → stance.
+    // Two distinct values from one source are not a second sovereign witness
+    // and cannot become a zero-price gluing. FOUR-valued multiple testimony
+    // belongs to the explicit readings mode instead.
+    const local = new Map();
+    for (const { source, stance } of group) {
+      if (local.has(source) && local.get(source) !== stance)
+        throw new TypeError("signgraph: one source cannot assign two values to the same register cell");
+      local.set(source, stance);
+    }
+  }
   const sources = [...new Set(group.map((statement) => statement.source))].sort();
   const stated = (source) => group.filter((statement) => statement.source === source).map((statement) => statement.stance);
   const names = readings ? [cellName] : [...new Set(group.map((statement) => statement.stance))].sort();
