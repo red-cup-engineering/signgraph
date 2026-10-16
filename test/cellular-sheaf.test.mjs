@@ -9,6 +9,23 @@ import {
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} !~ ${b}`);
 
+
+
+test("cochain: finite numeric vertex readings admit idempotent repetition, not false gluing", () => {
+  const s = cellularSheaf({ vertices: [{ id: "a", dim: 2 }, { id: "b", dim: 1 }], edges: [] });
+  assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "b", value: 3 }]), [1, 2, 3]);
+  assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "a", value: [1, 2] }]), [1, 2, 0]);
+  assert.throws(
+    () => cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "a", value: [1, 3] }]),
+    /conflicting duplicate vertex readings/,
+  );
+  for (const invalid of [[1, Infinity], [NaN, 0], ["1", 2], [undefined, 1]]) {
+    assert.throws(() => cochain(s, [{ vertex: "a", value: invalid }]), /finite numbers/);
+  }
+  assert.throws(() => cochain(s, [{ vertex: "b", value: -Infinity }]), /finite numbers/);
+  assert.throws(() => cochain(s, [{ vertex: "missing", value: 1 }]), /unknown vertex/);
+});
+
 test("cellularSheaf: validates shapes, ids and endpoints", () => {
   const v = [{ id: "a", dim: 2 }, { id: "b", dim: 1 }];
   const ok = { id: "e", from: "a", to: "b", dim: 1, restrict: { from: [[1, 0]], to: [[1]] } };
