@@ -106,9 +106,10 @@ what networking is. Pure.
 
 ## Operational holonomy receiving
 
-`./operations` exposes four bounded, read-only Engineering operations:
+`./operations` exposes six bounded, read-only Engineering operations:
 `signgraph.holonomy.topology`, `signgraph.holonomy.burgers`,
-`signgraph.holonomy.affine`, and `signgraph.holonomy.geometry`. They reuse the same SignGraph 2-complex
+`signgraph.holonomy.affine`, `signgraph.holonomy.geometry`,
+`signgraph.eda.tensor-wavefront`, and `signgraph.rigidity.connected-exchange`. They reuse the same SignGraph 2-complex
 admission and exact algebra. Callers in Operations, Corporate, Public,
 or an agent-hosting platform supply particular vertices, oriented edges,
 oriented face walks, and—when appropriate—one measured displacement or
@@ -145,6 +146,41 @@ be independently received; committing this source does not cause
 automatic installation. This is a planar sixfold lattice model, not
 yet a theorem equating J26's three-dimensional honeycomb with a
 two-dimensional Burgers lattice or with temperature.
+
+## Executable EDA and connected-material work
+
+`signgraph-operations` is an alias for the existing headless JSONL entrypoint
+`signgraph-holonomy`. Both dispatch through the *same* `./operations` registry.
+The two new operations accept only explicitly supplied, bounded carrier data;
+neither creates credentials, deploys a circuit or heats a real material.
+
+`signgraph.eda.tensor-wavefront` consumes `{circuit,components}` where
+`circuit` and each component obey the original
+`org.emsenn.sen.hierarchical-circuit.v3` contract. It returns exact source
+identity and a deterministic combinational wavefront, refusing missing
+components, cycles, par/consensus and excess capacity. It is structural:
+the separate `verifyCircuitEquivalence` still decides declared FOUR behavior.
+
+`signgraph.rigidity.connected-exchange` consumes a *shared* exact-coordinate
+`points` array, `beforeBars`, `afterBars` and `dimension` (2 or 3).
+It constructs a minimum-length sequence of graph substitutions that preserves
+the vertex count, bar count and connectedness at each intermediate state,
+returning each fabricated bar set and its rational rigidity reading.
+It refuses duplicate bars, disconnected endpoints and over-budget work.
+These are **graph** exchanges; chemical mechanism, topology-freezing
+temperature, timescale, kinetic barrier and elastic constitutive law are
+external scientific questions.
+
+Example of a real two-exchange request:
+
+```sh
+printf '%s\\n' '{"operation":"signgraph.rigidity.connected-exchange","input":{"dimension":2,"points":[[0,0],[2,0],[0,3],[3,4],[5,2]],"beforeBars":[[0,1],[0,2],[1,2],[0,3],[1,3],[1,4],[2,4]],"afterBars":[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3],[3,4]]}}' | signgraph-operations
+```
+
+The original four holonomy operations remain unchanged. The current package
+`test:holonomy` selection now includes the existing EDA and cellular-sheaf
+tests for these new execution paths; the source commit is not itself a
+registry publication or an installed MetroPlat operation.
 
 ## J26 volume completion and Burgers/Stokes receiving
 
