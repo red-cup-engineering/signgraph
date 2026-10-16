@@ -63,15 +63,38 @@ export function predicateFiber(label, entities, read, pairs = allPairs(entities)
 /** The fiber a valuation carries over one predicate, read in the knowledge order. */
 export const fiberOfValuation = (valuation, predicate, entities) => predicateFiber(predicate, entities, (subject, object) => knowledgeReading(evidenceAt(valuation, { subject, predicate, object })));
 
-const cellwise = (operation) => (left, right, pairs = left.pairs) => predicateFiber(left.label, left.entities, (s, o) => operation(left.at(s, o), right.at(s, o)), pairs);
-const sameFiber = (left, right, pairs = left.pairs) => pairs.every(([s, o]) => samePoint(left.at(s, o), right.at(s, o)));
+// Reindexing a fiber along an explicit generator is lawful; silently mixing
+// different entity contexts is not. Entity ordering is immaterial because the
+// fibers are content-addressed, and sparse pair support still reads ⊥ₖ.
+const requireSharedContext = (left, right) => {
+  if (left?.kind !== "signgraph.fiber" || right?.kind !== "signgraph.fiber") {
+    throw new TypeError("fiber: two predicate fibers are required");
+  }
+  const rightKeys = new Set(right.entities.map(coincidenceKey));
+  if (left.entities.length !== right.entities.length ||
+      left.entities.some((entity) => !rightKeys.has(coincidenceKey(entity)))) {
+    throw new RangeError("fiber: distinct entity contexts cannot compose");
+  }
+};
+
+const cellwise = (operation) => (left, right, pairs = left.pairs) => {
+  requireSharedContext(left, right);
+  return predicateFiber(left.label, left.entities, (s, o) => operation(left.at(s, o), right.at(s, o)), pairs);
+};
+const sameFiber = (left, right, pairs = left.pairs) => {
+  requireSharedContext(left, right);
+  return pairs.every(([s, o]) => samePoint(left.at(s, o), right.at(s, o)));
+};
 
 /** Cellwise linear fusion and residuum of two fibers. */
 export const fiberFusion = cellwise(fusionReading);
 export const fiberResiduum = cellwise(residuumReading);
 
 /** Whether `left` is below `right` in the truth order at every pair. */
-export const fiberLeqTruth = (left, right, pairs = left.pairs) => pairs.every(([s, o]) => samePoint(truthJoinReading(left.at(s, o), right.at(s, o)), right.at(s, o)));
+export const fiberLeqTruth = (left, right, pairs = left.pairs) => {
+  requireSharedContext(left, right);
+  return pairs.every(([s, o]) => samePoint(truthJoinReading(left.at(s, o), right.at(s, o)), right.at(s, o)));
+};
 
 const foldJoin = (ord, values) => values.reduce((acc, item) => ord.join(acc, item), ord.bottom);
 const foldMeet = (ord, values) => values.reduce((acc, item) => ord.meet(acc, item), ord.top);
