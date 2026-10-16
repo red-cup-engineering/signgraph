@@ -4,7 +4,7 @@ import { cell } from "@red-cup-engineering/signcell/cell";
 import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
   apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf,
-  compareFixedCountRigidity, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
+  compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
 } from "../src/cellular-sheaf.mjs";
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} !~ ${b}`);
@@ -281,4 +281,66 @@ test("body-bar: equilibrium of a loaded rigid pair via solveNormal (unit rows ar
   assert.ok(r.consistent);
   // tension is negative compression; moment balance puts the whole weight on the two bars at y = 0
   near(r.section[0], -1.5, 1e-9); near(r.section[1], -1.5, 1e-9); near(r.section[2], 0, 1e-9);
+});
+
+test("connected bar exchange actually fabricates a minimal count-preserving rigidity trajectory", () => {
+  const points = [[0, 0], [2, 0], [0, 3], [3, 4], [5, 2]];
+  const rigid = [[0, 1], [0, 2], [1, 2], [0, 3], [1, 3], [1, 4], [2, 4]];
+  const flexible = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3], [3, 4]];
+  const path = planConnectedBarExchanges({ points, beforeBars: rigid, afterBars: flexible, dimension: 2 });
+  assert.equal(path.kind, "signgraph.connectedBarExchangePath.v1");
+  assert.equal(path.minimumSwapCount, 2);
+  assert.equal(path.vertices, 5);
+  assert.equal(path.bars, 7);
+  assert.equal(path.eulerIndex, -2);
+  assert.equal(path.meanCoordination, 14 / 5);
+  assert.equal(path.startRigidity.cohomology.rank, 7);
+  assert.equal(path.finalRigidity.cohomology.rank, 6);
+  assert.deepEqual(path.exchanges.map(x => x.broken), [[1, 4], [2, 4]]);
+  assert.deepEqual(path.exchanges.map(x => x.formed), [[2, 3], [3, 4]]);
+  assert.equal(path.exchanges.reduce((rankChange, exchange) => rankChange + exchange.rankDelta, 0), -1);
+  const edgeKey = ([a, b]) => [Math.min(a, b), Math.max(a, b)].join(":");
+  const keys = list => new Set(list.map(edgeKey));
+  const isConnected = bars => {
+    const reached = new Set([0]), pending = [0];
+    for (let at = 0; at < pending.length; at++) {
+      for (const [u, v] of bars) {
+        if (u === pending[at] && !reached.has(v)) { reached.add(v); pending.push(v); }
+        if (v === pending[at] && !reached.has(u)) { reached.add(u); pending.push(u); }
+      }
+    }
+    return reached.size === points.length;
+  };
+  let active = rigid;
+  for (const step of path.exchanges) {
+    assert.equal(step.resultBars.length, rigid.length);
+    assert.equal(isConnected(step.resultBars), true);
+    assert.ok(keys(active).has(edgeKey(step.broken)));
+    assert.ok(!keys(active).has(edgeKey(step.formed)));
+    const next = keys(step.resultBars);
+    assert.ok(!next.has(edgeKey(step.broken)));
+    assert.ok(next.has(edgeKey(step.formed)));
+    assert.ok(Object.isFrozen(step) && Object.isFrozen(step.resultBars));
+    active = step.resultBars;
+  }
+  assert.deepEqual(keys(active), keys(flexible));
+  const back = planConnectedBarExchanges({ points, beforeBars: flexible, afterBars: rigid, dimension: 2 });
+  assert.equal(back.minimumSwapCount, 2);
+  assert.equal(back.startRigidity.cohomology.rank, 6);
+  assert.equal(back.finalRigidity.cohomology.rank, 7);
+  const same = planConnectedBarExchanges({
+    points, beforeBars: rigid, afterBars: rigid.map(([u, v]) => [v, u]), dimension: 2,
+  });
+  assert.deepEqual(same.exchanges, []);
+  assert.equal(same.startRigidity.cohomology.rank, same.finalRigidity.cohomology.rank);
+  assert.throws(() => planConnectedBarExchanges({
+    points, beforeBars: rigid, afterBars: flexible.slice(1), dimension: 2,
+  }), /conserved vertex and bar counts/);
+  assert.throws(() => planConnectedBarExchanges({
+    points: [[0,0],[1,0],[0,1],[1,1]],
+    beforeBars: [[0,1],[2,3]], afterBars: [[0,1],[1,2]], dimension: 2,
+  }), /requires connected input and target networks/);
+  assert.throws(() => planConnectedBarExchanges({
+    points, beforeBars: rigid, afterBars: [...flexible.slice(0,-1), [1,0]], dimension: 2,
+  }), /duplicate undirected bar/);
 });
