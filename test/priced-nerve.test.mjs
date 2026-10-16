@@ -43,6 +43,29 @@ test("federated cell iteration is deterministic Unicode order, not host locale c
   assert.deepEqual(pricedNerve(mixed.reverse()).cells, ["A", "Z", "a", "z", "Ö"]);
 });
 
+test("invalid source testimony cannot impersonate a sovereign witness or an admitted register", () => {
+  for (const invalid of [
+    { cell: "contract", stance: "agree" }, { source: "", cell: "contract", stance: "agree" },
+    { source: "ANT-A", cell: "", stance: "agree" },
+    { source: "ANT-A", cell: "contract" },
+    { source: "ANT-A", cell: "contract", stance: "agree", capability: "self-granted" },
+    { source: "ANT-A", cell: "contract", stance: "agree", witness: "" },
+  ]) {
+    assert.throws(() => pricedNerve([invalid]), /invalid federated source\/cell\/stance statement/u);
+  }
+  assert.throws(() => pricedNerve({source:"ANT-A"}), /cover must be an array/u);
+});
+
+test("hundreds of distinct actor stances preserve the original merge result under linear grouping", () => {
+  const actors = Array.from({length:300}, (_, i) =>
+    at(`ANT-${i}`, "contract", i % 2 ? "decline" : "accept"));
+  const read = pricedNerve(actors);
+  assert.equal(read.top, 2);
+  assert.equal(read.mass, 300, "the counting merge retains every authentic contradictory source");
+  assert.deepEqual(read.cells, ["contract"]);
+  assert.deepEqual(pricedNerve(actors.reverse()), read);
+});
+
 test("a FOUR-valued claim may carry both sides locally; that is not an invalid register", () => {
   const forIt = at("enterprise:west", "can-cross", "potential");
   const against = at("enterprise:west", "can-cross", "active");
