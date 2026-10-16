@@ -10,9 +10,10 @@
  * residuum, and the generators' laws (pullback commuting with both, Frobenius
  * reciprocity for ∃) are checked on fibers.
  */
-import { coincides, knowledgeReading } from "@red-cup-engineering/signcell/cell";
+import { coincides, coincidenceKey, knowledgeReading } from "@red-cup-engineering/signcell/cell";
+import { canonicalCarrier } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
 import { evidenceAt } from "./valuation.mjs";
-import { knowledgeBottom, knowledgeTop, truthBottom, truthTop, readingOfSides, samePoint, fusionReading, knowledgeJoinReading, knowledgeMeetReading, residuumReading, truthJoinReading, truthMeetReading } from "@red-cup-engineering/computer-data-engineering-services-section/four";
+import { isReading, knowledgeBottom, knowledgeTop, truthBottom, truthTop, readingOfSides, samePoint, fusionReading, knowledgeJoinReading, knowledgeMeetReading, residuumReading, truthJoinReading, truthMeetReading } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 
 /** An order over readings: join, meet, bottom, top. */
 const order = (name, join, meet, bottom, top) => Object.freeze({ kind: "signgraph.order", name, join, meet, bottom, top });
@@ -28,9 +29,35 @@ export const allPairs = (entities) => Object.freeze(entities.flatMap((subject) =
 
 /** A fiber over `label`: `read(subject, object)` at each listed pair; unlisted pairs read absurd. */
 export function predicateFiber(label, entities, read, pairs = allPairs(entities)) {
-  const values = pairs.map((pair) => Object.freeze({ pair, value: read(pair[0], pair[1]) }));
-  const at = (subject, object) => values.find((entry) => samePair(entry.pair, [subject, object]))?.value ?? readingOfSides("knowledge", false, false);
-  return Object.freeze({ kind: "signgraph.fiber", label, entities: Object.freeze([...entities]), pairs: Object.freeze([...pairs]), at });
+  if (!Array.isArray(entities) || !Array.isArray(pairs) || typeof read !== "function") {
+    throw new TypeError("predicateFiber: entities, pairs, and reading function are required");
+  }
+  // A fiber is indexed by content identities, not mutable caller-owned
+  // object pointers or pair arrays.
+  const domain = Object.freeze(entities.map((entity) => canonicalCarrier(entity)));
+  const keys = domain.map((entity) => coincidenceKey(entity));
+  if (new Set(keys).size !== keys.length) throw new RangeError("predicateFiber: duplicate entity identity");
+  const keySet = new Set(keys), seen = new Map();
+  const slots = pairs.map((pair) => {
+    if (!Array.isArray(pair) || pair.length !== 2) throw new TypeError("predicateFiber: each pair needs two coordinates");
+    const slot = Object.freeze([canonicalCarrier(pair[0]), canonicalCarrier(pair[1])]);
+    const subject = coincidenceKey(slot[0]), object = coincidenceKey(slot[1]);
+    if (!keySet.has(subject) || !keySet.has(object)) {
+      throw new RangeError("predicateFiber: pair lies outside its declared entity context");
+    }
+    let row = seen.get(subject);
+    if (row === undefined) { row = new Set(); seen.set(subject, row); }
+    if (row.has(object)) throw new RangeError("predicateFiber: duplicate subject/object pair");
+    row.add(object);
+    return slot;
+  });
+  const values = slots.map((pair) => {
+    const reading = read(pair[0], pair[1]) ?? knowledgeBottom();
+    if (!isReading(reading)) throw new TypeError("predicateFiber: a pair must read a FOUR value");
+    return Object.freeze({ pair, value: reading });
+  });
+  const at = (subject, object) => values.find((entry) => samePair(entry.pair, [subject, object]))?.value ?? knowledgeBottom();
+  return Object.freeze({ kind: "signgraph.fiber", label: canonicalCarrier(label), entities: domain, pairs: Object.freeze(slots), at });
 }
 
 /** The fiber a valuation carries over one predicate, read in the knowledge order. */
