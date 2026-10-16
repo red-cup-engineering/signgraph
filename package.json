@@ -31,7 +31,8 @@
     "./cohomology": "./src/cohomology.mjs",
     "./paths": "./src/paths.mjs",
     "./cellular-sheaf": "./src/cellular-sheaf.mjs",
-    "./operations": "./src/operations.mjs"
+    "./operations": "./src/operations.mjs",
+    "./embedding": "./src/embedding.mjs"
   },
   "dependencies": {
     "@red-cup-engineering/uri-services-section": "0.1.1",
@@ -50,8 +51,8 @@
   },
   "scripts": {
     "test": "node --test \"test/**/*.test.mjs\"",
-    "check:holonomy": "node --check src/cohomology.mjs && node --check src/paths.mjs && node --check src/operations.mjs && node --check scripts/holonomy.mjs",
-    "test:holonomy": "node --test test/cellular-2complex.test.mjs test/sixfold-holonomy.test.mjs test/holonomy-operations.test.mjs"
+    "check:holonomy": "node --check src/embedding.mjs && node --check src/cohomology.mjs && node --check src/paths.mjs && node --check src/operations.mjs && node --check scripts/holonomy.mjs",
+    "test:holonomy": "node --test test/cellular-2complex.test.mjs test/sixfold-holonomy.test.mjs test/holonomy-operations.test.mjs test/geometric-receiving.test.mjs"
   },
   "repository": {
     "type": "git",

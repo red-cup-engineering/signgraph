@@ -76,10 +76,11 @@ what networking is. Pure.
   frame-relative; only triviality and conjugacy data survive a base-frame
   change. Global flat affine monodromy is a representation of the
   fundamental group up to conjugacy, not an element of additive H¹.
-  This sixfold **planar** crystal carrier is not yet an embedding
-  or tiling theorem for the **three-dimensional** J26 gyrobifastigium,
-  and neither kind of topological defect has been proved equivalent
-  to thermodynamic temperature.
+  The sixfold **planar** crystal group is not identified with the
+  now-calibrated **three-dimensional** J26 spatial metric: constructing a
+  compatible lattice transport is still a real mathematical obligation.
+  Neither kind of topological defect has been proved equivalent to
+  thermodynamic temperature.
 - `relation-adapters` — projections from already-parsed Markdown, JavaScript,
   and EAVT evidence into relation observations.
 - `pam` — graph-backed predicate-algebra modeling over EAVT's relation web
@@ -88,14 +89,16 @@ what networking is. Pure.
 
 ## Operational holonomy receiving
 
-`./operations` exposes three bounded, read-only Engineering operations:
-`signgraph.holonomy.topology`, `signgraph.holonomy.burgers`, and
-`signgraph.holonomy.affine`. They reuse the same SignGraph 2-complex
+`./operations` exposes four bounded, read-only Engineering operations:
+`signgraph.holonomy.topology`, `signgraph.holonomy.burgers`,
+`signgraph.holonomy.affine`, and `signgraph.holonomy.geometry`. They reuse the same SignGraph 2-complex
 admission and exact algebra. Callers in Operations, Corporate, Public,
 or an agent-hosting platform supply particular vertices, oriented edges,
 oriented face walks, and—when appropriate—one measured displacement or
-sixfold affine motion per edge. No material instance, physical
-thermometry, remote execution, or built-in J26 geometry is invented.
+sixfold affine motion per edge. The optional geometry operation accepts an
+additional exact scaled Cartesian metric, spatial positions, and a signed
+single-volume boundary from a source-owned carrier. No physical
+thermometry, hidden material instance, or remote execution is invented.
 
 An installed package also exposes the executable `signgraph-holonomy`
 for newline-delimited JSON requests and receipts. For example:
@@ -167,6 +170,56 @@ J26's specific one-volume topology is backed by its source-owned
 combinatorial representation, and the executable test is independent
 receiving of the ranks and Stokes law. Physical qualification, registry
 publication, and installed-service receiving are still separate.
+
+## Exact spatial J26 geometry receiving
+
+Lenticule Science owns the **machine-readable regular J26 reference** at
+`lenticule-science/obsmetrologia/data/records/geometric-carriers/j26-regular-embedding.json`
+(source-linked to its qualified `J26.lean` carrier). The exact spatial
+coordinates, in J26 vertex order, are the four square vertices
+`(±1,±1,0)`, the upper pair `(±1,0,1)` and lower pair
+`(0,±1,-1)`. They use metric
+`ds²=(dX²+dY²+3dZ²)/4`. These are not arbitrary vectors:
+they represent the regular equilateral-prism half-cells in real 3D space.
+
+`geometricReceiving(cellular3Complex(...), positions, metric)` checks
+the geometric obligations **independently** of topological chain closure:
+all 14 edges have the same exact length, every triangle is equilateral,
+every quadrilateral is a planar square with two correct diagonals, and
+every exterior face lies on a strict supporting plane of the full
+vertex set. The oriented volume is computed by the exact determinant
+triangulation, with a signed outward-incidence test.
+
+For this J26 reference the physical unit-edge results are
+`edge length² = 1`,
+`area = 4 + √3`, and
+`positive volume = √3/2`.
+All eight face walks in `J26.lean` are **geometrically inward**
+on this coordinate witness. The geometric, outward-oriented volume
+therefore has **−1** incidence with each of those face walks, even
+though either uniform sign gives the same topological Betti ranks.
+Wrong physical orientation is a failed geometric receipt, not
+automatically a topological chain error.
+
+`signgraph.holonomy.geometry` receives the declared geometric carrier
+through the same admitted operations registry and JSONL executable.
+Optional **3-coordinate Burgers readings** are measured using the
+same spatial diagonal metric: their facewise physical squared lengths
+are exact rationals and their total charge obeys the admitted 3-cell
+Stokes law. All geometric calculations use bounded integers and BigInt,
+not approximate floating-point predicates, and report failed obligations
+on nonregular or misoriented inputs rather than silently normalizing
+them into compliant solids. An exact spatial J26 realization has thus
+been witnessed, rather than retained as a perpetually speculative
+"missing bridge."
+
+**Still distinct:** one regular convex spatial realization does not
+itself construct the full face-to-face, gap-free honeycomb with explicit
+tile-neighbor morphisms. It also does not establish a homomorphism from
+the planar `ℤ² ⋊ C₆` defect dynamics into the 3D cell automorphisms,
+nor a stress/strain law, temperature scale, or thermodynamic free-energy
+identification. Those remain genuine theorem and qualification targets;
+the new geometry data is a concrete carrier on which to attempt them.
 
 ## Depends on
 

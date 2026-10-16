@@ -13,6 +13,7 @@
 import {
   cellular2Complex, cellular3Complex, burgersOfComplex, affineHolonomyOfComplex,
 } from "./cohomology.mjs";
+import { geometricReceiving, metricSquareOfVector } from "./embedding.mjs";
 
 export const LIMITS = Object.freeze({
   vertices: 64,
@@ -35,6 +36,7 @@ function bounded(input, operation) {
     throw new RangeError("signgraph operation exceeds the 64KiB input work budget");
   const allowed = new Set([
     "vertices", "edges", "faces", "volumes",
+    ...(operation === "signgraph.holonomy.geometry" ? ["positions", "metric", "edgeDisplacements"] : []),
     ...(operation === "signgraph.holonomy.burgers" ? ["edgeDisplacements"] : []),
     ...(operation === "signgraph.holonomy.affine" ? ["edgeMotions"] : []),
   ]);
@@ -73,6 +75,11 @@ function bounded(input, operation) {
       (!Array.isArray(input.edgeDisplacements) ||
        input.edgeDisplacements.length !== edges.length))
     throw new TypeError("signgraph operation requires a Burgers vector for each edge");
+  if (operation === "signgraph.holonomy.geometry" &&
+      (volumes === undefined || !Array.isArray(input.positions) ||
+       !input.metric || (input.edgeDisplacements !== undefined &&
+       (!Array.isArray(input.edgeDisplacements) || input.edgeDisplacements.length !== edges.length))))
+    throw new TypeError("signgraph geometry operation needs volumes, positions, a metric and optional per-edge displacement vectors");
   if (operation === "signgraph.holonomy.affine" &&
       (!Array.isArray(input.edgeMotions) ||
        input.edgeMotions.length !== edges.length))
@@ -145,6 +152,46 @@ export const operations = Object.freeze({
         topology: topologicalSummary(complex, steps, volumeSteps),
         ...burgersOfComplex(complex, input.edgeDisplacements),
       });
+    },
+  }),
+  geometry: Object.freeze({
+    id: "signgraph.holonomy.geometry",
+    description: "Receive a real three-cell geometry through exact edge lengths, regular faces, convex supporting planes, outward volume and metric-calibrated Burgers face residues.",
+    inputSchema: schema(["volumes", "positions", "metric"], {
+      positions: { type: "array", maxItems: LIMITS.vertices },
+      metric: { type: "object", additionalProperties: false,
+        required: ["diagonal", "denominator"], properties: {
+          diagonal: { type: "array", minItems: 3, maxItems: 3 },
+          denominator: { type: "integer", minimum: 1 },
+        },
+      },
+      edgeDisplacements: { type: "array", maxItems: LIMITS.edges },
+    }),
+    execute(input) {
+      const { complex, steps, volumeSteps } = bounded(input, this.id);
+      const geometry = geometricReceiving(complex, input.positions, input.metric);
+      const result = {
+        topology: topologicalSummary(complex, steps, volumeSteps),
+        geometry,
+      };
+      if (input.edgeDisplacements !== undefined) {
+        const burgers = burgersOfComplex(complex, input.edgeDisplacements);
+        if (burgers.dimension !== 3)
+          throw new TypeError("signgraph geometric Burgers reading must use the same three-coordinate frame");
+        result.burgers = Object.freeze({
+          ...burgers,
+          faceSquaredMagnitudes: Object.freeze(burgers.faceResidues.map(face => Object.freeze({
+            id: face.id,
+            squaredMagnitude: metricSquareOfVector(face.burgers, input.metric),
+          }))),
+          volumeSquaredMagnitudes: Object.freeze(burgers.volumeResidues.map(volume => Object.freeze({
+            id: volume.id,
+            squaredMagnitude: metricSquareOfVector(volume.burgers, input.metric),
+          }))),
+          metricProvenance: "supplied diagonal spatial coordinate metric, not observed material elasticity",
+        });
+      }
+      return Object.freeze(result);
     },
   }),
   affine: Object.freeze({

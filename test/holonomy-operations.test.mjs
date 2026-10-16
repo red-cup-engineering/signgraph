@@ -18,6 +18,7 @@ test("three reusable operations share one structural admission, with machine-rea
   assert.deepEqual(Object.values(operations).map(op => op.id), [
     "signgraph.holonomy.topology",
     "signgraph.holonomy.burgers",
+    "signgraph.holonomy.geometry",
     "signgraph.holonomy.affine",
   ]);
   for (const op of Object.values(operations)) {
