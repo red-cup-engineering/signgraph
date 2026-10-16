@@ -252,3 +252,61 @@ test("EDA tensor synthesis has a deterministic finite instance wavefront, not an
   assert.throws(() => planCombinationalCircuit(circuit, new Map()), /not available for synthesis/);
 });
 
+
+test("connected seven-input synthesis refuses before enumeration despite legal smaller children", () => {
+  // Two individually admissible four-input child factors are wired in series.
+  // Their composed parent has 4 + (4 - 1) = SEVEN independent inputs.
+  // A declared *separated* parent behavior is still a well-formed circuit
+  // record, but cannot be accepted as the behavior of the real connected net.
+  const combinations = width => {
+    let all = [[]];
+    for (let i = 0; i < width; i++) all = all.flatMap(xs => [N, T, F, B].map(value => [...xs, value]));
+    return all;
+  };
+  const factor = (inputs, outputs) => ({
+    inputs, outputs,
+    rows: combinations(inputs.length).map(input => ({
+      input, output: outputs.map(() => N),
+    })),
+  });
+  const child = prefix => {
+    const names = Array.from({ length: 4 }, (_, i) => prefix + i);
+    return normalizeHierarchicalCircuit({
+      profile: HIERARCHICAL_CIRCUIT_PROFILE, law: id("four-" + prefix),
+      ports: [...names.map(name => pin(name, "input")), pin("out", "output")],
+      instances: [], nets: [], behavior: { factors: [factor(names, ["out"])] },
+    });
+  };
+  const left = child("a"), right = child("b");
+  const wire = (name, driver, sinks) => ({
+    name, driver, sinks, mode: "tensor", chain: null, contract: null,
+  });
+  const aNames = Array.from({ length: 4 }, (_, i) => "a" + i);
+  const bNames = Array.from({ length: 3 }, (_, i) => "b" + (i + 1));
+  const design = {
+    profile: HIERARCHICAL_CIRCUIT_PROFILE, law: id("seven-input-circuit"),
+    ports: [...aNames, ...bNames].map(name => pin(name, "input")).concat(pin("result", "output")),
+    instances: [
+      { name: "left", component: hierarchicalCircuitId(left) },
+      { name: "right", component: hierarchicalCircuitId(right) },
+    ],
+    nets: [
+      ...aNames.map(name => wire("feed-" + name, { instance: null, port: name },
+        [{ instance: "left", port: name }])),
+      ...bNames.map(name => wire("feed-" + name, { instance: null, port: name },
+        [{ instance: "right", port: name }])),
+      wire("bridge", { instance: "left", port: "out" }, [{ instance: "right", port: "b0" }]),
+      wire("result", { instance: "right", port: "out" }, [{ instance: null, port: "result" }]),
+    ],
+    behavior: { factors: [
+      factor(aNames, ["result"]), factor(bNames, []),
+    ] },
+  };
+  const library = new Map([[hierarchicalCircuitId(left), left], [hierarchicalCircuitId(right), right]]);
+  assert.equal(normalizeHierarchicalCircuit(design).ports.length, 8);
+  assert.deepEqual(planCombinationalCircuit(design, library).waves, [["left"], ["right"]]);
+  assert.throws(() => synthesizeCircuitBehavior(design, library),
+    /synthesized behavior factor may expose at most six FOUR inputs/);
+  assert.throws(() => verifyCircuitEquivalence(design, library),
+    /synthesized behavior factor may expose at most six FOUR inputs/);
+});
