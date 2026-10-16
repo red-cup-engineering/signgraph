@@ -443,6 +443,53 @@ export function rigidityReceipt(points, bars, dimension, options = {}) {
   });
 }
 
+
+/** Compare two embedded simple bar-joint frameworks with equal counted
+ * vertices and bars. Associative exchange conserves those *counts*; it does
+ * not establish that the exact rigidity-matrix rank is conserved.
+ *
+ * Each snapshot owns its own vertex positions and undirected bar endpoints.
+ * This is a geometric kinematic assay, NOT a claim that a chemical vitrimer
+ * reaction can realize the edge swap, or that phase/strength is measured.
+ * The calculation reuses the exact rational rigidity sheaf above.
+ */
+export function compareFixedCountRigidity({ before, after, dimension } = {}) {
+  if (dimension !== 2 && dimension !== 3)
+    throw new RangeError("fixed-count rigidity comparison requires dimension 2 or 3");
+  const shape = (snapshot, label) => {
+    if (!Array.isArray(snapshot?.points) || snapshot.points.length < dimension ||
+        !Array.isArray(snapshot.bars))
+      throw new TypeError(`${label}: explicit points and bars are required`);
+    const n = snapshot.points.length, seen = new Set();
+    for (const [ordinal, bar] of snapshot.bars.entries()) {
+      if (!Array.isArray(bar) || bar.length !== 2 ||
+          bar.some(i => !Number.isSafeInteger(i) || i < 0 || i >= n) ||
+          bar[0] === bar[1])
+        throw new RangeError(`${label}: invalid bar endpoints at index ${ordinal}`);
+      const key = bar[0] < bar[1] ? `${bar[0]}:${bar[1]}` : `${bar[1]}:${bar[0]}`;
+      if (seen.has(key)) throw new RangeError(`${label}: duplicate undirected bar`);
+      seen.add(key);
+    }
+    return { n, m: snapshot.bars.length };
+  };
+  const a = shape(before, "before"), b = shape(after, "after");
+  if (a.n !== b.n || a.m !== b.m)
+    throw new RangeError("fixed-count rigidity comparison requires conserved vertex and bar counts");
+  const first = rigidityReceipt(before.points, before.bars, dimension);
+  const second = rigidityReceipt(after.points, after.bars, dimension);
+  return Object.freeze({
+    kind: "signgraph.fixedCountRigidityComparison",
+    graphKind: "simple-embedded-bar-joint", dimension,
+    vertices: a.n, bars: a.m, eulerIndex: a.n - a.m,
+    meanCoordination: 2 * a.m / a.n,
+    before: first, after: second,
+    rankDelta: second.cohomology.rank - first.cohomology.rank,
+    mechanismsDelta: second.mechanisms - first.mechanisms,
+    rigidityChanged: first.infinitesimallyRigid !== second.infinitesimallyRigid,
+    scope: "exact rational infinitesimal framework kinematics; no chemical pathway or kinetics established",
+  });
+}
+
 // — the dual: loads, and the transpose of the coboundary —
 
 /** Mᵀ y for a sparse matrix, summing in row order (deterministic). */
