@@ -54,6 +54,6 @@
   },
   "private": false,
   "devDependencies": {
-    "@red-cup-engineering/computer-code-engineering-services-section": "0.1.0"
+    "@red-cup-engineering/computer-code-engineering-services-section": "0.1.2"
   }
 }
