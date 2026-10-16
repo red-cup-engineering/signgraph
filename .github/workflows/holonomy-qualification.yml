@@ -2,21 +2,12 @@
 # a hand-rewritten numeric sketch. An installed platform is received separately.
 name: SignGraph holonomy qualification
 
+# Native receiving on private SignGraph was attempted on 2026-10-16
+# (runs 38852726704, 38853456419). Both failed before runner assignment:
+# no checkout, install or test step was executed. Do not turn every push
+# into a deceptive failed qualification; enable push gating once the owner
+# has verified usable runner allocation and a successful native run.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "scripts/**"
-      - "test/**"
-      - "package.json"
-      - ".github/workflows/holonomy-qualification.yml"
-  pull_request:
-    paths:
-      - "src/**"
-      - "scripts/**"
-      - "test/**"
-      - "package.json"
   workflow_dispatch:
 
 permissions:
