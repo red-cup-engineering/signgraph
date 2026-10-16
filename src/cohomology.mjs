@@ -196,7 +196,7 @@ function pricedCell(cellName, group, readings) {
 export function pricedNerve(statements, { readings = false } = {}) {
   const byCell = new Map();
   for (const statement of statements) byCell.set(statement.cell, [...(byCell.get(statement.cell) ?? []), statement]);
-  const cells = [...byCell.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([cellName, group]) => pricedCell(cellName, group, readings));
+  const cells = [...byCell.entries()].sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)).map(([cellName, group]) => pricedCell(cellName, group, readings));
   const obstructions = Object.freeze(cells.filter((entry) => entry.top > 0));
   const sum = (leg) => cells.reduce((total, entry) => total + entry[leg], 0);
   const top = sum("top");
