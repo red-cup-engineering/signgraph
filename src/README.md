@@ -53,6 +53,23 @@ what networking is. Pure.
   floating-point symmetry round-off is averaged. Exact cohomology remains the separate rational
   operation. For inverse-covariance metrics these describe calibrated disagreement; they do not
   establish a probabilistic forecast or trading edge.
+  `compareFixedCountRigidity({before, after, dimension})` composes the
+  existing exact rational `rigidityReceipt` for two simple embedded
+  bar-joint frameworks with equal vertex and bar counts. It fabricates
+  the change in kinematic rank, mechanisms and self-stresses without
+  mistaking preserved Euler index/mean coordination for invariant
+  rigidity. Use `@red-cup-engineering/signgraph/cellular-sheaf`.
+  It does not assert that a chemical associative exchange realizes a
+  candidate graph or that crystallinity or mechanical strength is measured.
+- `hierarchical-circuit` — typed SEN die composition and exact finite FOUR
+  behavioral synthesis. `planCombinationalCircuit(circuit, library)`
+  additionally fabricates a deterministic, finite tensor-only instance
+  dependency wavefront from the actual pin-wired netlist; independent
+  instances share a wave. It refuses directed combinational feedback and
+  par/consensus nets instead of inventing a timing or stateful execution
+  model. The existing `verifyCircuitEquivalence` independently establishes
+  actual declared behavioral equivalence. Use
+  `@red-cup-engineering/signgraph/hierarchical-circuit`.
 - `cohomology` — `cellular2Complex({vertices, edges, faces})` extends the
   existing graph incidence to **oriented 2-cells**. Every face must
   attach by a composable closed walk, `δ¹δ⁰=0` is checked, and exact rational
