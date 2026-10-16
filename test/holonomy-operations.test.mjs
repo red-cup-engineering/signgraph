@@ -90,6 +90,9 @@ test("operation work limits and undeclared data fail before expensive rank elimi
   assert.throws(() => executeOperation("signgraph.holonomy.topology", {
     ...base, typo: true,
   }), /undeclared input fields/);
+  assert.throws(() => executeOperation("signgraph.holonomy.topology", {
+    ...base, vertices: ["x".repeat(100000)],
+  }), /64KiB input work budget/);
   assert.throws(() => executeOperation("signgraph.holonomy.affine", {
     ...base, edgeMotions: [{ rotation: 0, translation: [0, 0] }],
   }), /for each edge/);
@@ -134,8 +137,8 @@ test("installed CLI batches successful and rejected JSONL requests without side 
 
 test("CLI input budget produces a failure receipt and still receives subsequent work", () => {
   const child = spawnSync(process.execPath, [bin], {
-    input: JSON.stringify({ operation: "signgraph.holonomy.topology", input: { typo: "x".repeat(66000) } }) +
-      "\n" + JSON.stringify({ operation: "signgraph.holonomy.topology", input: triangle() }) + "\n",
+    input: JSON.stringify({ operation: "signgraph.holonomy.topology", input: { typo: "x".repeat(300000) } }) +
+      "\n" + JSON.stringify({ operation: "signgraph.holonomy.topology", input: triangle() }),
     encoding: "utf8", timeout: 10000,
   });
   assert.equal(child.status, 1, child.stderr);
@@ -143,4 +146,18 @@ test("CLI input budget produces a failure receipt and still receives subsequent 
   assert.equal(receipts.length, 2);
   assert.match(receipts[0].error, /64KiB/);
   assert.equal(receipts[1].ok, true);
+});
+
+test("CLI enforces its 1024-request batch limit with a failing exit code", () => {
+  const request = JSON.stringify({ operation: "signgraph.holonomy.topology", input: triangle() });
+  const child = spawnSync(process.execPath, [bin], {
+    input: Array(1025).fill(request).join("\n") + "\n",
+    encoding: "utf8", timeout: 20000, maxBuffer: 6 * 1024 * 1024,
+  });
+  assert.equal(child.status, 1, child.stderr);
+  const lines = child.stdout.trim().split("\n").map(line => JSON.parse(line));
+  assert.equal(lines.length, 1025);
+  assert.ok(lines.slice(0, 1024).every(line => line.ok));
+  assert.equal(lines[1024].ok, false);
+  assert.match(lines[1024].error, /1024 requests/);
 });

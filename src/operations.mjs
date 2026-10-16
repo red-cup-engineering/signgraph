@@ -25,6 +25,12 @@ export const LIMITS = Object.freeze({
 function bounded(input, operation) {
   if (!input || typeof input !== "object" || Array.isArray(input))
     throw new TypeError("signgraph operation requires an input record");
+  // The same size budget applies to direct MetroPlat and host calls,
+  // not only the JSONL executable. Admit a bounded JSON carrier before
+  // exact rational matrix construction. TextEncoder is host-portable.
+  const bytes = new TextEncoder().encode(JSON.stringify(input)).length;
+  if (bytes > 65536)
+    throw new RangeError("signgraph operation exceeds the 64KiB input work budget");
   const allowed = new Set([
     "vertices", "edges", "faces",
     ...(operation === "signgraph.holonomy.burgers" ? ["edgeDisplacements"] : []),
