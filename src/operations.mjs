@@ -261,7 +261,26 @@ export const operations = Object.freeze({
           throw new TypeError("signgraph EDA operation repeats a component source");
         library.set(identity, component);
       }
-      return planCombinationalCircuit(input.circuit, library);
+      // Selecting additional source is a real act: preserve the complete
+      // addressed component closure, and refuse unselected or orphaned source
+      // instead of smuggling it into an apparently independent circuit job.
+      const root = normalizeHierarchicalCircuit(input.circuit);
+      const visited = new Set(), visiting = new Set();
+      const visit = identity => {
+        if (visited.has(identity)) return;
+        if (visiting.has(identity))
+          throw new TypeError("signgraph EDA component containment cycle");
+        const child = library.get(identity);
+        if (!child) throw new TypeError("signgraph EDA component source is absent");
+        visiting.add(identity);
+        for (const instance of child.instances) visit(instance.component);
+        visiting.delete(identity);
+        visited.add(identity);
+      };
+      for (const instance of root.instances) visit(instance.component);
+      if (visited.size !== library.size)
+        throw new TypeError("signgraph EDA operation contains an unselected component source");
+      return planCombinationalCircuit(root, library);
     },
   }),
   affine: Object.freeze({
