@@ -497,7 +497,7 @@ export function affineHolonomyOfComplex(complex, edgeMotions) {
       !exact ? "global-affine-holonomy" : "affine-flat",
     localFlat,
     exact,
-    nontrivialGlobalClass: localFlat && !exact,
+    nontrivialGlobalMonodromy: localFlat && !exact,
     faceHolonomies: Object.freeze(faces),
     cycleHolonomies: Object.freeze(cycles.filter(cycle => !cycle.flat)),
     potential: Object.freeze(potential),

@@ -74,7 +74,9 @@ what networking is. Pure.
   A face with nontrivial affine commutator cannot be declared flat merely
   because its plain translations sum to zero. The ordered transport is
   frame-relative; only triviality and conjugacy data survive a base-frame
-  change. This sixfold **planar** crystal carrier is not yet an embedding
+  change. Global flat affine monodromy is a representation of the
+  fundamental group up to conjugacy, not an element of additive H¹.
+  This sixfold **planar** crystal carrier is not yet an embedding
   or tiling theorem for the **three-dimensional** J26 gyrobifastigium,
   and neither kind of topological defect has been proved equivalent
   to thermodynamic temperature.

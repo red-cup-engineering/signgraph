@@ -76,7 +76,7 @@ test("pure translation on the torus has local-flat but globally nontrivial Burge
     sixfoldMotion(0, [2, 0]), sixfoldMotion(0, [0, -3]),
   ]);
   assert.equal(result.classification, "global-affine-holonomy");
-  assert.ok(result.localFlat && !result.exact && result.nontrivialGlobalClass);
+  assert.ok(result.localFlat && !result.exact && result.nontrivialGlobalMonodromy);
   assert.deepEqual(result.faceHolonomies[0].holonomy, id());
   assert.equal(result.cycleHolonomies.length, 2);
 });
