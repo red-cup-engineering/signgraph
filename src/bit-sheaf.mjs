@@ -1,12 +1,13 @@
 /**
  * The finite bit-coordinate sheaf over an addressed digital byte carrier.
- * Bit 0 is the most significant bit of byte 0. Intervals restrict and
+ * Data owns MSB-first bit identity. Intervals restrict and
  * compatible overlapping local sections uniquely glue on a declared cover.
  * Distinct raw content identities never glue. This is a geometric data
  * operation, not an authentication of supplied patches or sovereign authority.
  * Cf. Obsmetrologia.Site.Basic / ProtectedCover.
  */
-import { isNiUri, makeNiUri } from "@red-cup-engineering/uri-services-section/ni-uri";
+import { isNiUri } from "@red-cup-engineering/uri-services-section/ni-uri";
+import { markResource, bitValues } from "@red-cup-engineering/computer-data-engineering-services-section/digital-mark-space";
 
 export const MAX_BIT_SECTION = 32768;
 const natural = n => Number.isSafeInteger(n) && n >= 0;
@@ -29,15 +30,14 @@ const patch = (address,totalBits,fromBit,bits) =>
 /** Name the *whole* byte content while extracting a bounded finite bit interval. */
 export function bitPatchOfBytes(bytes,{fromBit=0,bitCount}={}) {
   if (!(bytes instanceof Uint8Array)) fail("Uint8Array media bytes required");
-  const totalBits=bytes.byteLength*8;
-  if (!Number.isSafeInteger(totalBits)) throw new RangeError("bit sheaf: unsafe byte length");
-  const count=bitCount??Math.min(MAX_BIT_SECTION,totalBits-fromBit);
+  // Data owns canonical NI naming, MSB-first raw-bit values and byte custody.
+  // SignGraph owns only the finite geometric restriction / gluing operators.
+  const source = markResource(bytes);
+  const totalBits = source.bitLength;
+  const count = bitCount ?? Math.min(MAX_BIT_SECTION,totalBits-fromBit);
   finiteInterval(fromBit,count,totalBits);
-  const bits=Array.from({length:count},(_value,i)=>{
-    const offset=fromBit+i;
-    return bytes[Math.floor(offset/8)] >>> (7-offset%8) & 1;
-  });
-  return patch(makeNiUri(bytes),totalBits,fromBit,bits);
+  return patch(source.address,totalBits,fromBit,
+    bitValues(source,{offset:fromBit,count}));
 }
 
 /** Functorial restriction to a contained interval of the same address. */
