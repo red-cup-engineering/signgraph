@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cellular2Complex, burgersOfComplex, cohomologyOfEdgeGraph } from "../src/cohomology.mjs";
+import { cellular2Complex, cellular3Complex, burgersOfComplex, cohomologyOfEdgeGraph, affineHolonomyOfComplex } from "../src/cohomology.mjs";
 
 const triangle = () => cellular2Complex({
   vertices: ["a", "b", "c"],
@@ -178,4 +178,132 @@ test("invalid face attaching maps and inexact displacement input refuse rather t
   assert.throws(() => burgersOfComplex(c, [[NaN, 0], [0, 0], [0, 0]]), /safe-integer/);
   assert.throws(() => burgersOfComplex(c, [[Number.MAX_SAFE_INTEGER, 0], [1, 0], [0, 0]]),
     /safe integer range/);
+});
+
+/** The authoritative Science J26 carries one interior volume, not only
+ * the oriented exterior. The surface is S²-like; the filled 3-chain
+ * has the rational cellular homology of a ball.
+ */
+const J26_VOLUME = () => {
+  const surface = J26();
+  return { ...surface, volumes: [{
+    id: "j26-interior",
+    boundary: surface.faces.map(face => ({ face: face.id, direction: 1 })),
+  }] };
+};
+
+test("J26: exterior H2=Q becomes H2=0 when its real volume is received", () => {
+  const full = J26_VOLUME(), shell = cellular2Complex(full),
+    solid = cellular3Complex(full);
+  assert.deepEqual(shell.betti, { h0: 1, h1: 0, h2: 1 });
+  assert.deepEqual(solid.surfaceBetti, shell.betti);
+  assert.deepEqual(solid.rank, { zero: 7, one: 7, two: 1 });
+  assert.deepEqual(solid.betti, { h0: 1, h1: 0, h2: 0, h3: 0 });
+  assert.equal(solid.volumes.length, 1);
+  assert.equal(solid.coboundary.two[0].length, 8);
+  assert.deepEqual(solid.coboundary.two[0], new Array(8).fill(1));
+  for (let e = 0; e < full.edges.length; e++)
+    assert.equal(solid.coboundary.two[0].reduce((total, coefficient, f) =>
+      total + coefficient * solid.coboundary.one[f][e], 0), 0);
+
+  const doubled = cellular3Complex({
+    ...full, volumes: [
+      full.volumes[0],
+      { id: "opposite-j26-interior", boundary: full.faces.map(face => ({
+        face: face.id, direction: -1,
+      })) },
+    ],
+  });
+  assert.deepEqual(doubled.betti, { h0: 1, h1: 0, h2: 0, h3: 1 },
+    "oppositely oriented three-cells create a nontrivial top three-cycle");
+  assert.deepEqual(doubled.rank, { zero: 7, one: 7, two: 1 });
+});
+
+test("three-dimensional J26 Burgers cochains obey discrete volume Stokes with live face defects", () => {
+  const full = J26_VOLUME(), solid = cellular3Complex(full);
+  for (let seed = 0; seed < 31; seed++) {
+    const b = full.edges.map((_, i) => [
+      (i * 11 + seed * 13) % 19 - 9,
+      (i * 17 + seed * 7) % 23 - 11,
+      (i * 19 + seed * 3) % 29 - 14,
+    ]);
+    const r = burgersOfComplex(solid, b);
+    assert.equal(r.dimension, 3);
+    assert.equal(r.volumeResidues.length, 1);
+    assert.deepEqual(r.volumeResidues[0].burgers, [0, 0, 0]);
+    assert.equal(r.volumeConservation.applicable, true);
+    assert.equal(r.volumeConservation.holds, true);
+  }
+  const oneDisplaced = burgersOfComplex(solid,
+    full.edges.map((_, i) => i === 0 ? [1, -3, 5] : [0, 0, 0]));
+  assert.equal(oneDisplaced.classification, "local-defect");
+  assert.deepEqual(oneDisplaced.faceResidues.filter(f => !f.flat).map(f => f.burgers),
+    [[1, -3, 5], [-1, 3, -5]]);
+  assert.deepEqual(oneDisplaced.volumeResidues[0].burgers, [0, 0, 0]);
+  // Zero volume charge is NOT identical with zero face charge.
+  assert.ok(oneDisplaced.faceResidues.some(f => !f.flat));
+
+  const potential = Object.fromEntries(full.vertices.map((name, i) =>
+    [name, [i * 2, i * i - 4, 3 - i * 7]]));
+  const exact = burgersOfComplex(solid, full.edges.map(edge =>
+    potential[edge.to].map((value, j) => value - potential[edge.from][j])));
+  assert.equal(exact.classification, "exact");
+  assert.ok(exact.faceResidues.every(f => f.flat));
+  assert.deepEqual(exact.volumeResidues[0].burgers, [0, 0, 0]);
+  assert.equal(exact.potential.length, 8);
+});
+
+test("reversing a J26 face and its volume incidence preserves solid homology and charge conservation", () => {
+  const full = J26_VOLUME(), original = cellular3Complex(full);
+  const flip = full.faces[2].id;
+  const reversed = {
+    ...full,
+    faces: full.faces.map(face => face.id === flip ? {
+      ...face, boundary: face.boundary.map(step => ({ ...step, direction: -step.direction })).reverse(),
+    } : face),
+    volumes: full.volumes.map(volume => ({
+      ...volume, boundary: volume.boundary.map(step => step.face === flip ?
+        { ...step, direction: -step.direction } : step),
+    })),
+  };
+  // Reverse walk ordering as well as the edge directions, preserving
+  // cyclic composability. This is a genuine change of chain basis.
+  const rotated = cellular3Complex(reversed);
+  assert.deepEqual(rotated.betti, original.betti);
+  assert.deepEqual(rotated.rank, original.rank);
+  const readings = full.edges.map((_, i) => [i - 7, 2 * i, 12 - 3 * i]);
+  assert.deepEqual(burgersOfComplex(rotated, readings).volumeResidues,
+    burgersOfComplex(original, readings).volumeResidues);
+});
+
+test("a volume must carry an admitted closed oriented face shell, not arbitrary 3D labels", () => {
+  const full = J26_VOLUME();
+  const bad = volume => cellular3Complex({ ...full, volumes: [volume] });
+  assert.throws(() => bad({ id: "incomplete", boundary: full.volumes[0].boundary.slice(1) }),
+    /not a closed oriented 2-chain/);
+  assert.throws(() => bad({ id: "wrong-sign", boundary: full.volumes[0].boundary.map((step, i) =>
+    i === 0 ? { ...step, direction: -1 } : step) }), /not a closed oriented 2-chain/);
+  assert.throws(() => bad({ id: "absent", boundary: [{ face: "absent", direction: 1 }] }),
+    /known face/);
+  assert.throws(() => bad({ id: "zero", boundary: [] }), /nonempty oriented face boundary/);
+  assert.throws(() => cellular3Complex({ ...full, volumes: [
+    full.volumes[0], full.volumes[0],
+  ] }), /duplicate volume/);
+  assert.throws(() => cellular3Complex({ ...full, volumes: null }), /volumes must be an array/);
+  const empty = cellular3Complex({ ...full, volumes: [] });
+  assert.deepEqual(empty.betti, { h0: 1, h1: 0, h2: 1, h3: 0 },
+    "without a 3-cell the exterior class is not silently killed");
+  assert.throws(() => burgersOfComplex(cellular3Complex(full),
+    full.edges.map(() => [1, 2, 3, 4])), /two or three coordinates/);
+  assert.throws(() => burgersOfComplex(cellular3Complex(full),
+    full.edges.map((_, i) => i === 0 ? [1, 2, 3] : [0, 0])), /same dimension/);
+});
+
+test("a filled J26 volume retains exact sixfold affine flatness without calling it 3D rotation", () => {
+  const full = J26_VOLUME(), c = cellular3Complex(full);
+  const none = affineHolonomyOfComplex(c,
+    full.edges.map(() => ({ rotation: 0, translation: [0, 0] })));
+  assert.equal(none.classification, "affine-flat");
+  assert.ok(none.localFlat && none.exact);
+  assert.ok(none.faceHolonomies.every(f => f.flat));
 });

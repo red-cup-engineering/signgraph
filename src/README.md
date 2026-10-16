@@ -126,6 +126,48 @@ automatic installation. This is a planar sixfold lattice model, not
 yet a theorem equating J26's three-dimensional honeycomb with a
 two-dimensional Burgers lattice or with temperature.
 
+## J26 volume completion and Burgers/Stokes receiving
+
+The J26 `cellComplex` in **Obsmetrologia** contains one 3-cell as well as
+its oriented exterior; the exterior is **not** the full solid. Engineering
+`cellular3Complex({ vertices, edges, faces, volumes })` extends the existing
+2-complex without creating another incidence engine. A volume boundary is a
+signed 2-chain of admitted faces. It is admitted only when
+`∂₂ ∂₃ = 0`; exact rational rank `rank ∂₃` gives
+`b₂ = F − rank ∂₂ − rank ∂₃` and `b₃ = V₃ − rank ∂₃`.
+For the current J26 Science fixture the exterior has
+`(b₀,b₁,b₂)=(1,0,1)`, while adding its one oriented interior gives
+`(b₀,b₁,b₂,b₃)=(1,0,0,0)`. Two oppositely oriented volumes over that
+same boundary produce a nontrivial 3-cycle, `b₃=1`.
+
+`burgersOfComplex` accepts both exact 2D and 3D integral translation
+cochains (the dimension is determined by a declared edge reading).
+Its **face residues** are `δ¹ b`; its **volume residues** are
+`δ²δ¹ b`. The latter vanish on every admitted volume for *every*
+edge assignment, including ones with large nonzero local face residues.
+That is the discrete Stokes/Bianchi composition test, not a device to
+hide defects by summing them away. It produces an explicit local-to-
+volume conservation receipt and remains covariant under consistent
+face-orientation changes. Prior 2-complex-only inputs and 2D outputs
+remain admitted and retain their original meaning.
+
+All three public operations now also admit optional `volumes`, with the
+existing JSONL executable unchanged. Admission budgets bound the added
+work to 32 volumes and 2,048 oriented volume-face steps, as well as the
+existing graph/face budget. An explicit `volumes: []` is not the same
+as inventing a J26 interior; a volume is never inferred from a closed
+surface. The affine `ℤ² ⋊ C₆` reader can traverse the resulting
+3-complex's edges and faces, but remains a **planar** frame model:
+no fabricated 3D rotational group, lattice embedding, physical elastic
+constants, or temperature relation has been claimed.
+
+**Scope:** a signed cellular 3-chain satisfying `∂₂ ∂₃=0` is
+not, by itself, proof that the volume is a geometrically embedded ball.
+J26's specific one-volume topology is backed by its source-owned
+combinatorial representation, and the executable test is independent
+receiving of the ranks and Stokes law. Physical qualification, registry
+publication, and installed-service receiving are still separate.
+
 ## Depends on
 
 `@lenticule-science/metrologic` for mathematics, SignCell for cells, and

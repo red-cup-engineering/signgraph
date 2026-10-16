@@ -351,15 +351,80 @@ export function cellular2Complex({ vertices, edges, faces }) {
  * integers; irrational, rotating or incommensurate frames require a
  * separately specified affine transport, NOT a fabricated lattice vector.
  */
+/**
+ * Extend the existing oriented 2-complex by actual oriented 3-cell boundaries.
+ *
+ * Each volume specifies an integral 2-chain of previously admitted faces.
+ * δ²δ¹=0 is checked as a non-negotiable chain-law admission condition.
+ * This alone does not prove that an attaching map is an embedded ball,
+ * orientable manifold or a physical gyrobifastigium: those are different
+ * qualification obligations. It DOES distinguish the J26 exterior sphere
+ * (b₂=1) from its filled 3-cell (b₂=0, b₃=0).
+ */
+export function cellular3Complex({ vertices, edges, faces, volumes }) {
+  if (!Array.isArray(volumes))
+    throw new TypeError("cellular3Complex: volumes must be an array");
+  const surface = cellular2Complex({ vertices, edges, faces });
+  const faceIndex = new Map(surface.faces.map((face, index) => [coincidenceKey(face.id), index]));
+  const seen = new Set();
+  const volumeList = [];
+  const rows = volumes.map(volume => {
+    if (volume === null || typeof volume !== "object" || Array.isArray(volume) ||
+        volume.id === null || volume.id === undefined ||
+        !Array.isArray(volume.boundary) || volume.boundary.length === 0)
+      throw new TypeError("cellular3Complex: a volume needs an identity and nonempty oriented face boundary");
+    const id = coincidenceKey(volume.id);
+    if (seen.has(id)) throw new RangeError("cellular3Complex: duplicate volume id");
+    seen.add(id);
+    const row = new Array(surface.faces.length).fill(0);
+    const boundary = volume.boundary.map(step => {
+      const index = faceIndex.get(coincidenceKey(step?.face));
+      if (index === undefined || (step.direction !== 1 && step.direction !== -1))
+        throw new TypeError("cellular3Complex: an oriented volume step needs a known face and sign ±1");
+      row[index] += step.direction;
+      if (!Number.isSafeInteger(row[index]))
+        throw new RangeError("cellular3Complex: an incidence coefficient exceeded exact integer range");
+      return Object.freeze({ face: surface.faces[index].id, faceIndex: index, direction: step.direction });
+    });
+    // δ²δ¹=0, the discrete Stokes/Bianchi law, before claiming a complex.
+    for (let e = 0; e < surface.edges.length; e++) {
+      const residue = row.reduce((sum, coeff, f) =>
+        sum + BigInt(coeff) * BigInt(surface.coboundary.one[f][e]), 0n);
+      if (residue !== 0n)
+        throw new RangeError("cellular3Complex: volume boundary is not a closed oriented 2-chain");
+    }
+    volumeList.push(Object.freeze({ id: volume.id, boundary: Object.freeze(boundary) }));
+    return Object.freeze(row);
+  });
+  const r2 = integerRank(rows);
+  const h2 = surface.betti.h2 - r2, h3 = volumes.length - r2;
+  if (h2 < 0 || h3 < 0)
+    throw new RangeError("cellular3Complex: inconsistent exact cellular ranks");
+  return Object.freeze({
+    ...surface,
+    kind: "signgraph.cellular3Complex",
+    volumes: Object.freeze(volumeList),
+    coboundary: Object.freeze({ ...surface.coboundary, two: Object.freeze(rows) }),
+    rank: Object.freeze({ ...surface.rank, two: r2 }),
+    surfaceBetti: surface.betti,
+    betti: Object.freeze({ ...surface.betti, h2, h3 }),
+  });
+}
+
 export function burgersOfComplex(complex, edgeDisplacements) {
-  if (complex?.kind !== "signgraph.cellular2Complex" ||
+  if (!["signgraph.cellular2Complex", "signgraph.cellular3Complex"].includes(complex?.kind) ||
       !Array.isArray(edgeDisplacements) ||
       edgeDisplacements.length !== complex.edges.length)
     throw new TypeError("burgersOfComplex: require an admitted complex and one vector per oriented edge");
+  // A 2D Eisenstein plane and a 3D lattice are both legitimate *integer*
+  // translational carriers. The latter is NOT a Euclidean embedding of J26.
+  const dimension = edgeDisplacements[0]?.length ?? 2;
+  if (dimension !== 2 && dimension !== 3)
+    throw new TypeError("burgersOfComplex: an exact Burgers vector has two or three coordinates");
   const values = edgeDisplacements.map(vector => {
-    if (!Array.isArray(vector) || vector.length !== 2 ||
+    if (!Array.isArray(vector) || vector.length !== dimension ||
         !vector.every(Number.isSafeInteger))
-      throw new TypeError("burgersOfComplex: every edge requires an exact safe-integer lattice vector");
+      throw new TypeError("burgersOfComplex: every edge requires an exact safe-integer lattice vector of the same dimension");
     return vector.map(BigInt);
   });
   const safe = n => {
@@ -368,16 +433,19 @@ export function burgersOfComplex(complex, edgeDisplacements) {
     return Number(n);
   };
   const output = vector => Object.freeze(vector.map(safe));
-  const zero = () => [0n, 0n];
+  const zero = () => Array.from({ length: dimension }, () => 0n);
+  const flat = vector => vector.every(v => v === 0n);
+  const sumScaled = (left, n, right) => left.map((v, j) => v + n * right[j]);
 
-  const faces = complex.faces.map((face, f) => {
-    const value = zero();
-    for (let e = 0; e < values.length; e++) {
-      const n = BigInt(complex.coboundary.one[f][e]);
-      value[0] += n * values[e][0]; value[1] += n * values[e][1];
-    }
-    return Object.freeze({ id: face.id, burgers: output(value), flat: value[0] === 0n && value[1] === 0n });
-  });
+  // Preserve the *unrounded* exact charge internally all the way to
+  // volume Bianchi receiving. An unbounded charge is refused when exported,
+  // never silently truncated to host-number arithmetic.
+  const faceValues = complex.faces.map((_, f) =>
+    complex.coboundary.one[f].reduce((v, coeff, e) =>
+      sumScaled(v, BigInt(coeff), values[e]), zero()));
+  const faces = complex.faces.map((face, f) => Object.freeze({
+    id: face.id, burgers: output(faceValues[f]), flat: flat(faceValues[f]),
+  }));
   const localFlat = faces.every(face => face.flat);
 
   const adjacent = complex.vertices.map(() => []);
@@ -394,32 +462,40 @@ export function burgersOfComplex(complex, edgeDisplacements) {
       const current = queue[cursor];
       for (const { neighbor, edge, sign } of adjacent[current]) {
         if (potential[neighbor] !== null) continue;
-        potential[neighbor] = [
-          potential[current][0] + sign * values[edge][0],
-          potential[current][1] + sign * values[edge][1],
-        ];
+        potential[neighbor] = sumScaled(potential[current], sign, values[edge]);
         queue.push(neighbor);
       }
     }
   }
   const cycles = complex.edges.map(({ id, fromIndex, toIndex }, e) => {
-    const residual = [
-      potential[toIndex][0] - potential[fromIndex][0] - values[e][0],
-      potential[toIndex][1] - potential[fromIndex][1] - values[e][1],
-    ];
-    return Object.freeze({ edge: id, burgers: output(residual), flat: residual[0] === 0n && residual[1] === 0n });
+    const residual = potential[fromIndex].map((v, j) =>
+      potential[toIndex][j] - v - values[e][j]);
+    return Object.freeze({ edge: id, burgers: output(residual), flat: flat(residual) });
   });
   const exact = cycles.every(cycle => cycle.flat);
-  const totalFaceBurgers = output(faces.reduce((acc, face) => [
-    acc[0] + BigInt(face.burgers[0]), acc[1] + BigInt(face.burgers[1]),
-  ], zero()));
+  const totalFaceBurgers = output(faceValues.reduce((acc, value) => sumScaled(acc, 1n, value), zero()));
+
+  // The signed sum of each volume's face-level Burgers residues must
+  // vanish by δ²δ¹=0, even if individual faces are strongly defective.
+  // A zero volume balance is NOT a claim that all local faces are flat.
+  const volumeResidues = complex.kind === "signgraph.cellular3Complex"
+    ? complex.volumes.map((volume, index) => {
+        const residual = complex.coboundary.two[index].reduce(
+          (acc, coeff, f) => sumScaled(acc, BigInt(coeff), faceValues[f]), zero());
+        return Object.freeze({ id: volume.id, burgers: output(residual), flat: flat(residual) });
+      })
+    : [];
+  const volumeConservation = Object.freeze({
+    applicable: complex.kind === "signgraph.cellular3Complex",
+    holds: volumeResidues.every(volume => volume.flat),
+  });
 
   return Object.freeze({
     kind: "signgraph.burgers",
+    dimension,
     classification: !localFlat ? "local-defect" : !exact ? "global-holonomy" : "exact",
     localFlat,
     exact,
-    // Zero face curl + nonexact translation is a genuine global class.
     nontrivialGlobalClass: localFlat && !exact,
     faceResidues: Object.freeze(faces),
     cycleResidues: Object.freeze(cycles.filter(cycle => !cycle.flat)),
@@ -430,9 +506,10 @@ export function burgersOfComplex(complex, edgeDisplacements) {
       holds: !complex.totalFaceBoundaryCloses ||
         totalFaceBurgers.every(value => value === 0),
     }),
+    volumeResidues: Object.freeze(volumeResidues),
+    volumeConservation,
   });
 }
-
 
 /**
  * The same admitted two-complex can transport full sixfold affine frames.
@@ -449,7 +526,7 @@ export function burgersOfComplex(complex, edgeDisplacements) {
  * translation component without choosing the reference frame.
  */
 export function affineHolonomyOfComplex(complex, edgeMotions) {
-  if (complex?.kind !== "signgraph.cellular2Complex" ||
+  if (!["signgraph.cellular2Complex", "signgraph.cellular3Complex"].includes(complex?.kind) ||
       !Array.isArray(edgeMotions) || edgeMotions.length !== complex.edges.length)
     throw new TypeError("affineHolonomyOfComplex: require an admitted two-complex and one motion per edge");
   const motions = edgeMotions.map(g => sixfoldMotion(g?.rotation, g?.translation));

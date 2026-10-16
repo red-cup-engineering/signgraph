@@ -161,3 +161,108 @@ test("CLI enforces its 1024-request batch limit with a failing exit code", () =>
   assert.equal(lines[1024].ok, false);
   assert.match(lines[1024].error, /1024 requests/);
 });
+
+/** A tetrahedral closed exterior plus its one three-cell.
+ * The face orientations represent ∂[a,b,c,d].
+ */
+const tetrahedron = () => {
+  const vertices = ["a", "b", "c", "d"];
+  const edges = [
+    { id: "ab", from: "a", to: "b" },
+    { id: "ac", from: "a", to: "c" },
+    { id: "ad", from: "a", to: "d" },
+    { id: "bc", from: "b", to: "c" },
+    { id: "bd", from: "b", to: "d" },
+    { id: "cd", from: "c", to: "d" },
+  ];
+  const walks = [
+    ["abc", ["a", "c", "b"]],
+    ["abd", ["a", "b", "d"]],
+    ["acd", ["a", "d", "c"]],
+    ["bcd", ["b", "c", "d"]],
+  ];
+  const faces = walks.map(([id, sequence]) => ({
+    id, boundary: sequence.map((from, i) => {
+      const to = sequence[(i + 1) % sequence.length];
+      const e = edges.find(e => e.from === from && e.to === to ||
+        e.from === to && e.to === from);
+      assert.ok(e);
+      return { edge: e.id, direction: e.from === from ? 1 : -1 };
+    }),
+  }));
+  return { vertices, edges, faces, volumes: [{
+    id: "interior", boundary: faces.map(f => ({ face: f.id, direction: 1 })),
+  }] };
+};
+
+test("the same operational input distinguishes exterior sphere from solid 3-cell", () => {
+  const solid = tetrahedron();
+  const surface = executeOperation("signgraph.holonomy.topology", {
+    vertices: solid.vertices, edges: solid.edges, faces: solid.faces,
+  });
+  const filled = executeOperation("signgraph.holonomy.topology", solid);
+  assert.deepEqual(surface.betti, { h0: 1, h1: 0, h2: 1 });
+  assert.deepEqual(filled.exteriorBetti, surface.betti);
+  assert.deepEqual(filled.rank, { zero: 3, one: 3, two: 1 });
+  assert.deepEqual(filled.betti, { h0: 1, h1: 0, h2: 0, h3: 0 });
+  assert.deepEqual(filled.shape, {
+    vertices: 4, edges: 6, faces: 4, faceSteps: 12,
+    volumes: 1, volumeSteps: 4,
+  });
+  const v = executeOperation("signgraph.holonomy.burgers", {
+    ...solid, edgeDisplacements: solid.edges.map((_, i) =>
+      i === 0 ? [2, -1, 4] : [0, 0, 0]),
+  });
+  assert.equal(v.classification, "local-defect");
+  assert.equal(v.dimension, 3);
+  assert.deepEqual(v.volumeResidues[0].burgers, [0, 0, 0]);
+  assert.ok(v.faceResidues.some(face => !face.flat));
+  const h = executeOperation("signgraph.holonomy.affine", {
+    ...solid, edgeMotions: solid.edges.map(() => ({
+      rotation: 0, translation: [0, 0],
+    })),
+  });
+  assert.equal(h.classification, "affine-flat");
+  assert.deepEqual(h.topology.betti, filled.betti);
+});
+
+test("volume operations refuse unclosed shells, oversized volumes and excess face steps", () => {
+  const solid = tetrahedron();
+  assert.throws(() => executeOperation("signgraph.holonomy.topology", {
+    ...solid, volumes: [{ id: "wrong", boundary: solid.volumes[0].boundary.slice(1) }],
+  }), /not a closed oriented 2-chain/);
+  assert.throws(() => executeOperation("signgraph.holonomy.topology", {
+    ...solid, volumes: Array.from({ length: LIMITS.volumes + 1 }, (_, i) => ({
+      id: String(i), boundary: solid.volumes[0].boundary,
+    })),
+  }), /volume count work budget/);
+  assert.throws(() => executeOperation("signgraph.holonomy.topology", {
+    ...solid, volumes: [{ id: "too-many", boundary:
+      Array(LIMITS.volumeSteps + 1).fill({ face: "abc", direction: 1 }) }],
+  }), /volume boundary work budget/);
+  assert.throws(() => executeOperation("signgraph.holonomy.topology", {
+    ...solid, volumes: null,
+  }), /array of volumes/);
+});
+
+test("installed CLI returns the 3D Stokes and homology receipts in JSONL", () => {
+  const solid = tetrahedron();
+  const input = [
+    { operation: "signgraph.holonomy.topology", input: solid },
+    { operation: "signgraph.holonomy.burgers", input: {
+      ...solid, edgeDisplacements: solid.edges.map((_, i) =>
+        i === 0 ? [1, 0, -3] : [0, 0, 0]),
+    }},
+  ].map(JSON.stringify).join("\n") + "\n";
+  const child = spawnSync(process.execPath, [bin], {
+    input, encoding: "utf8", timeout: 10000,
+  });
+  assert.equal(child.status, 0, child.stderr);
+  const [topology, burgers] = child.stdout.trim().split("\n").map(JSON.parse);
+  assert.equal(topology.ok, true);
+  assert.equal(burgers.ok, true);
+  assert.deepEqual(topology.receipt.betti, { h0: 1, h1: 0, h2: 0, h3: 0 });
+  assert.equal(burgers.receipt.dimension, 3);
+  assert.equal(burgers.receipt.volumeConservation.holds, true);
+  assert.deepEqual(burgers.receipt.volumeResidues[0].burgers, [0, 0, 0]);
+});

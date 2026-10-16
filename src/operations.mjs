@@ -11,7 +11,7 @@
  * gauge or source as a mathematical witness: that is outside these inputs.
  */
 import {
-  cellular2Complex, burgersOfComplex, affineHolonomyOfComplex,
+  cellular2Complex, cellular3Complex, burgersOfComplex, affineHolonomyOfComplex,
 } from "./cohomology.mjs";
 
 export const LIMITS = Object.freeze({
@@ -19,6 +19,8 @@ export const LIMITS = Object.freeze({
   edges: 128,
   faces: 64,
   faceSteps: 2048,
+  volumes: 32,
+  volumeSteps: 2048,
 });
 
 /** Bound the actual structural work before allocating incidence matrices. */
@@ -32,14 +34,14 @@ function bounded(input, operation) {
   if (bytes > 65536)
     throw new RangeError("signgraph operation exceeds the 64KiB input work budget");
   const allowed = new Set([
-    "vertices", "edges", "faces",
+    "vertices", "edges", "faces", "volumes",
     ...(operation === "signgraph.holonomy.burgers" ? ["edgeDisplacements"] : []),
     ...(operation === "signgraph.holonomy.affine" ? ["edgeMotions"] : []),
   ]);
   if (Object.keys(input).some(key => !allowed.has(key)))
     throw new TypeError("signgraph operation has undeclared input fields");
 
-  const { vertices, edges, faces } = input;
+  const { vertices, edges, faces, volumes } = input;
   if (![vertices, edges, faces].every(Array.isArray))
     throw new TypeError("signgraph operation requires arrays of vertices, edges and faces");
   if (vertices.length > LIMITS.vertices || edges.length > LIMITS.edges ||
@@ -53,6 +55,20 @@ function bounded(input, operation) {
     if (steps > LIMITS.faceSteps)
       throw new RangeError("signgraph operation exceeds the face-walk work budget");
   }
+  let volumeSteps = 0;
+  if (volumes !== undefined) {
+    if (!Array.isArray(volumes))
+      throw new TypeError("signgraph operation requires an array of volumes");
+    if (volumes.length > LIMITS.volumes)
+      throw new RangeError("signgraph operation exceeds the volume count work budget");
+    for (const volume of volumes) {
+      if (!volume || !Array.isArray(volume.boundary))
+        throw new TypeError("signgraph operation requires an oriented volume boundary");
+      volumeSteps += volume.boundary.length;
+      if (volumeSteps > LIMITS.volumeSteps)
+        throw new RangeError("signgraph operation exceeds the volume boundary work budget");
+    }
+  }
   if (operation === "signgraph.holonomy.burgers" &&
       (!Array.isArray(input.edgeDisplacements) ||
        input.edgeDisplacements.length !== edges.length))
@@ -61,21 +77,28 @@ function bounded(input, operation) {
       (!Array.isArray(input.edgeMotions) ||
        input.edgeMotions.length !== edges.length))
     throw new TypeError("signgraph operation requires an affine motion for each edge");
-  return Object.freeze({ complex: cellular2Complex({ vertices, edges, faces }), steps });
+  const complex = volumes === undefined
+    ? cellular2Complex({ vertices, edges, faces })
+    : cellular3Complex({ vertices, edges, faces, volumes });
+  return Object.freeze({ complex, steps, volumeSteps });
 }
 
-const shape = (complex, steps) => Object.freeze({
+const shape = (complex, steps, volumeSteps) => Object.freeze({
   vertices: complex.vertices.length,
   edges: complex.edges.length,
   faces: complex.faces.length,
   faceSteps: steps,
+  ...(complex.kind === "signgraph.cellular3Complex"
+    ? { volumes: complex.volumes.length, volumeSteps } : {}),
 });
-const topologicalSummary = (complex, steps) => Object.freeze({
+const topologicalSummary = (complex, steps, volumeSteps) => Object.freeze({
   kind: "signgraph.topologyReceipt",
   coefficientDomain: "Q",
-  shape: shape(complex, steps),
+  shape: shape(complex, steps, volumeSteps),
   rank: complex.rank,
   betti: complex.betti,
+  ...(complex.kind === "signgraph.cellular3Complex"
+    ? { exteriorBetti: complex.surfaceBetti } : {}),
   graphOnlyH1: complex.graphOnlyH1,
   totalFaceBoundaryCloses: complex.totalFaceBoundaryCloses,
   // A zero rational b1 cannot exclude finite-order nonabelian monodromy.
@@ -91,6 +114,7 @@ const commonInput = Object.freeze({
     vertices: { type: "array", maxItems: LIMITS.vertices },
     edges: { type: "array", maxItems: LIMITS.edges },
     faces: { type: "array", maxItems: LIMITS.faces },
+    volumes: { type: "array", maxItems: LIMITS.volumes },
   }),
 });
 const schema = (requiredExtra, propertyExtra) => Object.freeze({
@@ -105,8 +129,8 @@ export const operations = Object.freeze({
     description: "Compute exact rational cellular ranks and distinguish filled 2-cells from graph-only cycles.",
     inputSchema: commonInput,
     execute(input) {
-      const { complex, steps } = bounded(input, this.id);
-      return topologicalSummary(complex, steps);
+      const { complex, steps, volumeSteps } = bounded(input, this.id);
+      return topologicalSummary(complex, steps, volumeSteps);
     },
   }),
   burgers: Object.freeze({
@@ -116,9 +140,9 @@ export const operations = Object.freeze({
       edgeDisplacements: { type: "array", maxItems: LIMITS.edges },
     }),
     execute(input) {
-      const { complex, steps } = bounded(input, this.id);
+      const { complex, steps, volumeSteps } = bounded(input, this.id);
       return Object.freeze({
-        topology: topologicalSummary(complex, steps),
+        topology: topologicalSummary(complex, steps, volumeSteps),
         ...burgersOfComplex(complex, input.edgeDisplacements),
       });
     },
@@ -130,9 +154,9 @@ export const operations = Object.freeze({
       edgeMotions: { type: "array", maxItems: LIMITS.edges },
     }),
     execute(input) {
-      const { complex, steps } = bounded(input, this.id);
+      const { complex, steps, volumeSteps } = bounded(input, this.id);
       return Object.freeze({
-        topology: topologicalSummary(complex, steps),
+        topology: topologicalSummary(complex, steps, volumeSteps),
         ...affineHolonomyOfComplex(complex, input.edgeMotions),
       });
     },
