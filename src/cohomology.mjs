@@ -15,7 +15,8 @@ import { charPoly, fromInts, rank, toCount, toInt } from "@red-cup-engineering/e
 const integerRank = (matrix) => (matrix.length === 0 ? 0 : toCount(rank(fromInts(matrix))));
 /** The characteristic polynomial det(xI − A) of a host-integer matrix, highest degree first, exactly. */
 const characteristicPolynomial = (matrix) => (matrix.length === 0 ? Object.freeze([1]) : Object.freeze(charPoly(fromInts(matrix)).map(toInt).reverse()));
-import { coincides } from "@red-cup-engineering/signcell/cell";
+import { coincides, coincidenceKey } from "@red-cup-engineering/signcell/cell";
+import { sixfoldMotion, sixfoldIdentity, sixfoldCompose, sixfoldInverse } from "./paths.mjs";
 import { readingOfRecord, record, sidesOfReading, topMass } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 import { coverNerve, h1Rank } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/coordination-cohomology";
 
@@ -220,4 +221,285 @@ export function linkGraphNerve(nodes, links) {
   }
   const graph = cohomologyOfEdgeGraph([...byKey.values()], pairs);
   return coverNerve(graph.entities.length, graph.cells.length, graph.zeroCohomology.rank);
+}
+
+
+/**
+ * A cellular two-complex, not merely the graph of its one-skeleton.
+ *
+ * C0 --δ0--> C1 --δ1--> C2 over the integers, with δ1δ0 = 0
+ * checked before any cohomology is reported. Each oriented 2-cell is
+ * a closed, composable edge walk; reversing an edge uses direction -1.
+ * Repetition is allowed (genuine attaching maps may wind), but every
+ * intermediate vertex must match the preceding oriented endpoint.
+ *
+ * Exact rational ranks calculate b0=V-rank δ0,
+ * b1=E-rank δ0-rank δ1, b2=F-rank δ1. A graph-only cycle is NOT an
+ * H1 obstruction when an actual 2-face fills it.
+ */
+export function cellular2Complex({ vertices, edges, faces }) {
+  if (![vertices, edges, faces].every(Array.isArray))
+    throw new TypeError("cellular2Complex: vertices, edges and faces must be arrays");
+
+  const uniqueIndices = (values, label) => {
+    const index = new Map();
+    values.forEach((id, i) => {
+      if (id === null || id === undefined)
+        throw new TypeError(`cellular2Complex: missing ${label} identity`);
+      const key = coincidenceKey(id);
+      if (index.has(key))
+        throw new RangeError(`cellular2Complex: duplicate ${label} identity`);
+      index.set(key, i);
+    });
+    return index;
+  };
+  const vIndex = uniqueIndices(vertices, "vertex");
+  const eIndex = uniqueIndices(edges.map(e => e?.id), "edge");
+  uniqueIndices(faces.map(f => f?.id), "face");
+
+  const edgeList = edges.map(edge => {
+    if (!edge || typeof edge !== "object")
+      throw new TypeError("cellular2Complex: an edge must be an object");
+    const from = vIndex.get(coincidenceKey(edge.from));
+    const to = vIndex.get(coincidenceKey(edge.to));
+    if (from === undefined || to === undefined)
+      throw new RangeError("cellular2Complex: an edge has an unknown endpoint");
+    return Object.freeze({ id: edge.id, from: edge.from, to: edge.to, fromIndex: from, toIndex: to });
+  });
+  // Rows of δ0: oriented edge difference f(to) - f(from).
+  const edgeCoboundary = edgeList.map(({ fromIndex, toIndex }) => {
+    const row = new Array(vertices.length).fill(0);
+    row[fromIndex] -= 1; row[toIndex] += 1;
+    return Object.freeze(row);
+  });
+
+  const faceList = [];
+  const faceCoboundary = faces.map(face => {
+    if (!face || !Array.isArray(face.boundary) || face.boundary.length === 0)
+      throw new TypeError("cellular2Complex: a face requires a nonempty oriented edge walk");
+    let first, previous;
+    const boundary = face.boundary.map((step, i) => {
+      const e = eIndex.get(coincidenceKey(step?.edge));
+      if (e === undefined || (step.direction !== 1 && step.direction !== -1))
+        throw new TypeError("cellular2Complex: a face step requires a known edge and sign ±1");
+      const start = step.direction === 1 ? edgeList[e].fromIndex : edgeList[e].toIndex;
+      const end = step.direction === 1 ? edgeList[e].toIndex : edgeList[e].fromIndex;
+      if (i === 0) first = start;
+      else if (previous !== start)
+        throw new RangeError("cellular2Complex: oriented face walk has a disconnected step");
+      previous = end;
+      return Object.freeze({ edge: edgeList[e].id, edgeIndex: e, direction: step.direction });
+    });
+    if (previous !== first)
+      throw new RangeError("cellular2Complex: oriented face walk is not closed");
+    const row = new Array(edges.length).fill(0);
+    for (const step of boundary) row[step.edgeIndex] += step.direction;
+    faceList.push(Object.freeze({ id: face.id, boundary: Object.freeze(boundary) }));
+    return Object.freeze(row);
+  });
+
+  // The attaching maps must really form a chain complex, not merely have
+  // plausible dimensions. Check every entry of δ1δ0 before taking ranks.
+  for (const row of faceCoboundary)
+    for (let v = 0; v < vertices.length; v++) {
+      const boundarySquared = row.reduce((s, value, e) => s + value * edgeCoboundary[e][v], 0);
+      if (boundarySquared !== 0)
+        throw new RangeError("cellular2Complex: boundary squared is not zero");
+    }
+
+  const r0 = integerRank(edgeCoboundary);
+  const r1 = integerRank(faceCoboundary);
+  const h0 = vertices.length - r0;
+  const h1 = edges.length - r0 - r1;
+  const h2 = faces.length - r1;
+  if ([h0, h1, h2].some(h => h < 0))
+    throw new RangeError("cellular2Complex: inconsistent exact chain ranks");
+
+  // Sum of oriented faces: an actual 2-cycle iff every edge coefficient
+  // cancels. This generalizes the J26 orientation witness, without assuming
+  // it for other inputs or mistaking it for physical Burgers holonomy.
+  const totalFaceBoundary = Object.freeze(edges.map((_, e) =>
+    faceCoboundary.reduce((s, row) => s + row[e], 0)));
+
+  return Object.freeze({
+    kind: "signgraph.cellular2Complex",
+    vertices: Object.freeze([...vertices]),
+    edges: Object.freeze(edgeList),
+    faces: Object.freeze(faceList),
+    coboundary: Object.freeze({
+      zero: Object.freeze(edgeCoboundary),
+      one: Object.freeze(faceCoboundary),
+    }),
+    rank: Object.freeze({ zero: r0, one: r1 }),
+    betti: Object.freeze({ h0, h1, h2 }),
+    graphOnlyH1: edges.length - r0,
+    totalFaceBoundary,
+    totalFaceBoundaryCloses: totalFaceBoundary.every(value => value === 0),
+    vanishing: rankVanishing(h1),
+  });
+}
+
+/**
+ * Translational Burgers readout of an integral Z² edge 1-cochain.
+ * δ1b is its *local* face closure residue. When δ1b=0, b may still
+ * represent a nonzero H1 class: a global cycle with no local defect.
+ *
+ * A spanning-forest potential is constructed from the same admitted edges.
+ * Its residual is zero on every edge iff b=δ0φ; this witnesses exactness,
+ * rather than inferring it from ranks alone. Its chosen root gauge is 0.
+ * The exact integer carrier refuses values/results outside safe JSON
+ * integers; irrational, rotating or incommensurate frames require a
+ * separately specified affine transport, NOT a fabricated lattice vector.
+ */
+export function burgersOfComplex(complex, edgeDisplacements) {
+  if (complex?.kind !== "signgraph.cellular2Complex" ||
+      !Array.isArray(edgeDisplacements) ||
+      edgeDisplacements.length !== complex.edges.length)
+    throw new TypeError("burgersOfComplex: require an admitted complex and one vector per oriented edge");
+  const values = edgeDisplacements.map(vector => {
+    if (!Array.isArray(vector) || vector.length !== 2 ||
+        !vector.every(Number.isSafeInteger))
+      throw new TypeError("burgersOfComplex: every edge requires an exact safe-integer lattice vector");
+    return vector.map(BigInt);
+  });
+  const safe = n => {
+    if (n > BigInt(Number.MAX_SAFE_INTEGER) || n < BigInt(Number.MIN_SAFE_INTEGER))
+      throw new RangeError("burgersOfComplex: a vector coordinate left the safe integer range");
+    return Number(n);
+  };
+  const output = vector => Object.freeze(vector.map(safe));
+  const zero = () => [0n, 0n];
+
+  const faces = complex.faces.map((face, f) => {
+    const value = zero();
+    for (let e = 0; e < values.length; e++) {
+      const n = BigInt(complex.coboundary.one[f][e]);
+      value[0] += n * values[e][0]; value[1] += n * values[e][1];
+    }
+    return Object.freeze({ id: face.id, burgers: output(value), flat: value[0] === 0n && value[1] === 0n });
+  });
+  const localFlat = faces.every(face => face.flat);
+
+  const adjacent = complex.vertices.map(() => []);
+  complex.edges.forEach(({ fromIndex, toIndex }, e) => {
+    adjacent[fromIndex].push({ neighbor: toIndex, edge: e, sign: 1n });
+    adjacent[toIndex].push({ neighbor: fromIndex, edge: e, sign: -1n });
+  });
+  const potential = complex.vertices.map(() => null);
+  for (let root = 0; root < potential.length; root++) {
+    if (potential[root] !== null) continue;
+    potential[root] = zero();
+    const queue = [root];
+    for (let cursor = 0; cursor < queue.length; cursor++) {
+      const current = queue[cursor];
+      for (const { neighbor, edge, sign } of adjacent[current]) {
+        if (potential[neighbor] !== null) continue;
+        potential[neighbor] = [
+          potential[current][0] + sign * values[edge][0],
+          potential[current][1] + sign * values[edge][1],
+        ];
+        queue.push(neighbor);
+      }
+    }
+  }
+  const cycles = complex.edges.map(({ id, fromIndex, toIndex }, e) => {
+    const residual = [
+      potential[toIndex][0] - potential[fromIndex][0] - values[e][0],
+      potential[toIndex][1] - potential[fromIndex][1] - values[e][1],
+    ];
+    return Object.freeze({ edge: id, burgers: output(residual), flat: residual[0] === 0n && residual[1] === 0n });
+  });
+  const exact = cycles.every(cycle => cycle.flat);
+  const totalFaceBurgers = output(faces.reduce((acc, face) => [
+    acc[0] + BigInt(face.burgers[0]), acc[1] + BigInt(face.burgers[1]),
+  ], zero()));
+
+  return Object.freeze({
+    kind: "signgraph.burgers",
+    classification: !localFlat ? "local-defect" : !exact ? "global-holonomy" : "exact",
+    localFlat,
+    exact,
+    // Zero face curl + nonexact translation is a genuine global class.
+    nontrivialGlobalClass: localFlat && !exact,
+    faceResidues: Object.freeze(faces),
+    cycleResidues: Object.freeze(cycles.filter(cycle => !cycle.flat)),
+    potential: Object.freeze(potential.map(output)),
+    totalFaceBurgers,
+    conservation: Object.freeze({
+      applicable: complex.totalFaceBoundaryCloses,
+      holds: !complex.totalFaceBoundaryCloses ||
+        totalFaceBurgers.every(value => value === 0),
+    }),
+  });
+}
+
+
+/**
+ * The same admitted two-complex can transport full sixfold affine frames.
+ * Rotation and translation compose noncommutatively. In particular, a
+ * rotational disclination cannot be measured by summing edge translations.
+ *
+ * Each oriented edge supplies its C6 ⋉ Z² transform. A reversed face
+ * traversal uses the exact group inverse; a face's ordered word is its
+ * local affine holonomy. Tree-gauge cycle receipts give global transport
+ * obstructions only when every face's affine holonomy is trivial.
+ *
+ * The translational Burgers readout above is the abelian/zero-rotation
+ * restriction. A nonzero rotation has no gauge-invariant standalone
+ * translation component without choosing the reference frame.
+ */
+export function affineHolonomyOfComplex(complex, edgeMotions) {
+  if (complex?.kind !== "signgraph.cellular2Complex" ||
+      !Array.isArray(edgeMotions) || edgeMotions.length !== complex.edges.length)
+    throw new TypeError("affineHolonomyOfComplex: require an admitted two-complex and one motion per edge");
+  const motions = edgeMotions.map(g => sixfoldMotion(g?.rotation, g?.translation));
+  const flat = g => g.rotation === 0 && g.translation[0] === 0 && g.translation[1] === 0;
+  const compose = (word) => word.reduce(sixfoldCompose, sixfoldIdentity());
+  const faces = complex.faces.map(face => {
+    const holonomy = compose(face.boundary.map(step =>
+      step.direction === 1 ? motions[step.edgeIndex] : sixfoldInverse(motions[step.edgeIndex])));
+    return Object.freeze({ id: face.id, holonomy, flat: flat(holonomy) });
+  });
+  const localFlat = faces.every(face => face.flat);
+
+  const adjacent = complex.vertices.map(() => []);
+  complex.edges.forEach(({ fromIndex, toIndex }, e) => {
+    adjacent[fromIndex].push({ neighbor: toIndex, motion: motions[e] });
+    adjacent[toIndex].push({ neighbor: fromIndex, motion: sixfoldInverse(motions[e]) });
+  });
+  const potential = complex.vertices.map(() => null);
+  for (let root = 0; root < potential.length; root++) {
+    if (potential[root] !== null) continue;
+    potential[root] = sixfoldIdentity();
+    const queue = [root];
+    for (let cursor = 0; cursor < queue.length; cursor++) {
+      const at = queue[cursor];
+      for (const { neighbor, motion } of adjacent[at]) {
+        if (potential[neighbor] !== null) continue;
+        potential[neighbor] = sixfoldCompose(potential[at], motion);
+        queue.push(neighbor);
+      }
+    }
+  }
+  // Root-based loop: tree(root→from) · edge(from→to) · tree(to→root).
+  // A nontrivial loop need not be pure translation, and at nontrivial
+  // face holonomy the cycle readout is NOT a cohomology class.
+  const cycles = complex.edges.map(({ id, fromIndex, toIndex }, e) => {
+    const holonomy = sixfoldCompose(
+      sixfoldCompose(potential[fromIndex], motions[e]),
+      sixfoldInverse(potential[toIndex]));
+    return Object.freeze({ edge: id, holonomy, flat: flat(holonomy) });
+  });
+  const exact = cycles.every(cycle => cycle.flat);
+  return Object.freeze({
+    kind: "signgraph.affineHolonomy",
+    classification: !localFlat ? "local-affine-defect" :
+      !exact ? "global-affine-holonomy" : "affine-flat",
+    localFlat,
+    exact,
+    nontrivialGlobalClass: localFlat && !exact,
+    faceHolonomies: Object.freeze(faces),
+    cycleHolonomies: Object.freeze(cycles.filter(cycle => !cycle.flat)),
+    potential: Object.freeze(potential),
+  });
 }

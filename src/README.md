@@ -53,6 +53,31 @@ what networking is. Pure.
   floating-point symmetry round-off is averaged. Exact cohomology remains the separate rational
   operation. For inverse-covariance metrics these describe calibrated disagreement; they do not
   establish a probabilistic forecast or trading edge.
+- `cohomology` — `cellular2Complex({vertices, edges, faces})` extends the
+  existing graph incidence to **oriented 2-cells**. Every face must
+  attach by a composable closed walk, `δ¹δ⁰=0` is checked, and exact rational
+  ranks yield `b₀=V−rank δ⁰`, `b₁=E−rank δ⁰−rank δ¹`, and `b₂=F−rank δ¹`.
+  Graph-only `H¹` is reported separately: on the received J26 exterior it
+  is 7, but the face-filled 2-complex has `(b₀,b₁,b₂)=(1,0,1)`.
+  `burgersOfComplex` evaluates the integral translational edge 1-cochain:
+  `δ¹b` is a local face-closure defect, while a face-closed but nonexact
+  assignment witnesses global holonomy. The root-fixed spanning forest gives
+  a constructive vertex potential precisely when every edge's residual
+  vanishes. A closed oriented surface necessarily has zero *total* abelian
+  face charge, though individual faces may have opposite residues.
+- `paths` / `cohomology` — `sixfoldMotion`, `sixfoldCompose`,
+  `sixfoldInverse`, `sixfoldDevelop` and `affineHolonomyOfComplex`
+  recover the **nonabelian** `ℤ² ⋊ C₆` transport of
+  `Obsmetrologia.AperiodicOrder.Defect.Disclination`. In particular the
+  Science 5–7 word at separation `s` has neutral rotation and Burgers vector
+  `(0,-s)`, whereas an unpaired five-site carries rotational residue.
+  A face with nontrivial affine commutator cannot be declared flat merely
+  because its plain translations sum to zero. The ordered transport is
+  frame-relative; only triviality and conjugacy data survive a base-frame
+  change. This sixfold **planar** crystal carrier is not yet an embedding
+  or tiling theorem for the **three-dimensional** J26 gyrobifastigium,
+  and neither kind of topological defect has been proved equivalent
+  to thermodynamic temperature.
 - `relation-adapters` — projections from already-parsed Markdown, JavaScript,
   and EAVT evidence into relation observations.
 - `pam` — graph-backed predicate-algebra modeling over EAVT's relation web
