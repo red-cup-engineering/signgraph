@@ -12,6 +12,14 @@ what networking is. Pure.
 
 ## What lives here
 
+- `token-sheaf` — the sheaf of tellings over SignCell's token frame: the
+  section at a token is what is told of it, restriction runs along
+  specialization, and `inherited(frame, token)` glues the sections of the
+  token's generalizations by knowledge join, holding a disagreement as a
+  contested cell with each side's generalizations (the gluing obstruction).
+  Claim by claim it is SignChain's possibilizing of the told fiber. Heyting
+  algebra (SignCell), fiber algebra (SignChain), sheaf (here): the
+  dependencies run that way only.
 - `cell-graph` — `cellGraph(cells, observations)` builds the Chu
   relation of held SignCells under named, total observations
   (`{ name, evaluate(cell) }`) using metrologic's `chuSpaceOfEntries`

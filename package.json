@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "SignCell and SignChain sites, transport, relations and graph projections.",
   "files": [
@@ -24,6 +24,7 @@
     "./diagram-svg": "./src/diagram-svg.mjs",
     "./diagram-sequence": "./src/diagram-sequence.mjs",
     "./site": "./src/site.mjs",
+    "./token-sheaf": "./src/token-sheaf.mjs",
     "./valuation": "./src/valuation.mjs",
     "./fiber": "./src/fiber.mjs",
     "./cohomology": "./src/cohomology.mjs",
@@ -40,8 +41,8 @@
     "@red-cup-engineering/xml-document-rendering-service": "0.1.7",
     "@red-cup-engineering/computer-data-engineering-services-section": "0.2.0",
     "@red-cup-engineering/exact-number-data-service": "0.1.1",
-    "@red-cup-engineering/signcell": "0.2.0",
-    "@red-cup-engineering/signchain": "0.1.0",
+    "@red-cup-engineering/signcell": "0.4.0",
+    "@red-cup-engineering/signchain": "0.2.0",
     "@red-cup-engineering/json-schema-services-section": "0.5.0",
     "@red-cup-engineering/computer-content-address-engineering-services-section": "0.2.0"
   },
