@@ -5,6 +5,7 @@ import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
   apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
+  weightedSheafDirichlet, weightedSheafLaplacian,
 } from "../src/cellular-sheaf.mjs";
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} !~ ${b}`);
@@ -343,4 +344,40 @@ test("connected bar exchange actually fabricates a minimal count-preserving rigi
   assert.throws(() => planConnectedBarExchanges({
     points, beforeBars: rigid, afterBars: [...flexible.slice(0,-1), [1,0]], dimension: 2,
   }), /duplicate undirected bar/);
+});
+
+test("exact large rational restrictions preserve H⁰ even when numeric projection refuses", () => {
+  const huge = 10n ** 400n;
+  const restriction = `${huge + 1n}/${huge}`;
+  const s = cellularSheaf({
+    vertices: [{ id: "a", dim: 1 }, { id: "b", dim: 1 }],
+    edges: [{ id: "e", from: "a", to: "b", dim: 1,
+      restrict: { from: [[restriction]], to: [[1]] } }],
+  });
+  assert.equal(s.exact, true, "exact cohomology must not be excluded by host-double overflow");
+  assert.equal(cellularSheafCohomology(s).h0, 1);
+  assert.equal(cellularSheafCohomology(s).h1, 0);
+  assert.throws(() => coboundary(s), /exact restriction cannot be represented in finite host arithmetic/);
+  assert.throws(() => sheafLaplacian(s), /exact restriction cannot be represented in finite host arithmetic/);
+});
+
+test("numeric sheaf and weighted Dirichlet receipts reject overflow instead of fabricating Infinity", () => {
+  const high = cellularSheaf({
+    vertices: [{ id: "a", dim: 1 }, { id: "b", dim: 1 }],
+    edges: [{ id: "e", from: "a", to: "b", dim: 1,
+      restrict: { from: [[1e200]], to: [[1e200]] } }],
+  });
+  assert.throws(() => sheafLaplacian(high), /numerical Laplacian exceeded finite host arithmetic/);
+  assert.throws(() => weightedSheafLaplacian(high, [[[1]]]), /numerical Laplacian exceeded finite host arithmetic/);
+
+  const s = constantSheaf(["a", "b"], [["a", "b"]]);
+  assert.equal(weightedSheafDirichlet(s, [[[1]]], [0, 2]).energy, 4);
+  assert.throws(
+    () => weightedSheafDirichlet(s, [[[1]]], [1e308, -1e308]),
+    /numerical coboundary residual is not finite/,
+  );
+  assert.throws(
+    () => weightedSheafDirichlet(s, [[[1e308]]], [0, 1e100]),
+    /numerical edge energy exceeded finite host arithmetic/,
+  );
 });
