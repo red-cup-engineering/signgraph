@@ -102,6 +102,42 @@ test("Hodge degree 0: H¹ = 0 sheaf, diffusion limit is a global section in ker 
   near(hr.section[3], hr.section[0], 1e-8);
 });
 
+test("diffuse: pinned testimony is order-independent, identical repetition is idempotent, and incompatibility remains visible", () => {
+  const s = constantSheaf(["a", "b"], [["a", "b"]]);
+  const boundary = [{ vertex: "a", value: 0 }, { vertex: "b", value: 10 }];
+  const conflict = diffuse(s, [3, 7], { fixed: boundary });
+  assert.equal(conflict.converged, true, "all pinned coordinates are stationary");
+  assert.equal(conflict.compatible, false, "stationary incompatible pins are not a global section");
+  near(conflict.residual, 10);
+  assert.deepEqual(diffuse(s, [3, 7], { fixed: [...boundary].reverse() }).section, conflict.section);
+  const repeated = diffuse(s, [3, 7], { fixed: [{ vertex: "a", value: 0 }, { vertex: "a", value: 0 }] });
+  assert.deepEqual(repeated.section, diffuse(s, [3, 7], { fixed: [{ vertex: "a", value: 0 }] }).section);
+  for (const fixed of [
+    [{ vertex: "a", value: 0 }, { vertex: "a", value: 1 }],
+    [{ vertex: "a", value: 1 }, { vertex: "a", value: 0 }],
+  ]) assert.throws(() => diffuse(s, [3, 7], { fixed }), /conflicting duplicate pinned/);
+  assert.throws(() => diffuse(s, [3, 7], { fixed: [{ vertex: "a", value: Infinity }] }), /pinned stalk values/);
+});
+
+test("diffuse: rejects unstable steps and non-finite inputs instead of certifying numeric settlement", () => {
+  const s = constantSheaf(["a", "b"], [["a", "b"]]);
+  const ordinary = diffuse(s, [0, 10]);
+  assert.equal(ordinary.converged, true);
+  assert.equal(ordinary.compatible, true);
+  near(ordinary.section[0], 5); near(ordinary.section[1], 5);
+  for (const step of [-1, 0, 1, 10, NaN, Infinity]) {
+    assert.throws(() => diffuse(s, [0, 10], { step }), /Gershgorin bound/);
+  }
+  assert.ok(diffuse(s, [0, 10], { step: 0.8 }).converged);
+  for (const value of [NaN, Infinity, "0"]) {
+    assert.throws(() => diffuse(s, [value, 10]), /initial stalk values/);
+  }
+  assert.throws(() => diffuse(s, [0, 10], { tolerance: -1 }), /tolerance/);
+  assert.throws(() => diffuse(s, [0, 10], { maxSteps: -1 }), /maxSteps/);
+  assert.throws(() => diffuse(s, [0, 10], { maxSteps: 1.5 }), /maxSteps/);
+  assert.throws(() => diffuse(s, [1e308, -1e308]), /non-finite numeric/);
+});
+
 test("diffusion with pinned vertices: boundary conditions are admitted evidence", () => {
   const s = constantSheaf(["a", "b", "c"], [["a", "b"], ["b", "c"]]);
   const r = diffuse(s, cochain(s, []), { fixed: [{ vertex: "a", value: 0 }, { vertex: "c", value: 10 }], tolerance: 1e-12 });

@@ -299,33 +299,72 @@ export function gershgorinBound(laplacian) {
 
 /** Heat flow x ← x − αLx from x₀, with optional pinned vertex values (boundary conditions, admitted
  *  evidence: `fixed` is [{ vertex, value }], held constant). α defaults to 1 / Gershgorin bound, which is
- *  stable (α ≤ 2/λ_max) and makes the energy ½‖δx‖² fall monotonically. Stops when the free gradient
+ *  conservative and energy-stable. Explicit steps must satisfy α·Gershgorin(L) < 2. Stops when the free gradient
  *  ‖L x‖ falls to `tolerance`, or after `maxSteps`. Returns
  *  { section, residual: ‖δx‖, gradient, steps, converged, firings, crossings }: `firings` are the steps at which
  *  some edge's residual ‖(δx)_e‖ crossed `tolerance`; `crossings` names those edges and directions. */
 export function diffuse(sheaf, x0, { step, tolerance = 1e-12, maxSteps = 100000, fixed = [] } = {}) {
-  if (x0.length !== sheaf.c0) throw new RangeError("diffuse: x0 has the wrong length");
+  if (x0?.length !== sheaf.c0) throw new RangeError("diffuse: x0 has the wrong length");
+  if (Array.from(x0).some((v) => typeof v !== "number" || !Number.isFinite(v))) {
+    throw new RangeError("diffuse: initial stalk values must be finite numbers");
+  }
+  if (typeof tolerance !== "number" || !Number.isFinite(tolerance) || tolerance < 0) {
+    throw new RangeError("diffuse: tolerance must be finite and non-negative");
+  }
+  if (!Number.isSafeInteger(maxSteps) || maxSteps < 0) {
+    throw new RangeError("diffuse: maxSteps must be a non-negative safe integer");
+  }
+  if (!Array.isArray(fixed)) throw new TypeError("diffuse: fixed must be an array of vertex readings");
   const delta = coboundary(sheaf), laplacian = sheafLaplacian(sheaf);
-  const alpha = step ?? (() => { const bound = gershgorinBound(laplacian); return bound === 0 ? 0 : 1 / bound; })();
+  const bound = gershgorinBound(laplacian);
+  if (!Number.isFinite(bound)) throw new RangeError("diffuse: Laplacian bound is not finite");
+  const alpha = step ?? (bound === 0 ? 0 : 1 / bound);
+  // Since 0 ≤ λ_max(L) ≤ bound, 0 < alpha*bound < 2 guarantees contraction of
+  // every nonzero Laplacian mode. A zero Laplacian needs no step at all.
+  if (typeof alpha !== "number" || !Number.isFinite(alpha) ||
+      (bound > 0 ? !(alpha > 0 && alpha * bound < 2) : alpha < 0)) {
+    throw new RangeError("diffuse: step must satisfy 0 < step * Gershgorin bound < 2 (or be non-negative for a zero Laplacian)");
+  }
   const pinned = new Array(sheaf.c0).fill(false);
+  const seen = new Map();
   const x = [...x0];
   for (const { vertex, value } of fixed) {
     const index = sheaf.vertices.findIndex((candidate) => coincidenceKey(candidate.id) === coincidenceKey(vertex));
     if (index < 0) throw new RangeError("diffuse: unknown pinned vertex");
     const values = Array.isArray(value) ? value : [value];
     if (values.length !== sheaf.vertices[index].dim) throw new RangeError("diffuse: pinned value has the wrong dimension");
+    if (values.some((v) => typeof v !== "number" || !Number.isFinite(v))) {
+      throw new RangeError("diffuse: pinned stalk values must be finite numbers");
+    }
+    const prior = seen.get(index);
+    if (prior !== undefined) {
+      if (values.some((v, k) => v !== prior[k])) throw new RangeError("diffuse: conflicting duplicate pinned vertex readings");
+      continue;
+    }
+    seen.set(index, [...values]);
     values.forEach((v, k) => { x[sheaf.vertexOffsets[index] + k] = v; pinned[sheaf.vertexOffsets[index] + k] = true; });
   }
+  const finiteNorm = (values) => {
+    if (values.some((v) => !Number.isFinite(v))) throw new RangeError("diffuse: non-finite numeric state");
+    const length = norm(values);
+    if (!Number.isFinite(length)) throw new RangeError("diffuse: non-finite numeric residual");
+    return length;
+  };
   const edgeResiduals = (vector) => {
     const d = apply(delta, vector);
-    return sheaf.edges.map((edge, e) => norm(d.slice(sheaf.edgeOffsets[e], sheaf.edgeOffsets[e] + edge.dim)));
+    return sheaf.edges.map((edge, e) => finiteNorm(d.slice(sheaf.edgeOffsets[e], sheaf.edgeOffsets[e] + edge.dim)));
   };
-  const freeGradient = (vector) => { const g = apply(laplacian, vector); return g.map((v, i) => (pinned[i] ? 0 : v)); };
+  const freeGradient = (vector) => {
+    const g = apply(laplacian, vector);
+    if (g.some((v) => !Number.isFinite(v))) throw new RangeError("diffuse: non-finite numeric gradient");
+    return g.map((v, i) => (pinned[i] ? 0 : v));
+  };
   let settled = edgeResiduals(x).map((r) => r <= tolerance);
   const firings = [], crossings = [];
-  let steps = 0, gradient = freeGradient(x), converged = norm(gradient) <= tolerance;
+  let steps = 0, gradient = freeGradient(x), converged = finiteNorm(gradient) <= tolerance;
   while (!converged && steps < maxSteps) {
     for (let i = 0; i < x.length; i += 1) x[i] -= alpha * gradient[i];
+    if (x.some((v) => !Number.isFinite(v))) throw new RangeError("diffuse: non-finite numeric state");
     steps += 1;
     const residuals = edgeResiduals(x);
     let fired = false;
@@ -335,12 +374,19 @@ export function diffuse(sheaf, x0, { step, tolerance = 1e-12, maxSteps = 100000,
     });
     if (fired) firings.push(steps);
     gradient = freeGradient(x);
-    converged = norm(gradient) <= tolerance;
+    converged = finiteNorm(gradient) <= tolerance;
   }
-  return Object.freeze({ section: Object.freeze(x), residual: norm(apply(delta, x)), gradient: norm(gradient), steps, converged, firings: Object.freeze(firings), crossings: Object.freeze(crossings) });
+  const residual = finiteNorm(apply(delta, x));
+  // Stationarity under pinned Dirichlet conditions is not necessarily a global
+  // section: incompatible pins can converge with nonzero coboundary.
+  return Object.freeze({
+    section: Object.freeze(x), residual, gradient: finiteNorm(gradient),
+    compatible: residual <= tolerance, steps, converged,
+    firings: Object.freeze(firings), crossings: Object.freeze(crossings),
+  });
 }
 
-/** The harmonic section: the heat-flow limit of x₀, its orthogonal projection onto H⁰ = ker L. */
+/** The free heat-flow limit projects to H⁰; incompatible pinned conditions may obstruct global gluing. */
 export const harmonicProjection = (sheaf, x0, options = {}) => diffuse(sheaf, x0, options);
 
 /** The degree-0 Hodge check: for a sheaf, the diffusion limit of x₀ lies in ker L and, when H¹ = 0 (exact),
