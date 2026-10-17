@@ -405,6 +405,22 @@ export function unfoldArticulatingIncidenceTower(carrier,options={}){
       retractionAfterInclusionIsIdentity:true,
       inclusionAfterRetractionIsIdentity:false,
       distinctNewSourcePositions:2,
+      // Kernel of the chosen vertex projection: exactly three distinct
+      // source-position occurrences project onto the previous claim.
+      // Two spanning-tree identifications WOULD present this quotient.
+      // Neither is a source-proved Quot.sound use or an energy event.
+      projectionKernel:freeze({
+        fiber:freeze([oldV-1,oldV,oldV+1]),
+        image:oldV-1,
+        potentialIdentificationPairs:freeze([
+          freeze([oldV-1,oldV]),freeze([oldV-1,oldV+1]),
+        ]),
+        independentMerges:2,
+        residualIdentifications:0,
+        justifiedQuotSoundWits:null,
+        physicallyDissipatedEnergy:null,
+        scope:"only the kernel equivalence of the selected readout retraction",
+      }),
       scope:"a chosen finite structural contraction, not inverse of Articulating or quotient-equality proof",
     });
   };
