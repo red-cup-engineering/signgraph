@@ -10,6 +10,7 @@ import { utterance, isUtterance, formalBoundaryOfUtterance }
 import { semanticId }
   from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
 import { cellular2Complex } from "./cohomology.mjs";
+import * as chain from "@red-cup-engineering/signchain/bilattice";
 
 const KIND="signgraph.markGeneratedCellGluing.v1";
 const LIMITS=Object.freeze({utterances:32,identifications:128,faces:32});
@@ -124,5 +125,65 @@ export function glueMarkUtteranceCells(raw) {
       equalityNotAssumed:true,
     }),
     scope:"exact finite presented source quotient and cellular chain complex, not physical Landauer dissipation, externally valid identity or manifold claim",
+  });
+}
+
+
+/**
+ * Couple a presented port identification to SignChain's ACTUAL four-corner
+ * evidence adjudication. This is a guarded comparison entry, not a
+ * declaration that positive testimony proves equality or pays physical heat.
+ *
+ * Input judgment is an original SignCell cell whose subject and object must
+ * equal the precise positional port occurrences named by the identification,
+ * and whose predicate is the literal "identifies". SignChain refuses missing,
+ * opposed, contested or value-only presumed relations before any quotient
+ * topology is constructed. Its original witnesses remain in the output.
+ *
+ * In particular the returned quotient is CONDITIONAL on those presented
+ * judgments until a competent proof supplies the relation they purport to
+ * witness. This function cannot call Quot.sound or authenticate a witness.
+ */
+export function glueAdjudicatedMarkUtteranceCells(raw) {
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+    Object.keys(raw).some(k=>!["utterances","identifications","faces"].includes(k))||
+    !Array.isArray(raw.identifications))
+    throw new TypeError("adjudicated Mark gluing requires a finite source and identification judgments");
+  const adjudicator=chain.adjudicateCellEvidence;
+  if(typeof adjudicator!=="function"){
+    const error=new TypeError("SignGraph needs the installed source-owning SignChain evidence adjudicator");
+    error.code="SIGNGRAPH_SIGNCHAIN_ADJUDICATION_UNAVAILABLE";
+    throw error;
+  }
+  const examined=raw.identifications.map((item,index)=>{
+    if(!item||typeof item!=="object"||Array.isArray(item)||
+       Object.keys(item).sort().join("|")!=="judgment|left|right")
+      throw new TypeError("adjudicated gluing requires left, right and original source judgment");
+    const left=item.left,right=item.right;
+    if(!Array.isArray(left)||!Array.isArray(right)||left.length!==2||right.length!==2)
+      throw new TypeError("adjudicated gluing names source positions");
+    const posture=adjudicator(item.judgment);
+    if(item.judgment?.subject!==name(left[0],left[1])||
+       item.judgment?.predicate!=="identifies"||
+       item.judgment?.object!==name(right[0],right[1]))
+      throw new TypeError("evidence must explicitly name the very same two positional source ports");
+    if(!posture.identification.eligibleForRelationProof)
+      throw new TypeError("unobserved, denied, contested or unmeasured identification refuses gluing");
+    return freeze({index,left,right,posture});
+  });
+  const conditional=glueMarkUtteranceCells({
+    utterances:raw.utterances,
+    identifications:examined.map(value=>({left:value.left,right:value.right})),
+    ...(raw.faces===undefined?{}:{faces:raw.faces}),
+  });
+  return freeze({
+    ...conditional,
+    kind:"signgraph.adjudicatedMarkCellGluing.v1",
+    judgments:freeze(examined.map(value=>value.posture)),
+    relationAdmission:freeze({
+      eligibleForRelationProof:true,
+      quotientAdmitted:false,
+      meaning:"only original unopposed measured SignChain testimony; competent relation proof and its Quot.sound passage remain unreceived",
+    }),
   });
 }
