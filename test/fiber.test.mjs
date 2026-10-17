@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { at as chuAt, chuSpace } from "@red-cup-engineering/metrologic/chu";
-import { readingFamilies } from "@red-cup-engineering/computer-data-engineering-services-section/four";
-import { converse, fiberFusion, fiberResiduum, fiberLeqTruth, predicateFiber, specialization } from "../src/fiber.mjs";
+import { readingFamilies, fusionReading, residuumReading } from "@red-cup-engineering/computer-data-engineering-services-section/four";
+import { allPairs, converse, fiberFusion, fiberResiduum, fiberLeqTruth, predicateFiber, specialization } from "../src/fiber.mjs";
 
 test("a predicate fiber owns its addressed context, independent of mutable source references", () => {
   const s = { id: "s" }, o = { id: "o" }, label = { p: "links" }, entities = [s, o], pairs = [[s, o]];
@@ -63,4 +63,44 @@ test("cellwise FOUR operations refuse foreign entity contexts while retaining sp
   assert.equal(fiberResiduum(local, sparse).kind, "signgraph.fiber");
   assert.equal(typeof fiberLeqTruth(local, sparse), "boolean");
   assert.throws(() => fiberFusion(local, {}), /two predicate fibers are required/);
+});
+
+test("sparse FOUR fibers yield complete pointwise fusion and residuation over the addressed context", () => {
+  // In the native bilattice, absurd⊗absurd = active and
+  // absurd⊸absurd = potential. A sparse left-hand support must not
+  // hide either result on otherwise unlisted pairs.
+  const entities = ["A", "B"];
+  const left = predicateFiber("jurisdiction", entities, () => "potential", [["A", "B"]]);
+  const right = predicateFiber("jurisdiction", ["B", "A"], () => "active", [["B", "A"]]);
+  const fused = fiberFusion(left, right);
+  const reversed = fiberFusion(right, left);
+  const residual = fiberResiduum(left, right);
+  assert.deepEqual(fused.pairs, allPairs(entities));
+  assert.deepEqual(residual.pairs, allPairs(entities));
+  assert.equal(fused.at("A", "A"), "active");
+  assert.equal(residual.at("A", "A"), "potential");
+  for (const [s, o] of allPairs(entities)) {
+    assert.equal(fused.at(s, o), fusionReading(left.at(s, o), right.at(s, o)));
+    assert.equal(reversed.at(s, o), fused.at(s, o), "fusion commutes despite differing source supports");
+    assert.equal(residual.at(s, o), residuumReading(left.at(s, o), right.at(s, o)));
+  }
+  // Caller-specified restriction still selects a lawful smaller site.
+  const restricted = fiberFusion(left, right, [["A", "B"]]);
+  assert.deepEqual(restricted.pairs, [["A", "B"]]);
+  assert.equal(restricted.at("A", "A"), "absurd");
+});
+
+test("truth-order comparison covers omitted local pairs and refuses mislabeled predicates", () => {
+  const small = predicateFiber("jurisdiction", ["A", "B"], () => "absurd", [["A", "B"]]);
+  const whole = predicateFiber("jurisdiction", ["A", "B"],
+    (s, o) => s === "A" && o === "B" ? "absurd" : "active");
+  // On (B,A), absurd ≤t active is false even though the left local
+  // support hides that coordinate. A scoped query may still restrict.
+  assert.equal(fiberLeqTruth(small, whole), false);
+  assert.equal(fiberLeqTruth(small, whole, [["A", "B"]]), true);
+  const foreignLabel = predicateFiber("sovereignty", ["A", "B"], () => "potential");
+  for (const operation of [fiberFusion, fiberResiduum, fiberLeqTruth]) {
+    assert.throws(() => operation(small, foreignLabel), /distinct predicate labels/);
+    assert.throws(() => operation(foreignLabel, small), /distinct predicate labels/);
+  }
 });
