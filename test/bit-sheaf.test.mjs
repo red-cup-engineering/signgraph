@@ -59,3 +59,29 @@ test("Data-owned chart resources restrict and glue without a secondary binary en
   assert.throws(()=>bitPatchOfResource({...admitted}),/admitted mark resource/);
   assert.throws(()=>bitPatchOfResource({kind:"lspace.mark-resource",address:admitted.address,bitLength:16}),/admitted mark resource/);
 });
+
+test("admission refuses getter-backed or sparse patches before sheaf gluing", () => {
+  const full=bitPatchOfBytes(Uint8Array.of(0xa5));
+  let reads=0;
+  const forged={...full};
+  Object.defineProperty(forged,"address",{
+    enumerable:true,
+    get() { reads++; return reads === 1 ? full.address : makeNiUri(Uint8Array.of(0x5a)); },
+  });
+  assert.throws(()=>glueBitPatches([full,forged]),/own data fields/);
+  assert.throws(()=>restrictBitPatch(forged,{fromBit:0,bitCount:1}),/own data fields/);
+  assert.equal(reads,0,"gluing never evaluates an untrusted address getter");
+
+  const unstable=[...full.bits];
+  Object.defineProperty(unstable, "0", {
+    enumerable:true, configurable:true,
+    get() { reads++; return reads % 2; },
+  });
+  assert.throws(()=>glueBitPatches([{...full,bits:unstable}]),/own data slot/);
+  assert.equal(reads,0,"gluing never evaluates an untrusted bit getter");
+
+  const sparse=[...full.bits];
+  delete sparse[0];
+  assert.throws(()=>glueBitPatches([{...full,bits:sparse}]),/own data slot/);
+  assert.deepEqual(glueBitPatches([full]).bits,full.bits);
+});

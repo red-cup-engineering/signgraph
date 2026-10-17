@@ -17,12 +17,34 @@ function finiteInterval(start, count, total) {
       count > MAX_BIT_SECTION || start > total || count > total - start)
     throw new RangeError("bit sheaf: invalid or unbounded finite interval");
 }
+// Admission snapshots the exact patch coordinates and bit slots before any
+// gluing or restriction. Accessors would make an NI/cover assertion change
+// between admission and use; patch data cannot depend on caller side effects.
+function patchField(p, name) {
+  const field = Object.getOwnPropertyDescriptor(p, name);
+  if (!field || !Object.hasOwn(field, "value"))
+    fail("patch coordinates and bits require own data fields");
+  return field.value;
+}
 function admitPatch(p) {
-  if (p === null || typeof p !== "object" || !isNiUri(p.address) || !Array.isArray(p.bits))
+  if (p === null || typeof p !== "object")
     fail("a canonical NI address and bit values are required");
-  finiteInterval(p.fromBit, p.bits.length, p.totalBits);
-  if (p.bits.some(b => b !== 0 && b !== 1)) fail("each bit must be 0 or 1");
-  return p;
+  const address = patchField(p, "address");
+  const fromBit = patchField(p, "fromBit");
+  const totalBits = patchField(p, "totalBits");
+  const source = patchField(p, "bits");
+  if (!isNiUri(address) || !Array.isArray(source))
+    fail("a canonical NI address and bit values are required");
+  finiteInterval(fromBit, source.length, totalBits);
+  const bits = new Array(source.length);
+  for (let i = 0; i < bits.length; i++) {
+    const field = Object.getOwnPropertyDescriptor(source, String(i));
+    if (!field || !Object.hasOwn(field, "value") ||
+        (field.value !== 0 && field.value !== 1))
+      fail("each bit must be 0 or 1 in an own data slot");
+    bits[i] = field.value;
+  }
+  return patch(address, totalBits, fromBit, bits);
 }
 const patch = (address,totalBits,fromBit,bits) =>
   Object.freeze({ kind:"signgraph.bitPatch",address,totalBits,fromBit,bits:Object.freeze([...bits]) });
@@ -48,12 +70,12 @@ export function bitPatchOfBytes(bytes,selection={}) {
 
 /** Functorial restriction to a contained interval of the same address. */
 export function restrictBitPatch(source,{fromBit,bitCount}) {
-  admitPatch(source);
-  finiteInterval(fromBit,bitCount,source.totalBits);
-  if (fromBit<source.fromBit || fromBit+bitCount>source.fromBit+source.bits.length)
+  const admitted=admitPatch(source);
+  finiteInterval(fromBit,bitCount,admitted.totalBits);
+  if (fromBit<admitted.fromBit || fromBit+bitCount>admitted.fromBit+admitted.bits.length)
     throw new RangeError("bit sheaf: restriction outside the patch");
-  const start=fromBit-source.fromBit;
-  return patch(source.address,source.totalBits,fromBit,source.bits.slice(start,start+bitCount));
+  const start=fromBit-admitted.fromBit;
+  return patch(admitted.address,admitted.totalBits,fromBit,admitted.bits.slice(start,start+bitCount));
 }
 const obstruction=(reason,extras={})=>Object.freeze({kind:"signgraph.bitSheaf:obstruction",reason,...extras});
 
@@ -63,13 +85,13 @@ const obstruction=(reason,extras={})=>Object.freeze({kind:"signgraph.bitSheaf:ob
 export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval}={}) {
   if (!Array.isArray(patches) || patches.length<1 || patches.length>MAX_BIT_SECTION)
     fail("a nonempty bounded family of patches is required");
-  patches.forEach(admitPatch);
-  const {address,totalBits}=patches[0];
-  if (patches.some(p=>p.address!==address || p.totalBits!==totalBits))
+  const admitted=patches.map(admitPatch);
+  const {address,totalBits}=admitted[0];
+  if (admitted.some(p=>p.address!==address || p.totalBits!==totalBits))
     return obstruction("different-source-content");
-  const start=fromBit??Math.min(...patches.map(p=>p.fromBit));
+  const start=fromBit??Math.min(...admitted.map(p=>p.fromBit));
   const end=bitCount===undefined
-    ?Math.max(...patches.map(p=>p.fromBit+p.bits.length)):start+bitCount;
+    ?Math.max(...admitted.map(p=>p.fromBit+p.bits.length)):start+bitCount;
   finiteInterval(start,end-start,totalBits);
   if (protectedInterval!==undefined) {
     if (!Array.isArray(protectedInterval) || protectedInterval.length!==2 ||
@@ -78,11 +100,11 @@ export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval}={}) 
         protectedInterval[0]<start || protectedInterval[1]>end)
       throw new RangeError("bit sheaf: protected interval outside target");
     const [a,b]=protectedInterval;
-    if (!patches.some(p=>p.fromBit<=a && p.fromBit+p.bits.length>=b))
+    if (!admitted.some(p=>p.fromBit<=a && p.fromBit+p.bits.length>=b))
       return obstruction("protected-region-split",{protectedInterval:Object.freeze([...protectedInterval])});
   }
   const values=new Array(end-start);
-  for (const local of patches) {
+  for (const local of admitted) {
     const left=Math.max(start,local.fromBit),right=Math.min(end,local.fromBit+local.bits.length);
     for(let at=left;at<right;at++) {
       const i=at-start,v=local.bits[at-local.fromBit];
@@ -94,5 +116,5 @@ export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval}={}) 
   const missing=values.findIndex(v=>v===undefined);
   if (missing!==-1) return obstruction("uncovered-bit",{atBit:start+missing});
   return Object.freeze({...patch(address,totalBits,start,values),
-    kind:"signgraph.bitSheaf:section",coverCount:patches.length});
+    kind:"signgraph.bitSheaf:section",coverCount:admitted.length});
 }
