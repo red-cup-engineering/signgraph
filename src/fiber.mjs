@@ -51,12 +51,23 @@ export function predicateFiber(label, entities, read, pairs = allPairs(entities)
     row.add(object);
     return slot;
   });
-  const values = slots.map((pair) => {
+  // Index exactly the admitted content-addressed pairs. Repeated local/global
+  // restriction readings must not scan all n² cells of a finite Chu/FCA site:
+  // that previously made pointwise fusion, residuation and sheaf projections
+  // superlinear in the *number of queries*, even after pairing was settled.
+  // A nested map preserves distinct (subject, object) coordinates without
+  // inventing a separator that could collide inside canonical CBOR bytes.
+  const readings = new Map();
+  for (const pair of slots) {
     const reading = read(pair[0], pair[1]) ?? knowledgeBottom();
     if (!isReading(reading)) throw new TypeError("predicateFiber: a pair must read a FOUR value");
-    return Object.freeze({ pair, value: reading });
-  });
-  const at = (subject, object) => values.find((entry) => samePair(entry.pair, [subject, object]))?.value ?? knowledgeBottom();
+    const subject = coincidenceKey(pair[0]), object = coincidenceKey(pair[1]);
+    let row = readings.get(subject);
+    if (row === undefined) { row = new Map(); readings.set(subject, row); }
+    row.set(object, reading);
+  }
+  const at = (subject, object) =>
+    readings.get(coincidenceKey(subject))?.get(coincidenceKey(object)) ?? knowledgeBottom();
   return Object.freeze({ kind: "signgraph.fiber", label: canonicalCarrier(label), entities: domain, pairs: Object.freeze(slots), at });
 }
 
