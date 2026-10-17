@@ -232,11 +232,6 @@ export function diagramToSvgDataform(diagram                          )         
   });
 }
 
-function cleanId(id        )         {
-  const cleaned = id.replace(/[^A-Za-z0-9_]/g, "_");
-  return /^[A-Za-z_]/.test(cleaned) ? cleaned : `n_${cleaned}`;
-}
-
 function mermaidQuote(value        )         {
   return JSON.stringify(value).replace(/`/g, "\\`");
 }
@@ -257,11 +252,19 @@ export function writeMermaid(diagram                          )         {
     ...diagram.morphisms.map((morphism) => `${MORPHISM_PREFIX}${canonical(morphism)}`),
     "graph TD",
   ];
-  const ids = new Map(diagram.objects.map((object) => [object.id, cleanId(object.id)]         ));
+  // Diagram positions are injective aliases of actual declared objects,
+  // NOT lossy sanitizations of opaque Mark/NI source addresses. Preserve the
+  // source labels and round-trip metadata; do not fabricate foreign endpoints.
+  const ids = new Map(diagram.objects.map(object => object.id).sort()
+    .map((id, index) => [id, `m${index}`]));
+  if (ids.size !== diagram.objects.length)
+    throw new TypeError("diagram Mermaid: object identities must be distinct");
   for (const object of diagram.objects) lines.push(`  ${ids.get(object.id)}[${mermaidQuote(object.label)}]`);
   for (const morphism of diagram.morphisms) {
-    const from = ids.get(morphism.from) ?? cleanId(morphism.from);
-    const to = ids.get(morphism.to) ?? cleanId(morphism.to);
+    const from = ids.get(morphism.from);
+    const to = ids.get(morphism.to);
+    if (from === undefined || to === undefined)
+      throw new TypeError("diagram Mermaid: morphism must connect declared objects");
     lines.push(`  ${from} -->|${morphism.kind}: ${morphism.label}| ${to}`);
   }
   return `${lines.join("\n")}\n`;
