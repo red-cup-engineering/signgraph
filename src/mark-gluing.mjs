@@ -187,3 +187,50 @@ export function glueAdjudicatedMarkUtteranceCells(raw) {
     }),
   });
 }
+
+
+/**
+ * Graph-gradient readout on already generated/conditionally glued Mark cells.
+ *
+ * The original SignGraph cellular2Complex owns d0 and d1 and has enforced
+ * d1*d0=0. A scalar 0-cochain is an *admitted external readout*, not a new
+ * primitive Mark identity, source ascent or an order-theoretic gradient.
+ * This operation computes d0(f), and exhibits d1(d0(f))=0.
+ *
+ * A kinetic vector field, metric or Lyapunov energy needs separate input and
+ * proof. A phase's Articulating tower depth is not the graph gradient.
+ */
+export function gradientOfGluedMarkCells(input) {
+  if(!input||typeof input!=="object"||Array.isArray(input)||
+     Object.keys(input).some(k=>!["utterances","identifications","faces","potentials"].includes(k)))
+    throw new TypeError("Mark gradient requires a finite generated cell presentation and scalar potential");
+  const {potentials}=input;
+  const glued=glueMarkUtteranceCells({
+    utterances:input.utterances,
+    ...(input.identifications===undefined?{}:{identifications:input.identifications}),
+    ...(input.faces===undefined?{}:{faces:input.faces}),
+  });
+  if(!Array.isArray(potentials)||potentials.length!==glued.topology.vertices.length||
+     !potentials.every(Number.isSafeInteger))
+    throw new TypeError("Mark gradient requires one bounded integer scalar per generated quotient vertex");
+  const readable=n=>{
+    if(n>BigInt(Number.MAX_SAFE_INTEGER)||n<BigInt(Number.MIN_SAFE_INTEGER))
+      throw new RangeError("an exact Mark-gradient value exceeds the safe integer boundary");
+    return Number(n);
+  };
+  const gradient=glued.topology.boundaryZero.map(row=>readable(
+    row.reduce((sum,coefficient,j)=>sum+BigInt(coefficient)*BigInt(potentials[j]),0n)));
+  const faceCirculation=glued.topology.boundaryOne.map(row=>readable(
+    row.reduce((sum,coefficient,j)=>sum+BigInt(coefficient)*BigInt(gradient[j]),0n)));
+  if(faceCirculation.some(x=>x!==0))
+    throw new TypeError("source-derived Mark complex contradicts d1 d0 = 0");
+  return freeze({
+    kind:"signgraph.markGeneratedGradient.v1",
+    source:glued,
+    scalar0Cochain:freeze([...potentials]),
+    oriented1Cochain:freeze(gradient),
+    exactFaceCirculation:freeze(faceCirculation),
+    invariant:"native cellular coboundary d1 d0 = 0",
+    scope:"exact gradient on conditional source-generated finite quotient, not physical force, free-energy descent or Articulating ascent",
+  });
+}
