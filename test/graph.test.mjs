@@ -1,45 +1,74 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
+import { defineType } from "@red-cup-engineering/signcell/type-system";
+import { createSignGraph } from "@red-cup-engineering/signcell/semantic-graph";
 import { projectSignGraphTopology } from "../src/graph.mjs";
 
-test("semantic graph topology projection keeps addressed witness data", () => {
-  const projected = projectSignGraphTopology({
-    cells: [{ id: "ni:cell", kind: "sign.cell", type: "test.cell" }],
-    edges: [{ id: "ni:edge", edge: { subject: { id: "ni:cell" }, predicate: "supports", object: { id: "ni:cell" }, witness: { id: "ni:witness" } } }],
-  });
-  assert.deepEqual(projected.nodes(), [{ id: "ni:cell", data: { kind: "sign.cell", type: "test.cell" } }]);
-  assert.deepEqual(projected.edges(), [{ from: "ni:cell", to: "ni:cell", kind: "supports", data: { id: "ni:edge", witness: "ni:witness" } }]);
+const accepted = (r) => { assert.equal(r.ok, true, JSON.stringify(r)); return r.value; };
+const t = accepted(defineType({
+  id: "signgraph.topology.test.mark.v1", name: "Pure topology source",
+  description: "Original type-defined Mark, not a topology-derived declaration",
+  schema: {}, parents: [],
+}));
+function sourceGraph() {
+  const marks = ["source","destination","witness-A","witness-B"]
+    .map(text => accepted(createTypedMark(t,text)));
+  const [a,b,w1,w2] = marks.map(referenceOf);
+  const graph = accepted(createSignGraph({
+    cells: marks,
+    relations:[{ id:"supports", subjectTypes:[t.id],objectTypes:[t.id],witnessTypes:[t.id] }],
+    edges:[
+      { subject:a,predicate:"supports",object:b,witness:w1 },
+      { subject:a,predicate:"supports",object:b,witness:w2 },
+    ],
+  }));
+  return { graph,marks,refs:{a,b,w1,w2} };
+}
+const wire = value => JSON.parse(JSON.stringify(value));
+
+test("the original SignCell source, not an independent graph parser, licenses every topology edge", () => {
+  const {graph,marks,refs}=sourceGraph();
+  const before=JSON.stringify(graph);
+  const topology=projectSignGraphTopology(graph);
+  assert.equal(JSON.stringify(graph),before,"query must not mutate the original admitted graph");
+  assert.equal(topology.order(),4,"source, target AND witness Marks are real graph vertices");
+  assert.equal(topology.size(),2);
+  assert.deepEqual(topology.nodes().map(x=>x.id).sort(),marks.map(x=>x.id).sort());
+  assert.deepEqual(topology.outgoing(refs.a.id).map(x=>x.to),[refs.b.id,refs.b.id]);
+  assert.deepEqual(new Set(topology.edges().map(x=>x.data.witness)),
+    new Set([refs.w1.id,refs.w2.id]));
+  assert.deepEqual(new Set(topology.edges().map(x=>x.data.id)),
+    new Set(graph.edges.map(x=>x.id)),"retain EAVT original edge identities");
+  assert.equal(topology.incoming(refs.a.id).length,0,"orientation is not symmetric");
 });
 
-test("topology returns no mutation powers or unaddressed graph edges", () => {
-  const projected = projectSignGraphTopology({
-    cells: [{ id:"ni:cell",kind:"sign.cell",type:"test.cell" }],
-    edges:[{id:"ni:edge",edge:{subject:{id:"ni:cell"},predicate:"supports",object:{id:"ni:cell"},witness:{id:"ni:witness"}}}],
-  });
+test("projected graph has no mutable builder powers and can be read repeatedly", () => {
+  const original=sourceGraph();
+  const projected=projectSignGraphTopology(wire(original.graph));
   assert.equal(Object.isFrozen(projected),true);
   assert.equal("addNode" in projected,false);
   assert.equal("addEdge" in projected,false);
-  const readNodes = projected.nodes();
-  readNodes.push({id:"forged"});
-  assert.equal(projected.order(),1);
-  assert.equal(projected.size(),1);
-  assert.equal(projected.node("forged"),undefined);
-  assert.equal(projected.edges()[0].data.witness,"ni:witness");
+  projected.nodes().push({id:"ni:///sha-256;forged"});
+  projected.edges().push({from:"forged",to:"forged"});
+  assert.equal(projected.order(),4);
+  assert.equal(projected.size(),2);
+  assert.equal(projected.node("ni:///sha-256;forged"),undefined);
 });
 
-test("topology refuses an unaddressed edge instead of making a proof-like graph", () => {
-  const graph={cells:[{id:"ni:c",kind:"sign.cell",type:"test.cell"}],
-    edges:[{id:"ni:e",edge:{subject:{id:"ni:c"},predicate:"claims",object:{id:"ni:c"}}}]};
-  assert.throws(()=>projectSignGraphTopology(graph),/addressed, witnessed edges/);
-  assert.throws(()=>projectSignGraphTopology({cells:null,edges:[]}),/admitted cells/);
-});
-
-test("different genuine witnesses remain different parallel edges", () => {
-  const sample={cells:[{id:"ni:a",kind:"sign.cell",type:"a"},{id:"ni:b",kind:"sign.cell",type:"b"}],
-    edges:[{id:"ni:w1",edge:{subject:{id:"ni:a"},predicate:"follows",object:{id:"ni:b"},witness:{id:"ni:first"}}},
-      {id:"ni:w2",edge:{subject:{id:"ni:a"},predicate:"follows",object:{id:"ni:b"},witness:{id:"ni:second"}}}]};
-  const graph=projectSignGraphTopology(sample);
-  assert.equal(graph.order(),2);
-  assert.equal(graph.size(),2);
-  assert.deepEqual(graph.outgoing("ni:a").map(x=>x.data.witness),["ni:first","ni:second"]);
+test("forged addresses, nonmembers, tampered types and stale graph cuts cannot manufacture topology", () => {
+  const {graph}=sourceGraph();
+  const examples=[];
+  const wrongGraph=wire(graph);wrongGraph.id="ni:unreceived";examples.push(wrongGraph);
+  const fakeWitness=wire(graph);fakeWitness.edges[0].edge.witness.id="ni:unknown";examples.push(fakeWitness);
+  const fakeEndpoint=wire(graph);fakeEndpoint.edges[0].edge.object.id="ni:unknown";examples.push(fakeEndpoint);
+  const wrongType=wire(graph);wrongType.edges[0].edge.subject.type="another-type";examples.push(wrongType);
+  const fakeEdge=wire(graph);fakeEdge.edges[0].id="ni:invented";examples.push(fakeEdge);
+  const alteredMark=wire(graph);alteredMark.cells[0].content="altered";examples.push(alteredMark);
+  const droppedMark=wire(graph);droppedMark.cells.pop();examples.push(droppedMark);
+  for (const example of examples)
+    assert.throws(()=>projectSignGraphTopology(example),TypeError,
+      "source SignCell admission must refuse rather than draw a plausible false graph");
+  assert.throws(()=>projectSignGraphTopology({cells:[{id:"ni:fake"}],edges:[]}),TypeError);
+  assert.throws(()=>projectSignGraphTopology(null),TypeError);
 });
