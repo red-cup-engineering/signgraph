@@ -11,6 +11,7 @@ import {
   presentedCategoryDiagramSchema,
 } from "./diagram-schema.mjs";
 import { evidence } from "@red-cup-engineering/signcell/cell";
+import { createGraph, topologicalOrder, stronglyConnectedComponents } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { canonical, parse as parseJson } from "@red-cup-engineering/json-services-section";
 import { define, restrict,                } from "@red-cup-engineering/computer-content-engineering-services-section/typed-resource-classification";
 import { stringProjector } from "@red-cup-engineering/computer-content-engineering-services-section/text-projector";
@@ -103,31 +104,54 @@ export function diagramFromCarrierCategory(category         )                   
   });
 }
 
-export function layout(ids                   , edges                            , opts
+/** Project an oriented graph to stable drawing layers through Metrologic's
+ * existing graph algorithm, rather than duplicating finite order closure in
+ * this format renderer. A strongly connected component shares a layer: that
+ * is a visualization convention, NOT observational equality of its Marks.
+ * A DAG keeps longest-source-to-node layering (the prior observable geometry).
+ */
+export function layout(ids, edges, opts) {
+  if (new Set(ids).size !== ids.length)
+    throw new TypeError("diagram layout: object IDs must be distinct");
+  const allowed = new Set(ids);
+  for (const { from, to } of edges) if (!allowed.has(from) || !allowed.has(to))
+    throw new TypeError("diagram layout: morphisms must connect declared objects");
 
- )                                                                                                                                                                                 {
-  const indegree = new Map(ids.map((id) => [id, 0]));
-  for (const edge of edges) indegree.set(edge.to, (indegree.get(edge.to) ?? 0) + 1);
-  const depth = new Map                ();
-  for (const id of ids) depth.set(id, indegree.get(id) === 0 ? 0 : 1);
-  for (let pass = 0; pass < ids.length; pass += 1) {
-    for (const edge of edges) depth.set(edge.to, Math.max(depth.get(edge.to) ?? 0, (depth.get(edge.from) ?? 0) + 1));
-  }
-  const layers = new Map                  ();
+  const directed = createGraph({
+    nodes: ids.map((id) => ({ id })),
+    edges: edges.map(({ from, to }) => ({ from, to })),
+  });
+  const components = stronglyConnectedComponents(directed);
+  const where = new Map();
+  components.forEach((group, at) => group.forEach((id) => where.set(id, String(at))));
+  const quotient = createGraph({
+    nodes: components.map((_, at) => ({ id: String(at) })),
+    edges: directed.edges().flatMap(({ from, to }) =>
+      where.get(from) === where.get(to) ? [] : [{ from: where.get(from), to: where.get(to) }]),
+  });
+  const ordered = topologicalOrder(quotient).order;
+  if (ordered === undefined)
+    throw new TypeError("diagram layout: component quotient must be acyclic");
+  const depths = new Map(ordered.map((id) => [id, 0]));
+  for (const id of ordered) for (const { to } of quotient.outgoing(id))
+    depths.set(to, Math.max(depths.get(to), depths.get(id) + 1));
+  const layers = new Map();
   for (const id of ids) {
-    const layer = depth.get(id) ?? 0;
+    const layer = depths.get(where.get(id));
     const bucket = layers.get(layer) ?? [];
     bucket.push(id);
     layers.set(layer, bucket);
   }
-  const boxes = new Map                                                                                              ();
+
+  const boxes = new Map();
   const layerEntries = [...layers.entries()].sort((a, b) => a[0] - b[0]);
   let maxLayerWidth = 1;
-  for (const [, layerIds] of layerEntries) maxLayerWidth = Math.max(maxLayerWidth, layerIds.length);
+  for (const [, layerIds] of layerEntries) {
+    maxLayerWidth = Math.max(maxLayerWidth, layerIds.length);
+  }
   for (const [layer, layerIds] of layerEntries) {
-    layerIds.sort((a, b) => ids.indexOf(a) - ids.indexOf(b));
     for (let order = 0; order < layerIds.length; order += 1) {
-      const id = layerIds[order] ;
+      const id = layerIds[order];
       boxes.set(id, {
         cx: opts.margin + opts.nodeWidth / 2 + order * (opts.nodeWidth + opts.hGap),
         cy: opts.margin + opts.nodeHeight / 2 + layer * (opts.nodeHeight + opts.vGap),
