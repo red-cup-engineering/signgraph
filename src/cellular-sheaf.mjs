@@ -38,10 +38,23 @@ const numberOfEntry = (entry) => {
   }
   const [n, d] = ratPairOfEntry(entry);
   const projected = Number(n) / Number(d);
-  if (!Number.isFinite(projected)) {
-    throw new RangeError("cellularSheaf: exact restriction cannot be represented in finite host arithmetic");
+  if (!Number.isFinite(projected) || (n !== 0n && projected === 0)) {
+    // Exact cohomology still accepts this restriction. The floating-point
+    // projection must not erase a nonzero incidence and fabricate a kernel.
+    throw new RangeError("cellularSheaf: nonzero exact restriction overflowed or underflowed host arithmetic");
   }
   return projected;
+};
+
+/** A bounded numeric sheaf must refuse both overflow and underflow to zero:
+ * either would change its incidence, Gram kernel or reported Dirichlet energy.
+ * This is a numerical receiving guard; exact rational algebra stays in Data. */
+const numericProduct = (a, b, caller) => {
+  const term = a * b;
+  if (!Number.isFinite(term) || (a !== 0 && b !== 0 && term === 0)) {
+    throw new RangeError(`${caller}: numerical product overflowed or underflowed host arithmetic`);
+  }
+  return term;
 };
 
 /** Build a frozen, validated cellular sheaf on a graph.
@@ -166,14 +179,21 @@ export function coboundary(sheaf) {
 /** Apply a sparse matrix to a vector, summing each row in column order. */
 export function apply(matrix, x) {
   if (x.length !== matrix.cols) throw new RangeError("apply: vector length does not match the matrix");
-  return matrix.entries.map((row) => { let sum = 0; for (const [column, value] of row) sum += value * x[column]; return sum; });
+  return matrix.entries.map((row) => {
+    let sum = 0;
+    for (const [column, value] of row) {
+      sum += numericProduct(value, x[column], "apply");
+      if (!Number.isFinite(sum)) throw new RangeError("apply: numerical sum overflowed host arithmetic");
+    }
+    return sum;
+  });
 }
 
 const gramLaplacian = (sheaf, entries) => {
   const rows = Array.from({ length: sheaf.c0 }, () => new Map());
   for (const row of entries) {
     for (const [i, a] of row) for (const [j, b] of row) {
-      const value = (rows[i].get(j) ?? 0) + a * b;
+      const value = (rows[i].get(j) ?? 0) + numericProduct(a, b, "cellularSheaf Gram");
       if (!Number.isFinite(value)) throw new RangeError("cellularSheaf: numerical Laplacian exceeded finite host arithmetic");
       rows[i].set(j, value);
     }
@@ -235,7 +255,10 @@ export function weightedSheafLaplacian(sheaf, metrics) {
     for (let i = 0; i < edge.dim; i += 1) {
       const row = new Map();
       for (let j = i; j < edge.dim; j += 1) for (const [column, value] of delta.entries[offset + j]) {
-        row.set(column, (row.get(column) ?? 0) + C[j][i] * value);
+        const product = numericProduct(C[j][i], value, "weightedSheafLaplacian");
+        const total = (row.get(column) ?? 0) + product;
+        if (!Number.isFinite(total)) throw new RangeError("weightedSheafLaplacian: numerical sum overflowed host arithmetic");
+        row.set(column, total);
       }
       entries.push(rowOf(row).filter(([, value]) => value !== 0));
     }
@@ -260,8 +283,11 @@ export function weightedSheafDirichlet(sheaf, metrics, x) {
     let edgeEnergy = 0;
     for (let i = 0; i < edge.dim; i += 1) {
       let value = 0;
-      for (let j = i; j < edge.dim; j += 1) value += C[j][i] * residual[j];
-      edgeEnergy += value * value;
+      for (let j = i; j < edge.dim; j += 1) {
+        value += numericProduct(C[j][i], residual[j], "weightedSheafDirichlet");
+        if (!Number.isFinite(value)) throw new RangeError("weightedSheafDirichlet: numerical sum overflowed host arithmetic");
+      }
+      edgeEnergy += numericProduct(value, value, "weightedSheafDirichlet");
     }
     energy += edgeEnergy;
     if (!Number.isFinite(edgeEnergy) || !Number.isFinite(energy)) {
