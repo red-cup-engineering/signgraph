@@ -77,3 +77,21 @@ test("unearned independent head, extra quotient edges, impossible depth and malf
   assert.throws(()=>generateHeadObservationGluing({articulating:previous,steps:1}),
     /sixteen-layer finite capacity/);
 });
+
+
+test("coincident old Mark contents are NOT silently glued: only the actual newly generated head relation is used",()=>{
+  const repeated=utterance("same","same");
+  const sourceAct=articulatingPair(repeated,articulatingUtter(repeated));
+  const result=generateHeadObservationGluing({articulating:sourceAct,steps:1});
+  assert.equal(result.original.depth,3);
+  assert.equal(result.identification.candidateQuotSoundUses,1);
+  assert.deepEqual(result.identification.identifiedClaimPositions,[
+    {left:"cell:1",right:"cell:2"},
+  ]);
+  assert.ok(result.projected.vertices.includes("cell:0"),
+    "earlier identical content must keep its independent original occurrence");
+  assert.ok(result.projected.vertices.includes("cell:1"));
+  assert.equal(result.projected.cohomology.h1,1);
+  assert.equal(result.identification.identificationNerveH1,0);
+  assert.equal(result.identification.justifiedLeanWits,null);
+});
