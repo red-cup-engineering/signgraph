@@ -20,6 +20,7 @@ test("three reusable operations share one structural admission, with machine-rea
     "signgraph.holonomy.burgers",
     "signgraph.holonomy.geometry",
     "signgraph.holonomy.affine",
+    "signgraph.mark-incidence.observed-head-gluing",
     "signgraph.mark-incidence.articulating-tower",
   ]);
   for (const op of Object.values(operations).filter(op =>
