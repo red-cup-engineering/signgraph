@@ -5,7 +5,7 @@
  * Quot.sound is the proof transport for a proved equivalence, not an
  * automatically charged thermodynamic event.
  */
-import { utterance, isUtterance, formalBoundaryOfUtterance, markRoleIncidenceOfUtterance, traceOfArticulating }
+import { utterance, isUtterance, formalBoundaryOfUtterance, markRoleIncidenceOfUtterance, traceOfArticulating, reattendArticulating, compareImmediateArticulating }
   from "@red-cup-engineering/signcell/utterance";
 import { semanticId }
   from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
@@ -467,5 +467,120 @@ export function unfoldArticulatingIncidenceTower(carrier,options={}){
     sourceLaw:"Articulating.utter base; each Articulating.pair adds one original Utterance; chosen cell(previous)->wall(next) structural link",
     limitLaw:"finite successor folds only, no aperiodic/uncountable limit generator established",
     equivalenceAuthority:"none: no external Mark-port identifications are made",
+  });
+}
+
+
+/**
+ * EARLIEST SOURCE-GENERATED OBSERVATIONAL QUOTIENT OF A FREE INCIDENCE TOWER.
+ *
+ * The only initial input is an existing ORIGINAL Articulating and a bounded
+ * count of native, immediate SAME-HEAD re-attendings. Every new performance
+ * is constructed by SignCell's actual Articulating.pair owner; none of the
+ * Mark heads, equivalence pairs, graph edges, truth values or spatial
+ * coordinates is supplied by the caller.
+ *
+ * Phase 1: SignGraph's already existing unfoldArticulatingIncidenceTower
+ * constructs the unglued Mark-position chain. It is a TREE.
+ * Phase 2: the source-derived HeadCoincidence for each new performance
+ * presents a single identification of the NEW claim-position vertex
+ * with the old head-claim position. Only this readout is quotiented.
+ * Phase 3: the existing cellular2Complex measures the resulting graph.
+ *
+ * The source-generated observational relation is supported in Science by
+ * Articulating.headQuot_reentry_identification (one Quotient.sound
+ * instrument SITE). It must be kernel checked and paid by WitLedger
+ * BEFORE any runtime can assert authenticated WIT receiving.
+ * Reusing that Science theorem along a finite orbit is not a source
+ * of free independent Marks, measured k_B T ln2 heat, or aperiodic closure.
+ *
+ * For k re-attendings of a source of n Utterances, the chosen free
+ * incidence graph has V=2(n+k), E=2(n+k)-1, H1=0; the quotient has
+ * V'=2(n+k)-k, same E, H1'=k. The identification NERVE here has
+ * k independent merges, ZERO redundant cycles. These are different
+ * invariants of two different mathematical projections.
+ */
+export function generateHeadObservationGluing(raw) {
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+     Object.keys(raw).some(k=>!["articulating","steps"].includes(k))||
+     !Object.hasOwn(raw,"articulating"))
+    throw new TypeError("observational gluing requires only an original Articulating and optional re-attention steps");
+  const steps=raw.steps??1;
+  if(!Number.isSafeInteger(steps)||steps<0||steps>6)
+    throw new RangeError("source-generated quotient permits zero to six bounded re-attendings");
+  const source=traceOfArticulating(raw.articulating,{maxLayers:16});
+  if(source.trace.length+steps>16)
+    throw new RangeError("source-generated observation exceeds the sixteen-layer finite capacity");
+  let cursor=source.carrier;
+  const receipts=[];
+  for(let i=0;i<steps;i++){
+    const next=reattendArticulating(cursor,{maxLayers:16});
+    const compared=compareImmediateArticulating(
+      cursor,next.presented,next.presented,{maxLayers:16});
+    if(!compared.comparison.headPresentationCoincides||
+       !compared.comparison.constructedPresentationCoincides)
+      throw new TypeError("native source-derived head relation failed the immediate constructor");
+    receipts.push(freeze({
+      step:i+1,
+      fromArticulatingId:semanticId(cursor),
+      toArticulatingId:semanticId(next.presented),
+      sourceHeadPresentation:semanticId(next.presentedHead),
+      relation:"one source-generated head-preserving immediate re-attention",
+      relationInScience:"Obsmetrologia.Articulating.HeadCoincidence",
+      correspondingInstrument:"Obsmetrologia.Articulating.headQuot_reentry_identification",
+    }));
+    cursor=next.presented;
+  }
+  const unglued=unfoldArticulatingIncidenceTower(cursor,{maxLayers:16});
+  const final=unglued.stages.at(-1);
+  const firstCopied=source.trace.length-1;
+  const originCell="cell:"+firstCopied;
+  const image=id=>{
+    if(!id.startsWith("cell:"))return id;
+    const index=Number(id.slice(5));
+    return index>firstCopied?originCell:id;
+  };
+  const vertices=final.vertices.map(image).filter((item,i,array)=>
+    array.indexOf(item)===i);
+  const edges=final.edges.map(edge=>freeze({
+    id:edge.id,from:image(edge.from),to:image(edge.to),
+  }));
+  const quotient=cellular2Complex({vertices,edges,faces:[]});
+  const total=source.trace.length+steps;
+  if(final.cohomology.h1!==0||final.vertices.length!==2*total||
+     quotient.betti.h0!==1||quotient.betti.h1!==steps||
+     vertices.length!==2*total-steps||
+     edges.length!==2*total-1)
+    throw new TypeError("source-generated observation did not have the expected nontrivial quotient incidence");
+  return freeze({
+    kind:"signgraph.markSourceHeadObservationGluing.v1",
+    status:"constructed-conditional-observation",
+    originalSourceId:semanticId(source.carrier),
+    continuedSourceId:semanticId(cursor),
+    addedReattendings:steps,
+    original:freeze({
+      depth:total,vertices:final.vertices,
+      edges:final.edges,cohomology:final.cohomology,
+    }),
+    identification:freeze({
+      instruments:freeze(receipts),
+      sourceProvenHeadRelations:steps,
+      candidateQuotSoundUses:steps,
+      identifiedClaimPositions:freeze(Array.from({length:steps},(_,j)=>
+        freeze({left:originCell,right:"cell:"+(firstCopied+1+j)}))),
+      independentMerges:steps,
+      identificationNerveH1:0,
+      justifiedLeanWits:null,
+      physicalDissipation:null,
+      acceptance:"pending native Lean kernel and wit-ledger receiving; quotient reflects source head observation only",
+    }),
+    projected:freeze({
+      vertices:quotient.vertices,edges:quotient.edges,
+      cohomology:quotient.betti,
+      graphOnlyH1:quotient.graphOnlyH1,
+      coboundary:quotient.coboundary,
+    }),
+    law:"Articulating source re-attention -> source head-coincidence -> proposed Quotient.sound -> generated cellular incidence shadow",
+    frontier:"no first pre-Mark exclusion theorem, no uncountable aperiodic limit, no physical matter/heat inference",
   });
 }
