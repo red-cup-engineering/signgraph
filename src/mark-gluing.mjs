@@ -5,7 +5,7 @@
  * Quot.sound is the proof transport for a proved equivalence, not an
  * automatically charged thermodynamic event.
  */
-import { utterance, isUtterance, formalBoundaryOfUtterance }
+import { utterance, isUtterance, formalBoundaryOfUtterance, markRoleIncidenceOfUtterance }
   from "@red-cup-engineering/signcell/utterance";
 import { semanticId }
   from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
@@ -232,5 +232,93 @@ export function gradientOfGluedMarkCells(input) {
     exactFaceCirculation:freeze(faceCirculation),
     invariant:"native cellular coboundary d1 d0 = 0",
     scope:"exact gradient on conditional source-generated finite quotient, not physical force, free-energy descent or Articulating ascent",
+  });
+}
+
+
+/**
+ * A genuinely TWO-SORTED wall/cell INCIDENCE complex over original Marks.
+ *
+ * Unlike glueMarkUtteranceCells' older signed 1-edge PROJECTION, this
+ * preserves distinct role sorts: each original token candidate is a WALL
+ * node, each original claim candidate is a CELL node. One native Utterance
+ * creates an intrinsic wall->cell incidence; it does not identify them.
+ *
+ * Additional CELL->WALL attaching incidences require an original, exactly
+ * addressed SignCell judgment passing SignChain's witnessed/unopposed/
+ * measured evidence gate. That evidence is NOT a proof of a quotient
+ * identification or of a spatial manifold attachment. No wall or cell is
+ * collapsed just because its underlying Mark presentations have identical
+ * content. Optional face walks are source-identified and validated by
+ * SignGraph's existing cellular2Complex, including boundary squared zero.
+ *
+ * The resulting graph is the incidence GRAPH of possible wall/cell
+ * attachments. Its H1 is not automatically the H1 of the physical complex
+ * these incidences may eventually present: a realization still needs
+ * actual cell dimensions, higher attaching maps and justified quotienting.
+ */
+export function assembleMarkWallCellIncidence(raw){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+     Object.keys(raw).some(k=>!["utterances","attachments","faces"].includes(k)))
+    throw new TypeError("two-sorted Mark incidence requires source Utterances, optional witnessed attachments and faces");
+  const values=raw.utterances,attachments=raw.attachments??[],faces=raw.faces??[];
+  if(!Array.isArray(values)||values.length<1||values.length>LIMITS.utterances||
+     !Array.isArray(attachments)||attachments.length>LIMITS.identifications||
+     !Array.isArray(faces)||faces.length>LIMITS.faces)
+    throw new RangeError("two-sorted Mark incidence exceeds bounded source/attachment/face budget");
+  const sources=values.map(readUtterance);
+  const incidences=sources.map(markRoleIncidenceOfUtterance);
+  const n=sources.length;
+  const vertices=sources.flatMap((_,i)=>["wall:"+i,"cell:"+i]);
+  const edges=sources.map((_,i)=>freeze({id:"utterance:"+i,from:"wall:"+i,to:"cell:"+i}));
+  const judged=attachments.map((attachment,i)=>{
+    if(!keys(attachment,["cell","judgment","wall"]))
+      throw new TypeError("attaching incidence requires source cell, target wall and original SignCell judgment");
+    const from=validIndex(attachment.cell,n,"cell attachment");
+    const to=validIndex(attachment.wall,n,"wall attachment");
+    const expectedFrom="cell:"+from,expectedTo="wall:"+to;
+    const original=attachment.judgment;
+    const admitted=chain.adjudicateCellEvidence(original);
+    if(original?.subject!==expectedFrom||original?.predicate!=="attaches-to"||
+       original?.object!==expectedTo)
+      throw new TypeError("attaching judgment must name the precise source cell and wall occurrence");
+    if(!admitted.identification.eligibleForRelationProof)
+      throw new TypeError("unsupported, opposed, contested or unmeasured Mark attachment refuses incidence");
+    edges.push(freeze({id:"attachment:"+i,from:expectedFrom,to:expectedTo}));
+    return freeze({id:"attachment:"+i,sourceCell:from,targetWall:to,judgment:admitted});
+  });
+  const boundaries=faces.map(face=>{
+    if(!keys(face,["boundary","id"])||!Array.isArray(face.boundary)||
+       face.boundary.length<1||face.boundary.length>LIMITS.identifications)
+      throw new TypeError("incidence face needs an identity and an oriented source walk");
+    const boundary=face.boundary.map(step=>{
+      if(!keys(step,["direction","edge"])||![1,-1].includes(step.direction)||
+         typeof step.edge!=="string")
+        throw new TypeError("face step requires a named original incidence edge and direction");
+      return freeze({edge:step.edge,direction:step.direction});
+    });
+    return freeze({id:face.id,boundary:freeze(boundary)});
+  });
+  const geometry=cellular2Complex({vertices,edges,faces:boundaries});
+  return freeze({
+    kind:"signgraph.twoSortedMarkIncidenceComplex.v1",
+    source:freeze({
+      utteranceIds:freeze(sources.map(semanticId)),
+      roleIncidences:freeze(incidences),
+    }),
+    sorts:freeze({wall:n,cell:n,equatedAcrossSorts:false}),
+    attachments:freeze(judged),
+    conditionalGeometry:freeze({
+      vertices:geometry.vertices,edges:geometry.edges,faces:geometry.faces,
+      coboundary:geometry.coboundary,
+      graphOnlyH1:geometry.graphOnlyH1,
+      betti:geometry.betti,rank:geometry.rank,
+    }),
+    status:"exact conditional incidence presentation",
+    relationAdmission:freeze({
+      quotientAdmitted:false,
+      sourceAuthority:"original SignChain witnessed incidence; attaching-map and equivalence proofs still required",
+    }),
+    scope:"finite two-sorted incidence graph and optionally face-filled CW comparison; no physical wall/cell dimension or aperiodic regime proved",
   });
 }
