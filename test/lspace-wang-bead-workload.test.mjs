@@ -1,7 +1,7 @@
 /** The original L-Space Wang/bead fixture is retained as raw NI bytes, not re-generated data. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { makeNiUri } from '@red-cup-engineering/uri-services-section/ni-uri';
 import { spawnSync } from 'node:child_process';
 import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const archive = fileURLToPath(new URL('./fixtures/lspace-wang-bead-ni-workload.tar.gz', import.meta.url));
-const NI = bytes => 'ni:///sha-256;' + createHash('sha256').update(bytes).digest('base64url');
+
 
 function readWorkload(t) {
   const out = mkdtempSync(join(tmpdir(), 'signgraph-ni-wang-bead-'));
@@ -26,7 +26,7 @@ function readWorkload(t) {
     const path = join(root, record.physicalRelativePath);
     const bytes = readFileSync(path);
     assert.equal(bytes.byteLength, record.size);
-    assert.equal(NI(bytes), record.ni);
+    assert.equal(makeNiUri(bytes), record.ni);
     assert.equal(readFileSync(path + '.media-type', 'utf8'), record.mediaType + '\n');
     parsed.set(record.name ?? 'root', record.mediaType === 'text/markdown' ? bytes.toString('utf8') : JSON.parse(bytes.toString('utf8')));
   }
