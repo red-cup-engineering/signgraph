@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { utterance } from "@red-cup-engineering/signcell/utterance";
-import { glueMarkUtteranceCells } from "../src/mark-gluing.mjs";
+import { glueMarkUtteranceCells, glueAdjudicatedMarkUtteranceCells } from "../src/mark-gluing.mjs";
+import { cell } from "@red-cup-engineering/signcell/cell";
 
 const triangleSource=[
   utterance("a","b"),utterance("b","c"),utterance("c","a"),
@@ -93,4 +94,53 @@ test("false faces, imaginary source ports and undeclared identification fields r
   assert.throws(()=>glueMarkUtteranceCells({utterances:triangleSource,
     faces:[{id:"bad",boundary:[{utterance:3,direction:1}]}],
   }),/source Utterance index/);
+});
+
+
+test("measured unopposed SignChain identifications produce only CONDITIONAL glued geometry",()=>{
+  const input={
+    utterances:triangleSource,
+    identifications:joins.map((j,i)=>({
+      ...j,judgment:cell(
+        "port:"+j.left[0]+":"+j.left[1],"identifies",
+        "port:"+j.right[0]+":"+j.right[1],
+        {for:[{kind:"witness",ordinal:i}]},
+      ),
+    })),
+  };
+  const outcome=glueAdjudicatedMarkUtteranceCells(input);
+  assert.equal(outcome.kind,"signgraph.adjudicatedMarkCellGluing.v1");
+  assert.equal(outcome.relationAdmission.quotientAdmitted,false);
+  assert.equal(outcome.judgments.length,3);
+  assert.ok(outcome.judgments.every(j=>j.evidence.posture==="supported-unopposed"));
+  assert.equal(outcome.identificationLedger.residue,0);
+  assert.equal(outcome.topology.betti.h1,1);
+  assert.ok(input.identifications.every(j=>j.judgment.for.length===1));
+});
+
+test("SignChain denies unobserved, opposed, contested and merely written identification values",()=>{
+  const j=joins[0];
+  const one=evidence=>({utterances:triangleSource,identifications:[{
+    ...j,judgment:cell("port:0:claim","identifies","port:1:token",evidence),
+  }]});
+  assert.throws(()=>glueAdjudicatedMarkUtteranceCells(one({})),/refuses gluing/);
+  assert.throws(()=>glueAdjudicatedMarkUtteranceCells(one({against:["no"]})),/refuses gluing/);
+  assert.throws(()=>glueAdjudicatedMarkUtteranceCells(one({
+    for:["yes"],against:["no"],
+  })),/refuses gluing/);
+  assert.throws(()=>glueAdjudicatedMarkUtteranceCells(one({
+    value:"potential",
+  })),/refuses gluing/);
+  assert.throws(()=>glueAdjudicatedMarkUtteranceCells(one({
+    for:["yes"],value:"active",
+  })),/refuses gluing/);
+});
+
+test("evidence on the wrong positional mark pair can never be reused as the required quotient proof",()=>{
+  const j=joins[0];
+  assert.throws(()=>glueAdjudicatedMarkUtteranceCells({
+    utterances:triangleSource,identifications:[{
+      ...j,judgment:cell("port:0:token","identifies","port:1:token",{for:["source"]}),
+    }],
+  }),/very same two positional source ports/);
 });
