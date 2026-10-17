@@ -329,29 +329,39 @@ export function planCombinationalCircuit(circuitSource, library = new Map()) {
   });
 }
 
-function settleValuation(circuit, instances, input) {
+// Prepare invariant pin routes just once for all four-valued input combinations.
+// Fixed-point iteration still follows the original Map insertion order and
+// retains the same finite-height bound and refusal behavior.
+function prepareValuationWiring(circuit, instances, netBySink, netByDriver) {
+  return Object.freeze({
+    inputNets: circuit.ports.filter(port => port.direction === "input")
+      .map(port => netByDriver.get(`@\u0000${port.name}`)),
+    outputNets: circuit.ports.filter(port => port.direction === "output")
+      .map(port => netBySink.get(`@\u0000${port.name}`)),
+    components: [...instances].map(([name, instance]) => Object.freeze({
+      inputNets: instance.circuit.ports.filter(port => port.direction === "input")
+        .map(port => netBySink.get(`${name}\u0000${port.name}`)),
+      outputNets: instance.circuit.ports.filter(port => port.direction === "output")
+        .map(port => netByDriver.get(`${name}\u0000${port.name}`)),
+      circuit: instance.circuit,
+    })),
+  });
+}
+function settleValuation(circuit, wiring, input) {
   const values = new Map(circuit.nets.map(({ name }) => [name, FOUR_VALUES[0]]));
-  const netBySink = new Map(), netByDriver = new Map();
-  for (const net of circuit.nets) {
-    netByDriver.set(endpointKey(net.driver), net.name);
-    for (const sink of net.sinks) netBySink.set(endpointKey(sink), net.name);
-  }
-  const inputs = circuit.ports.filter(({ direction }) => direction === "input");
-  inputs.forEach((port, index) => values.set(netByDriver.get(`@\u0000${port.name}`), validateFour(input[index])));
+  wiring.inputNets.forEach((net, index) => values.set(net, validateFour(input[index])));
   const maximumSteps = Math.max(1, circuit.nets.length * 2 + circuit.instances.length * 2);
   for (let step = 0; step <= maximumSteps; step += 1) {
     let changed = false;
-    for (const [name, instance] of instances) {
-      const childInputs = instance.circuit.ports.filter(({ direction }) => direction === "input").map((port) => values.get(netBySink.get(`${name}\u0000${port.name}`)) ?? FOUR_VALUES[0]);
-      const childOutputs = behaviorAt(instance.circuit, childInputs);
-      instance.circuit.ports.filter(({ direction }) => direction === "output").forEach((port, index) => {
-        const net = netByDriver.get(`${name}\u0000${port.name}`), next = joinFour(values.get(net), childOutputs[index]);
+    for (const component of wiring.components) {
+      const childInputs = component.inputNets.map(net => values.get(net) ?? FOUR_VALUES[0]);
+      const childOutputs = behaviorAt(component.circuit, childInputs);
+      component.outputNets.forEach((net, index) => {
+        const next = joinFour(values.get(net), childOutputs[index]);
         if (!canonicalEqual(values.get(net), next)) { values.set(net, next); changed = true; }
       });
     }
-    if (!changed) {
-      return circuit.ports.filter(({ direction }) => direction === "output").map((port) => values.get(netBySink.get(`@\u0000${port.name}`)) ?? FOUR_VALUES[0]);
-    }
+    if (!changed) return wiring.outputNets.map(net => values.get(net) ?? FOUR_VALUES[0]);
   }
   fail("nonconvergent-circuit", "FOUR circuit did not reach its least knowledge fixed point within the finite-height bound");
 }
@@ -383,6 +393,7 @@ export function synthesizeCircuitBehavior(circuitSource, library = new Map()) {
   for (const port of outputPorts) group(netBySink.get(`@\u0000${port.name}`)).outputs.push(port.name);
   const inputIndex = new Map(inputPorts.map((port, index) => [port.name, index]));
   const outputIndex = new Map(outputPorts.map((port, index) => [port.name, index]));
+  const wiring = prepareValuationWiring(circuit, instances, netBySink, netByDriver);
   const factors = [...groups.values()].filter(({ inputs, outputs }) => inputs.length + outputs.length > 0).map(({ inputs, outputs }) => {
     inputs.sort(utf8Compare); outputs.sort(utf8Compare);
     // The parent of individually legal small factors can become one connected
@@ -394,7 +405,7 @@ export function synthesizeCircuitBehavior(circuitSource, library = new Map()) {
     const rows = enumerateValuations(inputs.length).map((valuation) => {
       const wholeInput = inputPorts.map(() => FOUR_VALUES[0]);
       inputs.forEach((name, index) => { wholeInput[inputIndex.get(name)] = valuation[index]; });
-      const wholeOutput = settleValuation(circuit, instances, wholeInput);
+      const wholeOutput = settleValuation(circuit, wiring, wholeInput);
       return { input: valuation, output: outputs.map((name) => wholeOutput[outputIndex.get(name)]) };
     });
     return { inputs, outputs, rows };
