@@ -14,14 +14,17 @@ import { coincides, coincidenceKey, knowledgeReading } from "@red-cup-engineerin
 import { canonicalCarrier } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
 import { evidenceAt } from "./valuation.mjs";
 import { reindex, existsAlong, forallAlong } from "@red-cup-engineering/metrologic/hyperdoctrine/adjoints";
-import { isReading, knowledgeBottom, knowledgeTop, truthBottom, truthTop, readingOfSides, samePoint, fusionReading, knowledgeJoinReading, knowledgeMeetReading, residuumReading, truthJoinReading, truthMeetReading } from "@red-cup-engineering/computer-data-engineering-services-section/four";
+import { isReading, knowledgeBottom, samePoint, fusionReading, residuumReading } from "@red-cup-engineering/computer-data-engineering-services-section/four";
+import { orderOps } from "@red-cup-engineering/metrologic/hyperdoctrine/order";
 
 /** An order over readings: join, meet, bottom, top. */
-const order = (name, join, meet, bottom, top) => Object.freeze({ kind: "signgraph.order", name, join, meet, bottom, top });
-/** The knowledge order: absurd bottom, stable top. */
-export const knowledgeOrder = () => order("knowledge", knowledgeJoinReading, knowledgeMeetReading, knowledgeBottom(), knowledgeTop());
-/** The truth order: active bottom, potential top. */
-export const truthOrder = () => order("truth", truthJoinReading, truthMeetReading, truthBottom(), truthTop());
+const order = (name) => {
+  const { join, meet, bottom, top } = orderOps(name);
+  return Object.freeze({ kind: "signgraph.order", name, join, meet, bottom, top });
+};
+/** A graph order is Metrologic's canonical FOUR order, carried at a graph site. */
+export const knowledgeOrder = () => order("knowledge");
+export const truthOrder = () => order("truth");
 
 /** Every ordered (subject, object) pair over an entity list. */
 export const allPairs = (entities) => Object.freeze(entities.flatMap((subject) => entities.map((object) => Object.freeze([subject, object]))));
@@ -115,7 +118,8 @@ export const fiberResiduum = cellwise(residuumReading);
 /** Whether `left` is below `right` in the truth order at every pair. */
 export const fiberLeqTruth = (left, right, pairs) => {
   requireSharedContext(left, right);
-  return (pairs ?? allPairs(left.entities)).every(([s, o]) => samePoint(truthJoinReading(left.at(s, o), right.at(s, o)), right.at(s, o)));
+  const { leq } = orderOps("truth");
+  return (pairs ?? allPairs(left.entities)).every(([s, o]) => leq(left.at(s, o), right.at(s, o)));
 };
 
 // SignGraph owns only the SCA-coordinate presentation of a finite site. The

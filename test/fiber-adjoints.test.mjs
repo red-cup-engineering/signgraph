@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { samePoint } from "@red-cup-engineering/computer-data-engineering-services-section/four";
+import { orderOps } from "@red-cup-engineering/metrologic/hyperdoctrine/order";
 import {
   allPairs, converse, knowledgeOrder, objectProjection, predicateFiber,
   specialization, subjectProjection, truthOrder,
@@ -65,5 +66,19 @@ test("empty projection preimages are knowledge-unknown and truth-extremal, never
       assert.ok(equal(existential.at(s, o), order.bottom));
       assert.ok(equal(universal.at(s, o), order.top));
     }
+  }
+});
+
+test("SignGraph's orders are exact views of Metrologic's FOUR order operations", () => {
+  for (const [name, select] of [["knowledge", knowledgeOrder], ["truth", truthOrder]]) {
+    const actual = select(), upstream = orderOps(name);
+    assert.equal(actual.kind, "signgraph.order");
+    assert.equal(actual.name, name);
+    for (const a of points) for (const b of points) {
+      assert.ok(equal(actual.join(a, b), upstream.join(a, b)));
+      assert.ok(equal(actual.meet(a, b), upstream.meet(a, b)));
+    }
+    assert.ok(equal(actual.bottom, upstream.bottom));
+    assert.ok(equal(actual.top, upstream.top));
   }
 });
