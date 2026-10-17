@@ -20,6 +20,7 @@ import { isMark } from "@red-cup-engineering/signcell/mark";
 import { isUtterance } from "@red-cup-engineering/signcell/utterance";
 import { semanticId } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
 import { charPoly, fromInts, toInt } from "@red-cup-engineering/exact-number-data-service/exact-number";
+import { cohomologyOfEdgeGraph } from "./cohomology.mjs";
 
 const LIMIT=8,MAX_WORD=64;
 const ID="signgraph.markSourceSubstitutionSpectrum.v1";
@@ -46,6 +47,18 @@ export function spectrumOfMarkSubstitution(utterances) {
     for(const position of word)row[position]++;
     return freeze(row);
   });
+  // This graph of literal substitution LETTER INCIDENCES is not the
+  // Anderson-Putnam tiling complex or the identification-residue nerve.
+  // Use SignGraph's existing exact graph-cohomology owner to read it.
+  const directedEdges=incidence.flatMap((row,i)=>row.flatMap((count,j)=>
+    Array.from({length:count},()=>[ids[i],ids[j]])));
+  const adjacency=cohomologyOfEdgeGraph(ids,directedEdges);
+  const adjacencyGraph=freeze({
+    vertices:n,edges:directedEdges.length,
+    components:adjacency.zeroCohomology.rank,
+    graphH1:adjacency.firstCohomology.rank,
+    scope:"adjacency multigraph cycle rank; not Anderson-Putnam cohomology or proved StepN cohRank",
+  });
   const poly=charPoly(fromInts(incidence)).map(toInt);
   if(!Array.isArray(poly)||poly.length!==n+1||
      poly.some(coefficient=>!Number.isSafeInteger(coefficient)))
@@ -61,6 +74,7 @@ export function spectrumOfMarkSubstitution(utterances) {
     source:freeze({utteranceIds:freeze(utterances.map(semanticId)),
       alphabetMarkIds:freeze(ids)}),
     words:freeze(words),
+    adjacencyGraph,
     substitution:freeze({
       matrix:freeze(incidence),
       alphabetSize:n,characteristicPolynomialDescending:coefficients,
