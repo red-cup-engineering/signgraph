@@ -5,7 +5,7 @@
  * Quot.sound is the proof transport for a proved equivalence, not an
  * automatically charged thermodynamic event.
  */
-import { utterance, isUtterance, formalBoundaryOfUtterance, markRoleIncidenceOfUtterance }
+import { utterance, isUtterance, formalBoundaryOfUtterance, markRoleIncidenceOfUtterance, traceOfArticulating }
   from "@red-cup-engineering/signcell/utterance";
 import { semanticId }
   from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
@@ -330,5 +330,126 @@ export function assembleMarkWallCellIncidence(raw){
       sourceAuthority:"original SignChain witnessed incidence; attaching-map and equivalence proofs still required",
     }),
     scope:"finite two-sorted incidence graph and optionally face-filled CW comparison; no physical wall/cell dimension or aperiodic regime proved",
+  });
+}
+
+
+/**
+ * Unfold the existing Articulating recursion into a finite source-generated
+ * incidence tower, with no externally supplied graph edges or witness claims.
+ *
+ * Articulating.utter supplies the first genuine Mark→wall/cell incidence;
+ * each Articulating.pair supplies ONE new source Utterance. We choose a
+ * minimal, explicit ONE-DIMENSIONAL realization of pair recursion:
+ * the previous claim-side occurrence is linked to the new token-side
+ * occurrence, followed by the new token→claim incidence.
+ *
+ * These are formal structural/recursive links, NOT witnessed external
+ * identifications, quotient relations, physical walls, or a physical metric.
+ * Distinct source OCCURRENCES never collapse, even if their Mark contents
+ * or entire Utterances share the same content-addressed presentation.
+ *
+ * At layer n this chosen incidence graph must be a tree with 2n distinct
+ * positions, 2n-1 edges, H0=1, H1=0. Each source prefix is a *subcomplex*
+ * of the next stage. There is a source-derived deformation retraction
+ * that contracts the two new positions and edges onto the immediately
+ * preceding claim position. Both ascending inclusion and descending
+ * contraction are CHAIN MAPS (they commute with the genuine boundary).
+ * p◦j = identity; j◦p is not identity because new source layers are lost.
+ *
+ * These are finite Articulating prefix/source-geometry morphisms. They
+ * establish no transfinite closure ordinal, Scott continuity, intrinsic
+ * metric gradient, aperiodic foam or microscopic Landauer reset.
+ */
+export function unfoldArticulatingIncidenceTower(carrier,options={}){
+  if(!options||typeof options!=="object"||Array.isArray(options)||
+     Object.keys(options).some(k=>k!=="maxLayers"))
+    throw new TypeError("source tower admits only its finite maxLayers budget");
+  const maxLayers=options.maxLayers??16;
+  if(!Number.isSafeInteger(maxLayers)||maxLayers<1||maxLayers>16)
+    throw new RangeError("source tower maxLayers must be 1-16");
+  const native=traceOfArticulating(carrier,{maxLayers});
+  const stages=[];
+  const boundaryCheck=(before,after)=>{
+    const oldV=before.vertices.length,oldE=before.edges.length;
+    const newV=after.vertices.length,newE=after.edges.length;
+    if(newV!==oldV+2||newE!==oldE+2)
+      throw new TypeError("source pair did not add precisely its two Mark roles and two structural edges");
+    const vDown=Array.from({length:newV},(_,i)=>i<oldV?i:oldV-1);
+    const eDown=Array.from({length:newE},(_,i)=>i<oldE?i:null);
+    const prior=before.coboundary.zero,later=after.coboundary.zero;
+    for(let i=0;i<newE;i++){
+      const aggregated=Array(oldV).fill(0);
+      for(let j=0;j<newV;j++)aggregated[vDown[j]]+=later[i][j];
+      const expected=i<oldE?prior[i]:Array(oldV).fill(0);
+      if(aggregated.some((x,j)=>x!==expected[j]))
+        throw new TypeError("Articulating descending contraction is not a boundary-commuting chain map");
+    }
+    for(let i=0;i<oldE;i++)
+      if(later[i].some((x,j)=>j<oldV?x!==prior[i][j]:x!==0))
+        throw new TypeError("Articulating prefix inclusion is not a boundary-commuting chain map");
+    return freeze({
+      fromDepth:before.depth,toDepth:after.depth,
+      ascending:freeze({
+        vertices:freeze(Array.from({length:oldV},(_,i)=>i)),
+        edges:freeze(Array.from({length:oldE},(_,i)=>i)),
+        commutesWithBoundary:true,
+      }),
+      descending:freeze({
+        vertices:freeze(vDown),
+        edges:freeze(eDown),
+        commutesWithBoundary:true,
+        contractedPositions:freeze([oldV,oldV+1]),
+        toPreviousClaimPosition:oldV-1,
+      }),
+      retractionAfterInclusionIsIdentity:true,
+      inclusionAfterRetractionIsIdentity:false,
+      distinctNewSourcePositions:2,
+      scope:"a chosen finite structural contraction, not inverse of Articulating or quotient-equality proof",
+    });
+  };
+  const transports=[];
+  for(let depth=1;depth<=native.trace.length;depth++){
+    const vertices=[],edges=[];
+    for(let i=0;i<depth;i++){
+      vertices.push("wall:"+i,"cell:"+i);
+      edges.push(freeze({id:"utterance:"+i,from:"wall:"+i,to:"cell:"+i}));
+      if(i>0)edges.push(freeze({
+        id:"recursive-pair:"+i,from:"cell:"+(i-1),to:"wall:"+i,
+      }));
+    }
+    const cellComplex=cellular2Complex({vertices,edges,faces:[]});
+    if(cellComplex.betti.h0!==1||cellComplex.betti.h1!==0||
+       vertices.length!==2*depth||edges.length!==2*depth-1)
+      throw new TypeError("generated Articulating source recursion failed the finite tree invariant");
+    const state=freeze({
+      depth,sourceArticulatingId:semanticId(native.prefixes[depth-1]),
+      sourceUtteranceId:semanticId(native.trace[depth-1]),
+      sourceRoleIncidence:markRoleIncidenceOfUtterance(native.trace[depth-1]),
+      regime:"strict finite source ordinal, not closure fixed-point ordinal",
+      vertices:freeze(vertices),edges:freeze(edges),
+      coboundary:cellComplex.coboundary,
+      cohomology:freeze({
+        h0:cellComplex.betti.h0,h1:cellComplex.betti.h1,
+        treeEuler:vertices.length-edges.length,
+      }),
+    });
+    if(stages.length>0)transports.push(boundaryCheck(stages.at(-1),state));
+    stages.push(state);
+  }
+  return freeze({
+    kind:"signgraph.markGeneratedArticulatingTower.v1",
+    status:"constructed",
+    source:freeze({
+      articulatingId:semanticId(native.carrier),
+      finiteOrdinal:native.sourceOrdinal,
+      markCarrierIds:freeze(native.trace.map(u=>freeze({
+        token:semanticId(u.token.mark),claim:semanticId(u.claim.mark),
+      }))),
+    }),
+    stages:freeze(stages),transports:freeze(transports),
+    sourceLaw:"Articulating.utter base; each Articulating.pair adds one original Utterance; chosen cell(previous)->wall(next) structural link",
+    limitLaw:"finite successor folds only, no aperiodic/uncountable limit generator established",
+    equivalenceAuthority:"none: no external Mark-port identifications are made",
   });
 }
