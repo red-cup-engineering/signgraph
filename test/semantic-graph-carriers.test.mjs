@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { defineType } from "@red-cup-engineering/signcell/type-system";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
-import { createSignGraph, edgesFrom, glueSignGraphs } from "../src/semantic-graph.mjs";
+import { createSignGraph, querySignGraph, glueSignGraphs } from "../src/semantic-graph.mjs";
 import { semanticId } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
 const defined = defineType({ id: "test.semantic.source@1", name: "Semantic source", description: "A source used to prove carrier admission.", schema: { type: "object", required: ["text"], properties: { text: { type: "string", minLength: 1 } }, additionalProperties: false }, parents: [] });
 if (!defined.ok) throw new Error(defined.refusal.message);
@@ -33,7 +33,7 @@ test("semantic graph preserves typed endpoint and witness membership through adm
   assert.equal(glueSignGraphs().value.graph.cells.length, 0);
 });
 
-test("SignGraph outgoing reads consume opaque field patterns and keep every addressed witness", () => {
+test("typed graph queries preserve witness provenance and refuse id-only or mutable presentations", () => {
   const marks = [cell.value, ...["target", "witness-a", "witness-b"].map(text => {
     const result = createTypedMark(defined.value, { text });
     assert.equal(result.ok, true); return result.value;
@@ -46,26 +46,22 @@ test("SignGraph outgoing reads consume opaque field patterns and keep every addr
     { subject: source, predicate: "refutes", object: target, witness: witnessA },
     { subject: target, predicate: "supports", object: source, witness: witnessB },
   ] });
-  assert.equal(admitted.ok, true); if (!admitted.ok) return;
+  assert.equal(admitted.ok, true);
   const graph = admitted.value;
-  const all = edgesFrom(graph, marks[0]);
-  assert.equal(all.length, 3);
-  assert.deepEqual(edgesFrom(graph, { id: source.id }), all);
-  assert.deepEqual(edgesFrom(graph, { id: source.id, type: "legacy-id-only-selection" }), all);
-  const scoped = edgesFrom(graph, source, { predicate: "supports", object: target });
+  assert.equal(querySignGraph(graph, source).length, 3);
+  const scoped = querySignGraph(graph, source, { predicate: "supports", object: target });
   assert.equal(scoped.length, 2);
-  assert.deepEqual(new Set(scoped.map(entry => entry.edge.witness.id)), new Set([witnessA.id, witnessB.id]));
-  assert.deepEqual(edgesFrom(graph, source, { witness: witnessB }), scoped.filter(entry => entry.edge.witness.id === witnessB.id));
-  assert.deepEqual(edgesFrom(graph, source, { predicate: "missing" }), []);
+  assert.deepEqual(new Set(scoped.map(row => row.edge.witness.id)), new Set([witnessA.id, witnessB.id]));
+  assert.deepEqual(querySignGraph(graph, source, { witness: witnessB }), scoped.filter(row => row.edge.witness.id === witnessB.id));
+  assert.throws(() => querySignGraph(graph, { id: source.id }), /query subject must be a typed semantic reference/);
+  assert.throws(() => querySignGraph(graph, source, { subject: target }), /cannot replace the admitted typed subject/);
+  assert.throws(() => querySignGraph(graph, source, { witness: undefined }), TypeError);
   assert.equal(Object.isFrozen(scoped), true);
-  assert.ok(scoped.every(entry => graph.edges.includes(entry)), "the original addressed edges are returned");
-  const wire = JSON.parse(JSON.stringify(graph));
-  assert.deepEqual(edgesFrom(wire, source, { predicate: "supports" }), scoped);
-  wire.edges[0].edge.predicate = "changed-by-caller";
-  assert.deepEqual(edgesFrom(wire, source, { predicate: "supports" }), wire.edges.filter(entry => entry.edge.subject.id === source.id && entry.edge.predicate === "supports"));
-  assert.throws(() => edgesFrom(graph, source, { witness: undefined }), TypeError);
+  const received = JSON.parse(JSON.stringify(graph));
+  assert.deepEqual(querySignGraph(received, source, { predicate: "supports" }), scoped);
+  received.edges[0].edge.predicate = "changed-by-caller";
+  assert.throws(() => querySignGraph(received, source, { predicate: "supports" }), TypeError);
 });
-
 
 test("SignGraph gluing is permutation-invariant over compatible cuts and localizes schema obstructions", () => {
   const source = referenceOf(cell.value), type = defined.value.id;
