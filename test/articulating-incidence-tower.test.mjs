@@ -48,6 +48,19 @@ test("actual Articulating successor construction has inclusion and retraction ch
     for(let i=0;i<step.ascending.edges.length;i++)
       assert.equal(step.descending.edges[step.ascending.edges[i]],i);
     assert.deepEqual(step.descending.edges.slice(-2),[null,null]);
+    assert.deepEqual(step.projectionKernel.fiber,[
+      step.ascending.vertices.length-1,
+      step.ascending.vertices.length,
+      step.ascending.vertices.length+1,
+    ]);
+    assert.equal(step.projectionKernel.independentMerges,2);
+    assert.equal(step.projectionKernel.residualIdentifications,0);
+    assert.equal(step.projectionKernel.justifiedQuotSoundWits,null);
+    assert.equal(step.projectionKernel.physicallyDissipatedEnergy,null);
+    assert.deepEqual(step.projectionKernel.potentialIdentificationPairs,[
+      [step.ascending.vertices.length-1,step.ascending.vertices.length],
+      [step.ascending.vertices.length-1,step.ascending.vertices.length+1],
+    ]);
   }
   assert.match(x.limitLaw,/no aperiodic/);
   assert.match(x.equivalenceAuthority,/none/);
