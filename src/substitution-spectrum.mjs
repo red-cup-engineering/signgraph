@@ -17,7 +17,7 @@
  * cohomological rank, nor any non-finite closure regime.
  */
 import { isMark } from "@red-cup-engineering/signcell/mark";
-import { isUtterance } from "@red-cup-engineering/signcell/utterance";
+import { isUtterance, traceOfArticulating } from "@red-cup-engineering/signcell/utterance";
 import { semanticId } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
 import { charPoly, fromInts, toInt } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { cohomologyOfEdgeGraph } from "./cohomology.mjs";
@@ -25,7 +25,12 @@ import { cohomologyOfEdgeGraph } from "./cohomology.mjs";
 const LIMIT=8,MAX_WORD=64;
 const ID="signgraph.markSourceSubstitutionSpectrum.v1";
 const freeze=x=>Object.freeze(x);
-export function spectrumOfMarkSubstitution(utterances) {
+export function spectrumOfMarkSubstitution(input) {
+  // Recover the SAME source as Mark→Utterance→Articulating when the caller
+  // provides a genuine generative carrier. The original list input remains
+  // an explicitly declared finite comparison/presentation surface.
+  const trace=Array.isArray(input)?null:traceOfArticulating(input,{maxLayers:LIMIT});
+  const utterances=trace===null?input:trace.trace;
   if(!Array.isArray(utterances)||utterances.length<1||utterances.length>LIMIT||
      utterances.some(u=>!isUtterance(u)))
     throw new TypeError("Mark substitution needs one to eight original SignCell Utterance rules");
@@ -71,8 +76,15 @@ export function spectrumOfMarkSubstitution(utterances) {
     .filter(entry=>entry.count>1).map(entry=>freeze(entry))));
   return freeze({
     kind:ID,status:"derived",
-    source:freeze({utteranceIds:freeze(utterances.map(semanticId)),
-      alphabetMarkIds:freeze(ids)}),
+    source:freeze({
+      kind:trace===null?"original-utterance-list-presentation":"native-articulating-trace",
+      utteranceIds:freeze(utterances.map(semanticId)),
+      alphabetMarkIds:freeze(ids),
+      ...(trace===null?{}:{
+        articulatingId:semanticId(trace.carrier),
+        finiteSourceOrdinal:trace.sourceOrdinal,
+      }),
+    }),
     words:freeze(words),
     adjacencyGraph,
     substitution:freeze({
