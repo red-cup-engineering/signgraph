@@ -96,9 +96,20 @@ function normalizeRows(source, inputCount, outputCount) {
     byInput.set(key, row);
   }
   for (const valuation of enumerateValuations(inputCount)) if (!byInput.has(valuationKey(valuation))) fail("incomplete-behavior", `behavior omits input valuation ${valuationKey(valuation)}`);
-  for (const left of rows) for (const right of rows) {
-    if (!left.input.every((value, index) => knowledgeLeqWire(value, right.input[index]))) continue;
-    if (!left.output.every((value, index) => knowledgeLeqWire(value, right.output[index]))) fail("nonmonotone-behavior", "component behavior must be monotone in the FOUR knowledge order");
+  // The knowledge order on FOUR^n is the product of finite diamonds.
+  // A factor preserves the order iff it preserves every immediate cover:
+  // any comparable pair is connected by a chain of single-coordinate
+  // covers. Traverse these O(n * 4^n) incidences instead of all O(16^n)
+  // valuation pairs. The same complete table and refusal rule are retained.
+  for (const lower of rows) for (let coordinate = 0; coordinate < inputCount; coordinate += 1) {
+    for (const next of FOUR_VALUES) {
+      if (!isKnowledgeCover(lower.input[coordinate], next)) continue;
+      const upperInput = [...lower.input];
+      upperInput[coordinate] = next;
+      const upper = byInput.get(valuationKey(upperInput));
+      if (!lower.output.every((value, index) => knowledgeLeqWire(value, upper.output[index])))
+        fail("nonmonotone-behavior", "component behavior must be monotone in the FOUR knowledge order");
+    }
   }
   return [...rows].sort((left, right) => utf8Compare(valuationKey(left.input), valuationKey(right.input)));
 }

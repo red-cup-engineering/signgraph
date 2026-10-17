@@ -253,6 +253,43 @@ test("EDA tensor synthesis has a deterministic finite instance wavefront, not an
 });
 
 
+test("six-input FOUR fabrication admits a complete monotone die through knowledge covers", () => {
+  // The full six-input relation has 4^6 = 4096 rows. The prior pairwise
+  // monotonicity assay compared up to 4^12 ordered input pairs.
+  const inputs = Array.from({ length: 6 }, (_, i) => "a" + i);
+  let valuations = [[]];
+  for (const _name of inputs) valuations = valuations.flatMap(prefix =>
+    [N, T, F, B].map(value => [...prefix, value]));
+  const source = {
+    profile: HIERARCHICAL_CIRCUIT_PROFILE,
+    law: id("six-input-knowledge-cover-law"),
+    ports: [...inputs.map(name => pin(name, "input")), pin("out", "output")],
+    instances: [], nets: [],
+    behavior: { factors: [{
+      inputs, outputs: ["out"],
+      rows: valuations.map(input => ({
+        input,
+        output: [{
+          positiveEvidence: input.some(value => value.positiveEvidence),
+          negativeEvidence: input.some(value => value.negativeEvidence),
+        }],
+      })),
+    }] },
+  };
+  const fabricated = normalizeHierarchicalCircuit(source);
+  assert.equal(fabricated.behavior.factors[0].rows.length, 4096);
+  const artifact = hierarchicalCircuitId(source);
+  assert.match(artifact, /^ni:\/\/\/sha-256;[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/u);
+  const reordered = structuredClone(source);
+  reordered.behavior.factors[0].rows.reverse();
+  assert.equal(hierarchicalCircuitId(reordered), artifact);
+  // A forged knowledge-top output at the least-informed input violates the
+  // immediate N -> T and N -> F cover edges. A fast admission is not a weaker one.
+  const invalid = structuredClone(source);
+  invalid.behavior.factors[0].rows[0].output = [B];
+  assert.throws(() => normalizeHierarchicalCircuit(invalid), /monotone/u);
+});
+
 test("connected seven-input synthesis refuses before enumeration despite legal smaller children", () => {
   // Two individually admissible four-input child factors are wired in series.
   // Their composed parent has 4 + (4 - 1) = SEVEN independent inputs.
