@@ -20,13 +20,17 @@ test("three reusable operations share one structural admission, with machine-rea
     "signgraph.holonomy.burgers",
     "signgraph.holonomy.geometry",
     "signgraph.holonomy.affine",
+    "signgraph.mark-incidence.articulating-tower",
   ]);
-  for (const op of Object.values(operations)) {
+  for (const op of Object.values(operations).filter(op =>
+      op.id.startsWith("signgraph.holonomy."))) {
     assert.equal(op.inputSchema.type, "object");
     assert.equal(op.inputSchema.additionalProperties, false);
     assert.deepEqual(op.inputSchema.required.slice(0, 3), ["vertices", "edges", "faces"]);
     assert.equal(typeof op.execute, "function");
   }
+  assert.deepEqual(operations.articulatingTower.inputSchema.required,["articulating"]);
+  assert.equal(operations.articulatingTower.inputSchema.additionalProperties,false);
   const receipt = executeOperation("signgraph.holonomy.topology", triangle());
   assert.deepEqual(receipt.betti, { h0: 1, h1: 0, h2: 0 });
   assert.deepEqual(receipt.rank, { zero: 2, one: 1 });
