@@ -381,3 +381,40 @@ test("numeric sheaf and weighted Dirichlet receipts reject overflow instead of f
     /numerical edge energy exceeded finite host arithmetic/,
   );
 });
+
+test("tiny exact restrictions stay exact but cannot silently project to zero incidence", () => {
+  // Underflow to a floating-point zero changes ker δ, while the exact
+  // rational rank remains lawful. Exact H⁰/H¹ must remain available.
+  const tiny = "1/" + "1" + "0".repeat(400);
+  const s = cellularSheaf({
+    vertices: [{ id: "a", dim: 1 }, { id: "b", dim: 1 }],
+    edges: [{ id: "e", from: "a", to: "b", dim: 1,
+      restrict: { from: [[tiny]], to: [[1]] } }],
+  });
+  assert.equal(s.exact, true);
+  assert.equal(cellularSheafCohomology(s).h0, 1);
+  assert.equal(cellularSheafCohomology(s).h1, 0);
+  assert.throws(() => coboundary(s), /underflowed host arithmetic/);
+  // An exactly zero coefficient is legitimately projected to zero.
+  const zero = cellularSheaf({
+    vertices: [{ id: "a", dim: 1 }, { id: "b", dim: 1 }],
+    edges: [{ id: "e", from: "a", to: "b", dim: 1,
+      restrict: { from: [["0/" + "1" + "0".repeat(400)]], to: [[1]] } }],
+  });
+  assert.deepEqual(apply(coboundary(zero), [3, 7]), [7]);
+});
+
+test("nonzero numerical sheaf products refuse host underflow rather than fabricate zero energy", () => {
+  const thin = cellularSheaf({
+    vertices: [{ id: "a", dim: 1 }, { id: "b", dim: 1 }],
+    edges: [{ id: "e", from: "a", to: "b", dim: 1,
+      restrict: { from: [[1e-200]], to: [[0]] } }],
+  });
+  assert.throws(() => sheafLaplacian(thin), /underflowed host arithmetic/);
+  assert.throws(() => weightedSheafLaplacian(thin, [[[1]]]), /underflowed host arithmetic/);
+  assert.throws(() => apply(coboundary(thin), [1e-200, 0]), /underflowed host arithmetic/);
+  const ordinary = constantSheaf(["a", "b"], [["a", "b"]]);
+  assert.equal(weightedSheafDirichlet(ordinary, [[[1]]], [0, 2]).energy, 4);
+  assert.throws(() => weightedSheafDirichlet(ordinary, [[[1]]], [0, 1e-200]),
+    /underflowed host arithmetic/);
+});
