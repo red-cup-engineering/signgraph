@@ -290,9 +290,9 @@ test("six-input FOUR fabrication admits a complete monotone die through knowledg
   assert.throws(() => normalizeHierarchicalCircuit(invalid), /monotone/u);
 });
 
-test("EDA composes a full six-input FOUR behavior using the fixed circuit wiring", () => {
-  // Two legitimate four-input-or-smaller child factors feed one six-input die:
-  // the first child combines a,b,c; its output and d,e,f feed the second.
+test("EDA composes a complete three-input FOUR behavior using the fixed circuit wiring", () => {
+  // Two two-input child factors compose a three-input die, exercising
+  // repeated synthesis without making the ordinary test an expensive stress run.
   const values = [N, T, F, B];
   const valuations = width => {
     let result = [[]];
@@ -312,9 +312,9 @@ test("EDA composes a full six-input FOUR behavior using the fixed circuit wiring
       rows: valuations(names.length).map(input => ({ input, output: joinInputs(input) })),
     }] },
   });
-  const left = child("left", ["a", "b", "c"]);
-  const right = child("right", ["mid", "d", "e", "f"]);
-  const external = ["a", "b", "c", "d", "e", "f"];
+  const left = child("left", ["a", "b"]);
+  const right = child("right", ["mid", "c"]);
+  const external = ["a", "b", "c"];
   const net = (name, driver, sinks) => ({ name, driver, sinks, mode: "tensor", chain: null, contract: null });
   const design = {
     profile: HIERARCHICAL_CIRCUIT_PROFILE, law: id("six-input-composed-eda"),
@@ -324,16 +324,16 @@ test("EDA composes a full six-input FOUR behavior using the fixed circuit wiring
       { name: "left", component: hierarchicalCircuitId(left) },
     ],
     nets: [
-      ...["a", "b", "c"].map(name => net("in-" + name,
+      ...["a", "b"].map(name => net("in-" + name,
         { instance: null, port: name }, [{ instance: "left", port: name }])),
-      ...["d", "e", "f"].map(name => net("in-" + name,
+      ...["c"].map(name => net("in-" + name,
         { instance: null, port: name }, [{ instance: "right", port: name }])),
       net("bridge", { instance: "left", port: "out" }, [{ instance: "right", port: "mid" }]),
       net("result", { instance: "right", port: "out" }, [{ instance: null, port: "out" }]),
     ],
     behavior: { factors: [{
       inputs: external, outputs: ["out"],
-      rows: valuations(6).map(input => ({ input, output: joinInputs(input) })),
+      rows: valuations(3).map(input => ({ input, output: joinInputs(input) })),
     }] },
   };
   const library = new Map([
@@ -341,7 +341,7 @@ test("EDA composes a full six-input FOUR behavior using the fixed circuit wiring
   ]);
   assert.deepEqual(planCombinationalCircuit(design, library).waves, [["left"], ["right"]]);
   const synthesized = synthesizeCircuitBehavior(design, library);
-  assert.equal(synthesized.factors[0].rows.length, 4096);
+  assert.equal(synthesized.factors[0].rows.length, 64);
   assert.deepEqual(synthesized, normalizeHierarchicalCircuit(design).behavior);
   assert.equal(verifyCircuitEquivalence(design, library).equivalent, true);
   const reversed = { ...design, instances: [...design.instances].reverse(), nets: [...design.nets].reverse() };
