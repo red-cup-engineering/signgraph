@@ -12,6 +12,14 @@ what networking is. Pure.
 
 ## What lives here
 
+- `semantic-graph` — one closed, NI-addressed graph over SignCell's typed
+  Marks, declarations, and EAVT-addressed witnessed edges. Its queries and
+  bounded continuations preserve every source witness without pretending that
+  a page is a complete graph; gluing records schema obstructions without
+  promoting projections to lossless states. All runtime graph operations and
+  their twelve original regression cases were removed from SignCell.
+
+
 - `token-sheaf` — the sheaf of tellings over SignCell's token frame: the
   section at a token is what is told of it, restriction runs along
   specialization, and `inherited(frame, token)` glues the sections of the
