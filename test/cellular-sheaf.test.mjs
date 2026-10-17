@@ -346,7 +346,7 @@ test("connected bar exchange actually fabricates a minimal count-preserving rigi
   }), /duplicate undirected bar/);
 });
 
-test("exact large rational restrictions preserve H⁰ even when numeric projection refuses", () => {
+test("huge but finite exact sheaf restrictions now project faithfully through Data", () => {
   const huge = 10n ** 400n;
   const restriction = `${huge + 1n}/${huge}`;
   const s = cellularSheaf({
@@ -354,11 +354,21 @@ test("exact large rational restrictions preserve H⁰ even when numeric projecti
     edges: [{ id: "e", from: "a", to: "b", dim: 1,
       restrict: { from: [[restriction]], to: [[1]] } }],
   });
-  assert.equal(s.exact, true, "exact cohomology must not be excluded by host-double overflow");
+  assert.equal(s.exact, true);
   assert.equal(cellularSheafCohomology(s).h0, 1);
   assert.equal(cellularSheafCohomology(s).h1, 0);
-  assert.throws(() => coboundary(s), /exact restriction cannot be represented in finite host arithmetic/);
-  assert.throws(() => sheafLaplacian(s), /exact restriction cannot be represented in finite host arithmetic/);
+  assert.deepEqual(apply(coboundary(s), [1, 2]), [1],
+    "an exact ratio near 1 cannot turn into NaN because its inputs exceed binary64");
+  assert.deepEqual(sheafLaplacian(s).entries, [
+    [[0, 1], [1, -1]], [[0, -1], [1, 1]],
+  ]);
+  const overflowing = cellularSheaf({
+    vertices: [{ id: "a", dim: 1 }, { id: "b", dim: 1 }],
+    edges: [{ id: "f", from: "a", to: "b", dim: 1,
+      restrict: { from: [["1" + "0".repeat(400)]], to: [[1]] } }],
+  });
+  assert.equal(cellularSheafCohomology(overflowing).h0, 1);
+  assert.throws(() => coboundary(overflowing), /exceeds finite binary64 range/);
 });
 
 test("numeric sheaf and weighted Dirichlet receipts reject overflow instead of fabricating Infinity", () => {
@@ -394,7 +404,7 @@ test("tiny exact restrictions stay exact but cannot silently project to zero inc
   assert.equal(s.exact, true);
   assert.equal(cellularSheafCohomology(s).h0, 1);
   assert.equal(cellularSheafCohomology(s).h1, 0);
-  assert.throws(() => coboundary(s), /underflowed host arithmetic/);
+  assert.throws(() => coboundary(s), /underflows binary64/);
   // An exactly zero coefficient is legitimately projected to zero.
   const zero = cellularSheaf({
     vertices: [{ id: "a", dim: 1 }, { id: "b", dim: 1 }],
