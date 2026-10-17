@@ -8,6 +8,20 @@
  * cokernel H¹ has rank the cycle rank |cells| − |entities| + |components|, the
  * first Betti number: the cycles no 0-cochain bounds. Components are found by
  * union–find; nothing here needs linear algebra.
+ *
+ * This is GRAPH-ONLY H¹ of an already admitted predication-cell
+ * 1-skeleton. It is not the H¹ of a proposed quotient-identification
+ * nerve (whose redundant identifications are a separately counted
+ * WIT/Quot.sound residual), nor the H¹ of an explicitly face-filled
+ * cell complex or of an actual valued Čech sheaf. cellular2Complex
+ * separately attaches genuine oriented faces with boundary²=0,
+ * and an attachment can remove graph-only H¹.
+ *
+ * Formal Mark-origin ports and their source-identification witnesses
+ * are distinct from physical manifold or foam geometry. Their earliest
+ * finite bridge is SignCell formalBoundaryOfUtterance → SignGraph
+ * mark-gluing → this cohomology consumer, not an independent Mark
+ * identity imposed from already known space.
  */
 import { charPoly, fromInts, rank, toCount, toInt } from "@red-cup-engineering/exact-number-data-service/exact-number";
 
