@@ -21,6 +21,7 @@
  */
 import { coincidenceKey } from "@red-cup-engineering/signcell/cell";
 import { isExactEntry, ratPairOfEntry, ratRank } from "@red-cup-engineering/exact-number-data-service/rational-matrix";
+import { rationalToFiniteNumber } from "@red-cup-engineering/exact-number-data-service/exact-number-host";
 import { rankVanishing } from "./cohomology.mjs";
 
 const freezeMatrix = (matrix) => Object.freeze(matrix.map((row) => Object.freeze([...row])));
@@ -36,14 +37,10 @@ const numberOfEntry = (entry) => {
     if (!Number.isFinite(entry)) throw new RangeError("cellularSheaf: a restriction entry is not finite");
     return entry;
   }
-  const [n, d] = ratPairOfEntry(entry);
-  const projected = Number(n) / Number(d);
-  if (!Number.isFinite(projected) || (n !== 0n && projected === 0)) {
-    // Exact cohomology still accepts this restriction. The floating-point
-    // projection must not erase a nonzero incidence and fabricate a kernel.
-    throw new RangeError("cellularSheaf: nonzero exact restriction overflowed or underflowed host arithmetic");
-  }
-  return projected;
+  // Data owns correct nearest-even binary64 projection, including huge
+  // cancelling numerators/denominators and subnormal/overflow refusals.
+  // SignGraph owns the typed sheaf; it must not recode the conversion.
+  return rationalToFiniteNumber(...ratPairOfEntry(entry));
 };
 
 /** A bounded numeric sheaf must refuse both overflow and underflow to zero:
