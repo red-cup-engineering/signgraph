@@ -1,5 +1,5 @@
 import { createGraph } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
-import { glueSignGraphs } from "@red-cup-engineering/signcell/semantic-graph";
+import { glueSignGraphs } from "./semantic-graph.mjs";
 
 /**
  * A read-only topology of an ORIGINAL admitted SignCell SemanticGraph.
