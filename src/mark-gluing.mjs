@@ -109,6 +109,16 @@ export function glueMarkUtteranceCells(raw) {
       authority:"conditional on presented identifications, not an authenticated Quot.sound",
       gross:ids.length,merges,residue,initialPorts:ports,classes:unique.length,
       trace:freeze(trace),
+      // The proposed WIT denomination is per justified equivalence
+      // instrument. Merely presenting a relation does not pay that unit.
+      witDenomination:"one properly justified Quot.sound identification instrument",
+      presentedInstrumentCandidates:ids.length,
+      justifiedInstrumentWits:null,
+      identificationNerve:freeze({
+        h0:unique.length,h1:residue,euler:ports-ids.length,
+        indexBalanceHolds:unique.length-residue===ports-ids.length,
+      }),
+      physicallyErasedBits:null,
     }),
     topology:freeze({
       vertices:complex.vertices,edges:complex.edges,faces:complex.faces,
