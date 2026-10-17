@@ -3,7 +3,7 @@ import test from "node:test";
 import { defineType } from "@red-cup-engineering/signcell/type-system";
 import { semanticId } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
-import { createSignGraph, edgesFrom, querySignGraph, querySignGraphPage, validateSignGraphPage, validateSignGraphQuery } from "../src/semantic-graph.mjs";
+import { createSignGraph, querySignGraph, querySignGraphPage, validateSignGraphPage, validateSignGraphQuery } from "../src/semantic-graph.mjs";
 
 const value = result => { assert.equal(result.ok, true, JSON.stringify(result)); return result.value; };
 const markType = value(defineType({ id: "test.opaque-query-mark@1", name: "Opaque query mark", description: "Caller-owned uninterpreted carrier content.", schema: {}, parents: [] }));
@@ -28,7 +28,7 @@ test("a received graph query preserves opaque marks and every addressed conflict
   const input = example(), request = wire(input), before = JSON.stringify(request);
   assert.equal(validateSignGraphQuery(request.graph, request.subject), undefined);
   const all = querySignGraph(request.graph, request.subject);
-  assert.deepEqual(all, edgesFrom(input.graph, input.subject));
+  assert.deepEqual(all, input.graph.edges);
   assert.deepEqual(new Set(all.map(entry => entry.edge.predicate)), new Set(["supports", "refutes"]));
   const scoped = querySignGraph(request.graph, request.subject, { predicate: "supports", object: request.object });
   assert.equal(scoped.length, 2);
