@@ -13,6 +13,7 @@
 import { coincides, coincidenceKey, knowledgeReading } from "@red-cup-engineering/signcell/cell";
 import { canonicalCarrier } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
 import { evidenceAt } from "./valuation.mjs";
+import { reindex, existsAlong, forallAlong } from "@red-cup-engineering/metrologic/hyperdoctrine/adjoints";
 import { isReading, knowledgeBottom, knowledgeTop, truthBottom, truthTop, readingOfSides, samePoint, fusionReading, knowledgeJoinReading, knowledgeMeetReading, residuumReading, truthJoinReading, truthMeetReading } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 
 /** An order over readings: join, meet, bottom, top. */
@@ -21,8 +22,6 @@ const order = (name, join, meet, bottom, top) => Object.freeze({ kind: "signgrap
 export const knowledgeOrder = () => order("knowledge", knowledgeJoinReading, knowledgeMeetReading, knowledgeBottom(), knowledgeTop());
 /** The truth order: active bottom, potential top. */
 export const truthOrder = () => order("truth", truthJoinReading, truthMeetReading, truthBottom(), truthTop());
-
-const samePair = (left, right) => coincides(left[0], right[0]) && coincides(left[1], right[1]);
 
 /** Every ordered (subject, object) pair over an entity list. */
 export const allPairs = (entities) => Object.freeze(entities.flatMap((subject) => entities.map((object) => Object.freeze([subject, object]))));
@@ -119,42 +118,59 @@ export const fiberLeqTruth = (left, right, pairs) => {
   return (pairs ?? allPairs(left.entities)).every(([s, o]) => samePoint(truthJoinReading(left.at(s, o), right.at(s, o)), right.at(s, o)));
 };
 
-const foldJoin = (ord, values) => values.reduce((acc, item) => ord.join(acc, item), ord.bottom);
-const foldMeet = (ord, values) => values.reduce((acc, item) => ord.meet(acc, item), ord.top);
-const generator = (name, domain, codomain, pullback, exists, forall) => Object.freeze({ kind: "signgraph.generator", generator: name, domain, codomain, pullback, exists, forall });
+// SignGraph owns only the SCA-coordinate presentation of a finite site. The
+// mathematical reindexing and existential/universal adjoints are Metrologic's;
+// no second implementation of the hyperdoctrine is retained here.
+const pairAddress = (pair) => coincidenceKey(pair);
+const indexedFiber = (fiber, pairs) =>
+  new Map(pairs.map(([s, o]) => [pairAddress([s, o]), fiber.at(s, o)]));
+const onPairs = (fiber, pairs, readings) =>
+  predicateFiber(fiber.label, fiber.entities, (s, o) => readings.get(pairAddress([s, o])), pairs);
 
-/** Converse: pullback, ∃ and ∀ all read the swapped pair. */
+/** Translate a graph generator into one Metrologic index morphism u: local -> ambient.
+ * The map is formed from canonical SCA coordinate identities, not string-concatenated
+ * subjects and objects or caller-owned references. In particular, a projection's
+ * off-diagonal values are the EMPTY-FIBER bottom/top given by Metrologic, never
+ * made-up witnesses. Graph-specific fiber presentation stays with SignGraph. */
+function finiteGenerator(name, ambient, local, imageOf) {
+  const source = local.map(pairAddress);
+  const target = ambient.map(pairAddress);
+  if (new Set(source).size !== source.length || new Set(target).size !== target.length)
+    throw new RangeError("signgraph generator: a site cannot repeat a pair");
+  const images = new Map(local.map((pair) => [pairAddress(pair), pairAddress(imageOf(pair))]));
+  const morphism = Object.freeze({
+    source, target,
+    map: (key) => images.get(key),
+  });
+  return Object.freeze({
+    kind: "signgraph.generator", generator: name, domain: ambient, codomain: local,
+    pullback: (fiber) => onPairs(fiber, local, reindex(morphism, indexedFiber(fiber, ambient))),
+    exists: (order, fiber) => onPairs(fiber, ambient, existsAlong(morphism, indexedFiber(fiber, local), order.name)),
+    forall: (order, fiber) => onPairs(fiber, ambient, forallAlong(morphism, indexedFiber(fiber, local), order.name)),
+  });
+}
+
+/** Converse is a bijective finite reindexing (both adjoints are its inverse). */
 export function converse(entities) {
   const pairs = allPairs(entities);
-  const swapped = (source) => predicateFiber(source.label, source.entities, (s, o) => source.at(o, s), pairs);
-  return generator("converse", pairs, pairs, swapped, (_ord, source) => swapped(source), (_ord, source) => swapped(source));
+  return finiteGenerator("converse", pairs, pairs, ([s, o]) => [o, s]);
 }
 
-/** Subject projection: pullback reads (s, s); ∃ and ∀ fold a subject's row onto its diagonal. */
+/** Diagonal projection: each row of a relation has the subject as its image. */
 export function subjectProjection(entities) {
   const pairs = allPairs(entities);
-  return generator("subject-projection", pairs, pairs,
-    (source) => predicateFiber(source.label, source.entities, (s) => source.at(s, s), pairs),
-    (ord, source) => predicateFiber(source.label, source.entities, (s, o) => coincides(s, o) ? foldJoin(ord, source.entities.map((item) => source.at(s, item))) : ord.bottom, pairs),
-    (ord, source) => predicateFiber(source.label, source.entities, (s, o) => coincides(s, o) ? foldMeet(ord, source.entities.map((item) => source.at(s, item))) : ord.top, pairs));
+  return finiteGenerator("subject-projection", pairs, pairs, ([s]) => [s, s]);
 }
 
-/** Object projection: pullback reads (o, o); ∃ and ∀ fold an object's column onto its diagonal. */
+/** Diagonal projection: each column has the object as its image. */
 export function objectProjection(entities) {
   const pairs = allPairs(entities);
-  return generator("object-projection", pairs, pairs,
-    (source) => predicateFiber(source.label, source.entities, (_s, o) => source.at(o, o), pairs),
-    (ord, source) => predicateFiber(source.label, source.entities, (s, o) => coincides(s, o) ? foldJoin(ord, source.entities.map((item) => source.at(item, o))) : ord.bottom, pairs),
-    (ord, source) => predicateFiber(source.label, source.entities, (s, o) => coincides(s, o) ? foldMeet(ord, source.entities.map((item) => source.at(item, o))) : ord.top, pairs));
+  return finiteGenerator("object-projection", pairs, pairs, ([, o]) => [o, o]);
 }
 
-/** Specialization: restrict to a support of pairs; ∃ and ∀ extend back by the order's bottom and top. */
+/** Restriction to a caller-admitted support: inclusion's two adjoints. */
 export function specialization(entities, support, ambient = allPairs(entities)) {
-  const inSupport = (s, o) => support.some((pair) => samePair(pair, [s, o]));
-  return generator("specialization", ambient, Object.freeze([...support]),
-    (source) => predicateFiber(source.label, source.entities, (s, o) => source.at(s, o), support),
-    (ord, source) => predicateFiber(source.label, source.entities, (s, o) => inSupport(s, o) ? source.at(s, o) : ord.bottom, ambient),
-    (ord, source) => predicateFiber(source.label, source.entities, (s, o) => inSupport(s, o) ? source.at(s, o) : ord.top, ambient));
+  return finiteGenerator("specialization", ambient, Object.freeze([...support]), (pair) => pair);
 }
 
 /** Whether a generator's pullback commutes with fusion, and with residuum. */
