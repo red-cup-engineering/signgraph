@@ -252,3 +252,43 @@ test("a token wall cannot be claimed as a cell, and opposed or presumed attachme
   assert.throws(()=>assembleMarkWallCellIncidence(excessive),
     /source cell, target wall/);
 });
+
+test("finite Mark-cell generation exceeds the former 32/128/32 limits without reifying content equality",()=>{
+  const source=[...triangleSource,
+    ...Array.from({length:30},(_,i)=>utterance("extra-token-"+i,"extra-claim-"+i))];
+  const links=[...joins,...Array.from({length:126},()=>({...joins[0]}))];
+  const faces=Array.from({length:33},(_,i)=>({
+    id:"distinct-face-"+i,boundary:fill[0].boundary,
+  }));
+  const assembled=glueMarkUtteranceCells({
+    utterances:source,identifications:links,faces,
+  });
+  assert.equal(assembled.source.ports.length,66);
+  assert.equal(assembled.identificationLedger.gross,129);
+  assert.equal(assembled.identificationLedger.residue,126);
+  assert.equal(assembled.topology.faces.length,33);
+  assert.equal(assembled.topology.betti.h1,0);
+  assert.equal(assembled.topology.betti.h2,32);
+  assert.equal(assembled.identificationLedger.justifiedInstrumentWits,null);
+  assert.equal(assembled.identificationLedger.physicallyErasedBits,null);
+});
+
+test("the two-sorted native incidence assembler keeps >128 separately witnessed attachments",()=>{
+  const source=[...triangleSource,
+    ...Array.from({length:30},(_,i)=>utterance("token-"+i,"claim-"+i))];
+  const attachments=Array.from({length:129},(_,i)=>({
+    cell:0,wall:1,
+    judgment:cell("cell:0","attaches-to","wall:1",{for:[{source:"witness",i}]}),
+  }));
+  const result=assembleMarkWallCellIncidence({utterances:source,attachments});
+  assert.deepEqual(result.sorts,{wall:33,cell:33,equatedAcrossSorts:false});
+  assert.equal(result.attachments.length,129);
+  assert.equal(result.conditionalGeometry.edges.length,162);
+  assert.equal(result.relationAdmission.quotientAdmitted,false);
+  const refused=structuredClone(attachments);
+  refused[128].judgment=cell("cell:0","attaches-to","wall:1",{
+    for:["both"],against:["opposed"],
+  });
+  assert.throws(()=>assembleMarkWallCellIncidence({utterances:source,attachments:refused}),
+    /refuses incidence/);
+});
