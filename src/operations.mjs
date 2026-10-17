@@ -14,6 +14,7 @@ import {
   cellular2Complex, cellular3Complex, burgersOfComplex, affineHolonomyOfComplex,
 } from "./cohomology.mjs";
 import { geometricReceiving, metricSquareOfVector } from "./embedding.mjs";
+import { unfoldArticulatingIncidenceTower } from "./mark-gluing.mjs";
 
 export const LIMITS = Object.freeze({
   vertices: 64,
@@ -88,6 +89,24 @@ function bounded(input, operation) {
     ? cellular2Complex({ vertices, edges, faces })
     : cellular3Complex({ vertices, edges, faces, volumes });
   return Object.freeze({ complex, steps, volumeSteps });
+}
+
+/**
+ * Source-native input has no independently supplied vertices or edges:
+ * it must carry a real original Articulating and a bounded finite prefix.
+ * The original source-derived constructor owns everything after admission.
+ */
+function boundedArticulating(input) {
+  if(!input||typeof input!=="object"||Array.isArray(input)||
+     Object.keys(input).some(k=>!["articulating","maxLayers"].includes(k))||
+     !Object.hasOwn(input,"articulating"))
+    throw new TypeError("Mark tower operation needs an original Articulating and optional maxLayers");
+  if(new TextEncoder().encode(JSON.stringify(input)).length>65536)
+    throw new RangeError("Mark tower operation exceeds the 64KiB original source budget");
+  const maxLayers=input.maxLayers??16;
+  if(!Number.isSafeInteger(maxLayers)||maxLayers<1||maxLayers>16)
+    throw new RangeError("Mark tower operation requires 1-16 finite source layers");
+  return Object.freeze({source:input.articulating,maxLayers});
 }
 
 const shape = (complex, steps, volumeSteps) => Object.freeze({
@@ -206,6 +225,22 @@ export const operations = Object.freeze({
         topology: topologicalSummary(complex, steps, volumeSteps),
         ...affineHolonomyOfComplex(complex, input.edgeMotions),
       });
+    },
+  }),
+  articulatingTower: Object.freeze({
+    id: "signgraph.mark-incidence.articulating-tower",
+    description: "Construct source-owned Mark wall/cell prefix topology and exact chain-map ascent/retraction; no external edges or physical identity.",
+    inputSchema: Object.freeze({
+      type:"object",additionalProperties:false,
+      required:Object.freeze(["articulating"]),
+      properties:Object.freeze({
+        articulating:{type:"object"},
+        maxLayers:{type:"integer",minimum:1,maximum:16},
+      }),
+    }),
+    execute(input) {
+      const {source,maxLayers}=boundedArticulating(input);
+      return unfoldArticulatingIncidenceTower(source,{maxLayers});
     },
   }),
 });
