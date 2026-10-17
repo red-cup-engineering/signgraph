@@ -19,6 +19,7 @@ test("Fibonacci follows its actual Mark-word substitution, not an assumed growth
   const result=spectrumOfMarkSubstitution(fib());
   assert.equal(result.status,"derived");
   assert.equal(result.substitution.alphabetSize,2);
+  assert.deepEqual([result.adjacencyGraph.vertices,result.adjacencyGraph.edges,result.adjacencyGraph.graphH1],[2,3,2]);
   assert.deepEqual(result.substitution.matrix,[[1,1],[1,0]]);
   assert.deepEqual(result.substitution.characteristicPolynomialDescending,[1,-1,-1]);
   assert.equal(result.substitution.polynomialDegree,2);
@@ -31,7 +32,13 @@ test("Padovan and Tribonacci are different source relations despite both having 
   assert.equal(pad.substitution.alphabetSize,3);
   assert.equal(trib.substitution.alphabetSize,3);
   assert.deepEqual(pad.substitution.matrix,[[0,1,0],[0,0,1],[1,1,0]]);
+  assert.equal(pad.adjacencyGraph.graphH1,2);
+  assert.equal(pad.adjacencyGraph.vertices,3);
+  assert.equal(pad.adjacencyGraph.graphH1!==pad.substitution.alphabetSize,true,
+    "an actual primitive Padovan substitution has graph-H1 2, not automatically 3");
   assert.deepEqual(trib.substitution.matrix,[[1,1,0],[1,0,1],[1,0,0]]);
+  assert.equal(trib.adjacencyGraph.graphH1,3);
+  assert.notEqual(pad.adjacencyGraph.graphH1,trib.adjacencyGraph.graphH1);
   assert.deepEqual(pad.substitution.characteristicPolynomialDescending,[1,0,-1,-1]);
   assert.deepEqual(trib.substitution.characteristicPolynomialDescending,[1,-1,-1,-1]);
   assert.notDeepEqual(pad.substitution.matrix,trib.substitution.matrix);
@@ -46,6 +53,7 @@ test("FOUR positive-incidence is a lossy shadow, never the substitution's whole 
   ];
   const actual=spectrumOfMarkSubstitution(u);
   assert.deepEqual(actual.substitution.matrix,[[2,1],[0,1]]);
+  assert.equal(actual.adjacencyGraph.graphH1,3);
   assert.deepEqual(actual.substitution.characteristicPolynomialDescending,[1,-3,2]);
   assert.deepEqual(actual.informationLoss.multipleSymbolEntries,[{i:0,j:0,count:2}]);
   assert.equal(actual.chu.r[0].reading,"potential");
