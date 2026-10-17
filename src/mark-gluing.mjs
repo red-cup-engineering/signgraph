@@ -1,0 +1,128 @@
+/**
+ * Source-generated first cellular boundary and explicit gluing of Mark positions.
+ * The quotient of ORIGINAL PORT OCCURRENCES is a mathematical assumption
+ * until a competent source proves each identifying relation.
+ * Quot.sound is the proof transport for a proved equivalence, not an
+ * automatically charged thermodynamic event.
+ */
+import { utterance, isUtterance, formalBoundaryOfUtterance }
+  from "@red-cup-engineering/signcell/utterance";
+import { semanticId }
+  from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
+import { cellular2Complex } from "./cohomology.mjs";
+
+const KIND="signgraph.markGeneratedCellGluing.v1";
+const LIMITS=Object.freeze({utterances:32,identifications:128,faces:32});
+const freeze=value=>Object.freeze(value);
+const name=(i,side)=>"port:"+i+":"+side;
+const validIndex=(i,n,label)=>{
+  if(!Number.isSafeInteger(i)||i<0||i>=n)
+    throw new RangeError(label+" must name a real source Utterance index");
+  return i;
+};
+const readUtterance=value=>{
+  if(isUtterance(value))return value;
+  if(Array.isArray(value)&&value.length===2)return utterance(value[0],value[1]);
+  throw new TypeError("Mark gluing requires native SignCell Utterance or two original Marks");
+};
+const position=(value,n)=>{
+  if(!Array.isArray(value)||value.length!==2||!["token","claim"].includes(value[1]))
+    throw new TypeError("an identification endpoint is [index, token|claim]");
+  return 2*validIndex(value[0],n,"identification")+(value[1]==="claim"?1:0);
+};
+const keys=(value,list)=>value&&typeof value==="object"&&!Array.isArray(value)&&
+  Object.keys(value).sort().join("|")===list.join("|");
+
+/**
+ * Each source Utterance is one oriented formal edge from its token PORT to
+ * its claim PORT (not a physical or asserted higher-dimensional wall).
+ * Each identification explicitly glues two port occurrences. With E
+ * identifications, V=2*utterances initial ports and C final classes, the
+ * redundant-identification count is E-(V-C). It is independent of ordering.
+ *
+ * The built graph's H1 is a DIFFERENT number. Optional face walks attach
+ * 2-cells and SignGraph's existing cellular2Complex requires boundary²=0.
+ * This model never tests opaque Mark payload identity as an equivalence law.
+ */
+export function glueMarkUtteranceCells(raw) {
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+     Object.keys(raw).some(k=>!["utterances","identifications","faces"].includes(k)))
+    throw new TypeError("Mark gluing requires a source/cell presentation");
+  const items=raw.utterances,ids=raw.identifications??[],faces=raw.faces??[];
+  if(!Array.isArray(items)||items.length<1||items.length>LIMITS.utterances||
+     !Array.isArray(ids)||ids.length>LIMITS.identifications||
+     !Array.isArray(faces)||faces.length>LIMITS.faces)
+    throw new RangeError("bounded Utterance, identification and face lists required");
+  const utterances=items.map(readUtterance);
+  const boundaries=utterances.map(formalBoundaryOfUtterance);
+  const n=utterances.length,ports=2*n;
+  const parent=Array.from({length:ports},(_,i)=>i);
+  const find=x=>{while(parent[x]!==x){parent[x]=parent[parent[x]];x=parent[x];}return x;};
+  const trace=[];
+  let merges=0,residue=0;
+  for(const [at,item] of ids.entries()) {
+    if(!keys(item,["left","right"]))
+      throw new TypeError("each presented identification has only left/right endpoints");
+    const left=position(item.left,n),right=position(item.right,n);
+    const a=find(left),b=find(right),repeated=a===b;
+    if(repeated)residue++;
+    else {parent[Math.max(a,b)]=Math.min(a,b);merges++;}
+    trace.push(freeze({step:at,left:name(item.left[0],item.left[1]),
+      right:name(item.right[0],item.right[1]),
+      effect:repeated?"residual-identification":"component-merge",
+      classes:ports-merges}));
+  }
+  const roots=Array.from({length:ports},(_,i)=>find(i));
+  const unique=[...new Set(roots)].sort((a,b)=>a-b);
+  const vertex=i=>"class:"+roots[i];
+  const vertices=unique.map(i=>"class:"+i);
+  const edges=utterances.map((_,i)=>freeze({
+    id:"utterance:"+i,from:vertex(2*i),to:vertex(2*i+1),
+  }));
+  const attached=faces.map(face=>{
+    if(!keys(face,["boundary","id"])||!Array.isArray(face.boundary)||
+       face.boundary.length<1||face.boundary.length>LIMITS.identifications)
+      throw new TypeError("a 2-cell needs identity and a bounded oriented Utterance walk");
+    const boundary=face.boundary.map(step=>{
+      if(!keys(step,["direction","utterance"])||![1,-1].includes(step.direction))
+        throw new TypeError("each 2-cell step names a source Utterance and direction");
+      const at=validIndex(step.utterance,n,"face");
+      return freeze({edge:"utterance:"+at,direction:step.direction});
+    });
+    return freeze({id:face.id,boundary:freeze(boundary)});
+  });
+  const complex=cellular2Complex({vertices,edges,faces:attached});
+  if(residue!==ids.length-(ports-unique.length)||merges+residue!==ids.length)
+    throw new TypeError("identification residual fails the finite Euler rank equation");
+  return freeze({
+    kind:KIND,
+    source:freeze({
+      utteranceIds:freeze(utterances.map(semanticId)),
+      ports:freeze(boundaries.flatMap((b,i)=>b.ports.map(port=>freeze({
+        sourceIndex:i,position:port.position,
+        markPresentationId:semanticId(port.mark),
+        occurrence:name(i,port.position),orientation:port.coefficient,
+      })))),
+    }),
+    identificationLedger:freeze({
+      authority:"conditional on presented identifications, not an authenticated Quot.sound",
+      gross:ids.length,merges,residue,initialPorts:ports,classes:unique.length,
+      trace:freeze(trace),
+    }),
+    topology:freeze({
+      vertices:complex.vertices,edges:complex.edges,faces:complex.faces,
+      betti:complex.betti,ranks:complex.rank,
+      graphOnlyH1:complex.graphOnlyH1,
+      boundaryZero:complex.coboundary.zero,
+      boundaryOne:complex.coboundary.one,
+    }),
+    distinction:freeze({
+      identificationResidue:residue,
+      assembledGraphH1:complex.graphOnlyH1,
+      filledComplexH1:complex.betti.h1,
+      equalNumerically:residue===complex.graphOnlyH1,
+      equalityNotAssumed:true,
+    }),
+    scope:"exact finite presented source quotient and cellular chain complex, not physical Landauer dissipation, externally valid identity or manifold claim",
+  });
+}
