@@ -1,7 +1,7 @@
 import { createRelationalField, defineRelation, queryRelationalField, queryRelationalFieldPage } from "@red-cup-engineering/signcell/type-system/relations";
 import { semanticId, coincides } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
 import { admit } from "@red-cup-engineering/signcell/type-system";
-import { semanticGraphType } from "@red-cup-engineering/signcell/semantic-carriers";
+import { semanticGraphType } from "./semantic-graph-schema.mjs";
 import { admitTypedMarkCarrier, referenceOf, typedMarkReferenceType } from "@red-cup-engineering/signcell/typed-mark";
 const accepted = (value) => Object.freeze({ ok: true, value });
 const refused = (code, message) => Object.freeze({ ok: false, refusal: Object.freeze({ code, message }) });
