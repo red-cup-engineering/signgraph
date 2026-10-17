@@ -70,6 +70,12 @@ const requireSharedContext = (left, right) => {
   if (left?.kind !== "signgraph.fiber" || right?.kind !== "signgraph.fiber") {
     throw new TypeError("fiber: two predicate fibers are required");
   }
+  // A fiber is indexed by its predicate as well as its entity context. To
+  // tensor distinct predicates a caller would need an explicitly typed
+  // resulting predicate; reusing the left label would misname the result.
+  if (!coincides(left.label, right.label)) {
+    throw new RangeError("fiber: distinct predicate labels cannot compose without a resulting predicate");
+  }
   const rightKeys = new Set(right.entities.map(coincidenceKey));
   if (left.entities.length !== right.entities.length ||
       left.entities.some((entity) => !rightKeys.has(coincidenceKey(entity)))) {
@@ -77,13 +83,19 @@ const requireSharedContext = (left, right) => {
   }
 };
 
-const cellwise = (operation) => (left, right, pairs = left.pairs) => {
+// A sparse local section is not the whole predicate fiber: in FOUR's linear
+// algebra ⊥ₖ ⊗ ⊥ₖ = f and ⊥ₖ ⊸ ⊥ₖ = t. Evaluating only the
+// left section's declared pairs silently discards non-bottom results outside
+// it and makes the default pointwise operations dependent on operand order.
+// Explicit pairs still select a caller-declared restricted site.
+const cellwise = (operation) => (left, right, pairs) => {
   requireSharedContext(left, right);
-  return predicateFiber(left.label, left.entities, (s, o) => operation(left.at(s, o), right.at(s, o)), pairs);
+  const domain = pairs ?? allPairs(left.entities);
+  return predicateFiber(left.label, left.entities, (s, o) => operation(left.at(s, o), right.at(s, o)), domain);
 };
-const sameFiber = (left, right, pairs = left.pairs) => {
+const sameFiber = (left, right, pairs) => {
   requireSharedContext(left, right);
-  return pairs.every(([s, o]) => samePoint(left.at(s, o), right.at(s, o)));
+  return (pairs ?? allPairs(left.entities)).every(([s, o]) => samePoint(left.at(s, o), right.at(s, o)));
 };
 
 /** Cellwise linear fusion and residuum of two fibers. */
@@ -91,9 +103,9 @@ export const fiberFusion = cellwise(fusionReading);
 export const fiberResiduum = cellwise(residuumReading);
 
 /** Whether `left` is below `right` in the truth order at every pair. */
-export const fiberLeqTruth = (left, right, pairs = left.pairs) => {
+export const fiberLeqTruth = (left, right, pairs) => {
   requireSharedContext(left, right);
-  return pairs.every(([s, o]) => samePoint(truthJoinReading(left.at(s, o), right.at(s, o)), right.at(s, o)));
+  return (pairs ?? allPairs(left.entities)).every(([s, o]) => samePoint(truthJoinReading(left.at(s, o), right.at(s, o)), right.at(s, o)));
 };
 
 const foldJoin = (ord, values) => values.reduce((acc, item) => ord.join(acc, item), ord.bottom);
