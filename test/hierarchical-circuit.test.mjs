@@ -290,6 +290,68 @@ test("six-input FOUR fabrication admits a complete monotone die through knowledg
   assert.throws(() => normalizeHierarchicalCircuit(invalid), /monotone/u);
 });
 
+test("EDA composes a full six-input FOUR behavior using the fixed circuit wiring", () => {
+  // Two legitimate four-input-or-smaller child factors feed one six-input die:
+  // the first child combines a,b,c; its output and d,e,f feed the second.
+  const values = [N, T, F, B];
+  const valuations = width => {
+    let result = [[]];
+    for (let k = 0; k < width; k++) result = result.flatMap(prefix =>
+      values.map(value => [...prefix, value]));
+    return result;
+  };
+  const joinInputs = input => [{
+    positiveEvidence: input.some(value => value.positiveEvidence),
+    negativeEvidence: input.some(value => value.negativeEvidence),
+  }];
+  const child = (label, names) => normalizeHierarchicalCircuit({
+    profile: HIERARCHICAL_CIRCUIT_PROFILE, law: id("composed-four-eda-" + label),
+    ports: [...names.map(name => pin(name, "input")), pin("out", "output")],
+    instances: [], nets: [], behavior: { factors: [{
+      inputs: names, outputs: ["out"],
+      rows: valuations(names.length).map(input => ({ input, output: joinInputs(input) })),
+    }] },
+  });
+  const left = child("left", ["a", "b", "c"]);
+  const right = child("right", ["mid", "d", "e", "f"]);
+  const external = ["a", "b", "c", "d", "e", "f"];
+  const net = (name, driver, sinks) => ({ name, driver, sinks, mode: "tensor", chain: null, contract: null });
+  const design = {
+    profile: HIERARCHICAL_CIRCUIT_PROFILE, law: id("six-input-composed-eda"),
+    ports: [...external.map(name => pin(name, "input")), pin("out", "output")],
+    instances: [
+      { name: "right", component: hierarchicalCircuitId(right) },
+      { name: "left", component: hierarchicalCircuitId(left) },
+    ],
+    nets: [
+      ...["a", "b", "c"].map(name => net("in-" + name,
+        { instance: null, port: name }, [{ instance: "left", port: name }])),
+      ...["d", "e", "f"].map(name => net("in-" + name,
+        { instance: null, port: name }, [{ instance: "right", port: name }])),
+      net("bridge", { instance: "left", port: "out" }, [{ instance: "right", port: "mid" }]),
+      net("result", { instance: "right", port: "out" }, [{ instance: null, port: "out" }]),
+    ],
+    behavior: { factors: [{
+      inputs: external, outputs: ["out"],
+      rows: valuations(6).map(input => ({ input, output: joinInputs(input) })),
+    }] },
+  };
+  const library = new Map([
+    [hierarchicalCircuitId(left), left], [hierarchicalCircuitId(right), right],
+  ]);
+  assert.deepEqual(planCombinationalCircuit(design, library).waves, [["left"], ["right"]]);
+  const synthesized = synthesizeCircuitBehavior(design, library);
+  assert.equal(synthesized.factors[0].rows.length, 4096);
+  assert.deepEqual(synthesized, normalizeHierarchicalCircuit(design).behavior);
+  assert.equal(verifyCircuitEquivalence(design, library).equivalent, true);
+  const reversed = { ...design, instances: [...design.instances].reverse(), nets: [...design.nets].reverse() };
+  assert.deepEqual(synthesizeCircuitBehavior(reversed, library), synthesized);
+  const falseClaim = structuredClone(design);
+  falseClaim.behavior.factors[0].rows = falseClaim.behavior.factors[0].rows.map(row =>
+    ({ ...row, output: [N] }));
+  assert.throws(() => verifyCircuitEquivalence(falseClaim, library), /does not equal/u);
+});
+
 test("connected seven-input synthesis refuses before enumeration despite legal smaller children", () => {
   // Two individually admissible four-input child factors are wired in series.
   // Their composed parent has 4 + (4 - 1) = SEVEN independent inputs.
