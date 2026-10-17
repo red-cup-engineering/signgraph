@@ -115,9 +115,9 @@ function admittedPage(graph, subject, pattern, options) {
   if (!options || typeof options !== "object" || Array.isArray(options) ||
       Object.keys(options).some(key => !["limit", "cursor"].includes(key)))
     throwRefusal(refused("invalid-page", "page options permit only limit and cursor"));
-  const limit = options.limit === undefined ? 100 : options.limit;
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000)
-    throwRefusal(refused("invalid-page", "page limit must be an integer from 1 through 1000"));
+  const limit = options.limit;
+  if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1))
+    throwRefusal(refused("invalid-page", "page limit must be a positive representable integer"));
 
   const { graph: verified, reference } = admittedGraphScope(graph, subject);
   const field = graphFields.get(verified);
