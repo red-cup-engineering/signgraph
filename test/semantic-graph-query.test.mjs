@@ -86,7 +86,7 @@ test("bounded pages retain source identities and all witnesses across continuati
 
 test("page validation refuses stale or forged cursors and unsupported resource bounds before charging", () => {
   const input = example(), first = querySignGraphPage(input.graph, input.subject, {}, { limit: 1 });
-  for (const options of [null, [], { limit: 0 }, { limit: 1001 }, { limit: 1.5 }, { limit: "1" }, { offset: 0 }])
+  for (const options of [null, [], { limit: 0 }, { limit: 1.5 }, { limit: "1" }, { offset: 0 }])
     assert.throws(() => validateSignGraphPage(input.graph, input.subject, {}, options), error => error.code === "invalid-page");
   for (const cursor of ["opaque", {}, { ...first.next, extra: true }, { ...first.next, graph: "ni:stale" }, { ...first.next, query: "ni:wrong" }, { ...first.next, after: "ni:missing" }])
     assert.throws(() => querySignGraphPage(input.graph, input.subject, {}, { cursor }), error => error.code === "invalid-cursor");
@@ -145,4 +145,28 @@ test("indexed graph queries reuse original addressed witness edges across direct
     assert.strictEqual(entry, original.get(entry.id), "paging reuses the same source-owned immutable edge");
   assert.deepEqual([...first.edges, ...second.edges], direct);
   assert.deepEqual(querySignGraph(graph, subject, { predicate: "absent" }), []);
+});
+
+
+test("graph page requests above 1000 preserve all original witnessed edges", () => {
+  const marks = ["subject", "object", ...Array.from({ length: 1021 }, (_, i) => "witness-" + i)]
+    .map(content => value(createTypedMark(markType, content)));
+  const subject = referenceOf(marks[0]), object = referenceOf(marks[1]);
+  const references = marks.slice(2).map(referenceOf);
+  const graph = value(createSignGraph({
+    cells: marks,
+    relations: [{ id: "supports", subjectTypes: [markType.id], objectTypes: [markType.id],
+      witnessTypes: [markType.id] }],
+    edges: references.map(witness => ({ subject, predicate: "supports", object, witness })),
+  }));
+  const first = querySignGraphPage(graph, subject, {}, { limit: 1001 });
+  assert.equal(first.edges.length, 1001);
+  assert.ok(first.next);
+  const later = querySignGraphPage(graph, subject, {}, { limit: 1001, cursor: first.next });
+  assert.equal(later.edges.length, 20);
+  assert.equal(later.next, null);
+  assert.deepEqual([...first.edges, ...later.edges], querySignGraph(graph, subject));
+  const full = querySignGraphPage(graph, subject);
+  assert.equal(full.edges.length, 1021);
+  assert.equal(full.next, null);
 });
