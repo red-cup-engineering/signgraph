@@ -125,3 +125,24 @@ test("paged paid queries share the indexed field without changing subject and wi
   for (const selector of [{ subject: undefined }, { nonsense: "unexpected" }, []])
     assert.throws(() => validateSignGraphPage(graph, subject, selector), TypeError);
 });
+
+test("indexed graph queries reuse original addressed witness edges across direct and paged readers", () => {
+  const { graph, subject } = example();
+  const pattern = { predicate: "supports" };
+  const original = new Map(graph.edges.map(entry => [entry.id, entry]));
+  const direct = querySignGraph(graph, subject, pattern);
+  assert.equal(direct.length, 2);
+  for (const entry of direct) {
+    assert.strictEqual(entry, original.get(entry.id), "direct indexed read returns the original addressed edge");
+    assert.ok(Object.isFrozen(entry));
+  }
+  const first = querySignGraphPage(graph, subject, pattern, { limit: 1 });
+  assert.equal(first.edges.length, 1);
+  assert.ok(first.next);
+  const second = querySignGraphPage(graph, subject, pattern, { limit: 1, cursor: first.next });
+  assert.equal(second.next, null);
+  for (const entry of [...first.edges, ...second.edges])
+    assert.strictEqual(entry, original.get(entry.id), "paging reuses the same source-owned immutable edge");
+  assert.deepEqual([...first.edges, ...second.edges], direct);
+  assert.deepEqual(querySignGraph(graph, subject, { predicate: "absent" }), []);
+});

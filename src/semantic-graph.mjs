@@ -8,6 +8,10 @@ const refused = (code, message) => Object.freeze({ ok: false, refusal: Object.fr
 const ordered = values => Object.freeze([...values].sort((left, right) => left.id.localeCompare(right.id)));
 const names = values => Array.isArray(values) && values.length > 0 && values.every(value => typeof value === "string" && value.trim() !== "") && new Set(values).size === values.length;
 const graphFields = new WeakMap();
+// The existing SignCell relational index already selects and pages by EAVT address.
+// Retain the original immutable addressed rows so query consumers do not scan every
+// edge or manufacture fresh result wrappers after the upstream index has answered.
+const graphEdgesById = new WeakMap();
 function validRelation(relation) { return relation && typeof relation === "object" && typeof relation.id === "string" && relation.id.trim() !== "" && names(relation.subjectTypes) && names(relation.objectTypes) && names(relation.witnessTypes); }
 function checkedReference(cells, reference, allowedTypes, role) {
   if (!reference || typeof reference !== "object") return refused("invalid-edge", `${role} must be a typed semantic reference`);
@@ -60,6 +64,7 @@ export function createSignGraph(input) {
   const carrier = admit(semanticGraphType, graph);
   if (!carrier.ok) return refused("invalid-graph", "graph did not satisfy its shipped carrier schema");
   graphFields.set(graph, field.value);
+  graphEdgesById.set(graph, new Map(addressed.map(entry => [entry.id, entry])));
   return accepted(graph);
 }
 const throwRefusal = result => {
@@ -87,8 +92,9 @@ function admittedQuery(graph, subject, pattern) {
       (Object.hasOwn(selected, "subject") && !coincides(selected.subject, scope.reference)))
     throwRefusal(refused("invalid-query", "query pattern cannot replace the admitted typed subject"));
   const field = graphFields.get(scope.graph);
-  const addressed = new Set(queryRelationalField(field, { ...selected, subject: scope.reference }).map(row => row.id));
-  return Object.freeze(scope.graph.edges.filter(row => addressed.has(row.id)));
+  const matches = queryRelationalField(field, { ...selected, subject: scope.reference });
+  const sourceEdges = graphEdgesById.get(scope.graph);
+  return ordered(matches.map(row => sourceEdges.get(row.id)));
 }
 /** Admission for an external query: throws on the existing upstream refusal,
  * so an x402 validate binding can refuse the request before a payment challenge.
@@ -145,8 +151,8 @@ function admittedPage(graph, subject, pattern, options) {
       throwRefusal(refused("invalid-cursor", "cursor edge is absent from this query"));
     throw error;
   }
-  const edges = Object.freeze(page.statements.map(entry =>
-    Object.freeze({ id: entry.id, edge: entry.statement })));
+  const sourceEdges = graphEdgesById.get(verified);
+  const edges = Object.freeze(page.statements.map(entry => sourceEdges.get(entry.id)));
   const next = page.next === null ? null
     : Object.freeze({ graph: verified.id, query, after: page.next });
   return Object.freeze({ graph: verified.id, query, edges, next });
