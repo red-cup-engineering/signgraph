@@ -58,3 +58,46 @@ test("original operation refuses forged geometry, incomplete source and unbounde
   assert.throws(()=>executeOperation(id,{articulating:{foreign:"x".repeat(70000)}}),
     /64KiB original source budget/);
 });
+
+
+const headQuotientOperation="signgraph.mark-incidence.observed-head-gluing";
+
+test("original SignGraph operation constructs a source-owned head quotient with WIT/geometry distinction",()=>{
+  const input={articulating:source(),steps:2};
+  const result=executeOperation(headQuotientOperation,input);
+  assert.equal(operations.observedHeadGluing.id,headQuotientOperation);
+  assert.equal(result.kind,"signgraph.markSourceHeadObservationGluing.v1");
+  assert.equal(result.original.cohomology.h1,0);
+  assert.equal(result.projected.cohomology.h1,2);
+  assert.equal(result.identification.candidateQuotSoundUses,2);
+  assert.equal(result.identification.identificationNerveH1,0);
+  assert.equal(result.identification.justifiedLeanWits,null);
+  assert.equal(result.identification.physicalDissipation,null);
+});
+
+test("source-only quotient operation is callable through the existing JSONL holonomy runner",()=>{
+  const command=fileURLToPath(new URL("../scripts/holonomy.mjs",import.meta.url));
+  const request=JSON.stringify({operation:headQuotientOperation,
+    input:{articulating:source(),steps:1}});
+  const run=spawnSync(process.execPath,[command],{
+    input:request+"\n",encoding:"utf8",maxBuffer:1024*1024,
+  });
+  assert.equal(run.status,0,run.stderr);
+  const receipt=JSON.parse(run.stdout.trim());
+  assert.equal(receipt.ok,true);
+  assert.equal(receipt.operation,headQuotientOperation);
+  assert.equal(receipt.receipt.projected.cohomology.h1,1);
+  assert.equal(receipt.receipt.identification.justifiedLeanWits,null);
+});
+
+test("original source-only quotient operation refuses externally supplied geometry or false range",()=>{
+  assert.throws(()=>executeOperation(headQuotientOperation,{
+    articulating:source(),steps:1,nets:[],
+  }),/only admits Articulating/);
+  assert.throws(()=>executeOperation(headQuotientOperation,{
+    articulating:source(),steps:7,
+  }),/zero to six/);
+  assert.throws(()=>executeOperation(headQuotientOperation,{
+    articulating:source(),steps:-1,
+  }),/zero to six/);
+});
