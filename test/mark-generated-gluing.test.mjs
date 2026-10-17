@@ -64,7 +64,7 @@ test("one redundant presented identification adds exactly one residual bit; orde
   const a=glueMarkUtteranceCells({utterances:triangleSource,
     identifications:[...joins,duplicate]});
   const b=glueMarkUtteranceCells({utterances:triangleSource,
-    identifications:[duplicate,...joins.slice().reverse()]});
+    identifications:[duplicate,joins[0],joins[2],joins[1]]});
   for(const v of [a,b]){
     assert.equal(v.identificationLedger.gross,4);
     assert.equal(v.identificationLedger.merges,3);
