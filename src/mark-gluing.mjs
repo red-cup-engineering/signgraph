@@ -13,7 +13,6 @@ import { cellular2Complex } from "./cohomology.mjs";
 import * as chain from "@red-cup-engineering/signchain/bilattice";
 
 const KIND="signgraph.markGeneratedCellGluing.v1";
-const LIMITS=Object.freeze({utterances:32,identifications:128,faces:32});
 const freeze=value=>Object.freeze(value);
 const name=(i,side)=>"port:"+i+":"+side;
 const validIndex=(i,n,label)=>{
@@ -50,10 +49,9 @@ export function glueMarkUtteranceCells(raw) {
      Object.keys(raw).some(k=>!["utterances","identifications","faces"].includes(k)))
     throw new TypeError("Mark gluing requires a source/cell presentation");
   const items=raw.utterances,ids=raw.identifications??[],faces=raw.faces??[];
-  if(!Array.isArray(items)||items.length<1||items.length>LIMITS.utterances||
-     !Array.isArray(ids)||ids.length>LIMITS.identifications||
-     !Array.isArray(faces)||faces.length>LIMITS.faces)
-    throw new RangeError("bounded Utterance, identification and face lists required");
+  if(!Array.isArray(items)||items.length<1||
+     !Array.isArray(ids)||!Array.isArray(faces))
+    throw new TypeError("Mark gluing requires nonempty source Utterances and finite identification and face lists");
   const utterances=items.map(readUtterance);
   const boundaries=utterances.map(formalBoundaryOfUtterance);
   const n=utterances.length,ports=2*n;
@@ -82,7 +80,7 @@ export function glueMarkUtteranceCells(raw) {
   }));
   const attached=faces.map(face=>{
     if(!keys(face,["boundary","id"])||!Array.isArray(face.boundary)||
-       face.boundary.length<1||face.boundary.length>LIMITS.identifications)
+       face.boundary.length<1)
       throw new TypeError("a 2-cell needs identity and a bounded oriented Utterance walk");
     const boundary=face.boundary.map(step=>{
       if(!keys(step,["direction","utterance"])||![1,-1].includes(step.direction))
@@ -272,10 +270,9 @@ export function assembleMarkWallCellIncidence(raw){
      Object.keys(raw).some(k=>!["utterances","attachments","faces"].includes(k)))
     throw new TypeError("two-sorted Mark incidence requires source Utterances, optional witnessed attachments and faces");
   const values=raw.utterances,attachments=raw.attachments??[],faces=raw.faces??[];
-  if(!Array.isArray(values)||values.length<1||values.length>LIMITS.utterances||
-     !Array.isArray(attachments)||attachments.length>LIMITS.identifications||
-     !Array.isArray(faces)||faces.length>LIMITS.faces)
-    throw new RangeError("two-sorted Mark incidence exceeds bounded source/attachment/face budget");
+  if(!Array.isArray(values)||values.length<1||
+     !Array.isArray(attachments)||!Array.isArray(faces))
+    throw new TypeError("two-sorted Mark incidence requires nonempty source Utterances and finite attachment and face lists");
   const sources=values.map(readUtterance);
   const incidences=sources.map(markRoleIncidenceOfUtterance);
   const n=sources.length;
@@ -299,7 +296,7 @@ export function assembleMarkWallCellIncidence(raw){
   });
   const boundaries=faces.map(face=>{
     if(!keys(face,["boundary","id"])||!Array.isArray(face.boundary)||
-       face.boundary.length<1||face.boundary.length>LIMITS.identifications)
+       face.boundary.length<1)
       throw new TypeError("incidence face needs an identity and an oriented source walk");
     const boundary=face.boundary.map(step=>{
       if(!keys(step,["direction","edge"])||![1,-1].includes(step.direction)||
