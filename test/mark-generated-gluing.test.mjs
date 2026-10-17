@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { utterance } from "@red-cup-engineering/signcell/utterance";
-import { glueMarkUtteranceCells, glueAdjudicatedMarkUtteranceCells, gradientOfGluedMarkCells } from "../src/mark-gluing.mjs";
+import { glueMarkUtteranceCells, glueAdjudicatedMarkUtteranceCells, gradientOfGluedMarkCells, assembleMarkWallCellIncidence } from "../src/mark-gluing.mjs";
 import { cell } from "@red-cup-engineering/signcell/cell";
 
 const triangleSource=[
@@ -172,4 +172,74 @@ test("no scalar potential is generated from Marks, and a fake field is refused",
   assert.throws(()=>gradientOfGluedMarkCells({...input,potentials:[1,2,0.5]}),/one bounded integer scalar/);
   assert.throws(()=>gradientOfGluedMarkCells({...input,potentials:[1,2,3],energy:-1}),
     /finite generated cell presentation/);
+});
+
+
+const typedAttachments=joins.map((join,i)=>({
+  cell:i,wall:(i+1)%3,
+  judgment:cell("cell:"+i,"attaches-to","wall:"+((i+1)%3),
+    {for:[{source:"signed-attachment",i}]}),
+}));
+const typedFace=[{id:"typed-disc",boundary:[
+  {edge:"utterance:0",direction:1},{edge:"attachment:0",direction:1},
+  {edge:"utterance:1",direction:1},{edge:"attachment:1",direction:1},
+  {edge:"utterance:2",direction:1},{edge:"attachment:2",direction:1},
+]}];
+
+test("Mark->Utterance yields a two-SORTED wall/cell incidence graph, never an assumed endpoint quotient",()=>{
+  const input={utterances:triangleSource};
+  const output=assembleMarkWallCellIncidence(input);
+  assert.equal(output.kind,"signgraph.twoSortedMarkIncidenceComplex.v1");
+  assert.deepEqual(output.sorts,{wall:3,cell:3,equatedAcrossSorts:false});
+  assert.deepEqual(output.conditionalGeometry.betti,{h0:3,h1:0,h2:0});
+  assert.equal(output.source.roleIncidences.length,3);
+  assert.equal(output.source.roleIncidences[0].boundary.role,"candidate-wall");
+  assert.equal(output.source.roleIncidences[0].interior.role,"candidate-cell");
+  assert.ok(output.conditionalGeometry.vertices.includes("wall:0"));
+  assert.ok(output.conditionalGeometry.vertices.includes("cell:0"));
+  assert.notEqual(output.source.roleIncidences[0].boundary.position,
+    output.source.roleIncidences[0].interior.position);
+  assert.equal(output.relationAdmission.quotientAdmitted,false);
+});
+
+test("witnessed cell-to-wall attachments construct a six-step 1-cycle without equating roles",()=>{
+  const result=assembleMarkWallCellIncidence({
+    utterances:triangleSource,attachments:typedAttachments,
+  });
+  assert.deepEqual(result.sorts,{wall:3,cell:3,equatedAcrossSorts:false});
+  assert.equal(result.attachments.length,3);
+  assert.equal(result.conditionalGeometry.vertices.length,6);
+  assert.equal(result.conditionalGeometry.edges.length,6);
+  assert.equal(result.conditionalGeometry.graphOnlyH1,1);
+  assert.deepEqual(result.conditionalGeometry.betti,{h0:1,h1:1,h2:0});
+  assert.ok(result.attachments.every(x=>x.judgment.identification.quotientAdmitted===false));
+});
+
+test("a real oriented six-edge attaching face closes the typed incidence 1-cycle",()=>{
+  const input={utterances:triangleSource,attachments:typedAttachments,faces:typedFace};
+  const done=assembleMarkWallCellIncidence(input);
+  assert.deepEqual(done.conditionalGeometry.betti,{h0:1,h1:0,h2:0});
+  assert.equal(done.conditionalGeometry.graphOnlyH1,1);
+  assert.deepEqual(done.conditionalGeometry.coboundary.one,[[1,1,1,1,1,1]]);
+  assert.equal(done.source.roleIncidences.length,3);
+  const bad=structuredClone(input);
+  bad.faces[0].boundary.pop();
+  assert.throws(()=>assembleMarkWallCellIncidence(bad),/not closed/);
+});
+
+test("a token wall cannot be claimed as a cell, and opposed or presumed attachment cannot glue",()=>{
+  const input={utterances:triangleSource,attachments:typedAttachments};
+  for(const evidence of [{},{against:["no"]},{for:["yes"],against:["no"]},{value:"potential"}]){
+    const attempt=structuredClone(input);
+    attempt.attachments[0].judgment=cell("cell:0","attaches-to","wall:1",evidence);
+    assert.throws(()=>assembleMarkWallCellIncidence(attempt),/refuses incidence/);
+  }
+  const mistaken=structuredClone(input);
+  mistaken.attachments[0].judgment=cell("wall:0","attaches-to","cell:1",{for:["looks-similar"]});
+  assert.throws(()=>assembleMarkWallCellIncidence(mistaken),
+    /precise source cell and wall/);
+  const excessive=structuredClone(input);
+  excessive.attachments[0].sourcePosition="silent-identity";
+  assert.throws(()=>assembleMarkWallCellIncidence(excessive),
+    /source cell, target wall/);
 });
