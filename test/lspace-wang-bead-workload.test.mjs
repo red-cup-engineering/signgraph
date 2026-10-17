@@ -41,6 +41,7 @@ function readWorkload(t) {
 test('NI archive: unchanged Wang/bead workload is a complete source-held Merkle collection', t => {
   const { manifest, parsed } = readWorkload(t);
   assert.equal(manifest.rootNi, manifest.root.ni);
+  assert.equal(manifest.rootNi, 'ni:///sha-256;N7dY7wRtq_CO8EfSUgSz74mcGr4E7JsyAoCUhPCFJpU');
   const grid = parsed.get('tile-grid');
   const loom = parsed.get('bead-loom');
   assert.deepEqual([grid.height, grid.width], [2, 2]);
@@ -59,7 +60,7 @@ test('NI archive: unchanged Wang/bead workload is a complete source-held Merkle 
   for (const row of chu.r) {
     const [port, color] = row.st.split('=');
     const held = byTile.get(row.pt).ports[port] === color;
-    assert.equal(row.reading, held ? 'active' : 'absurd');
+    assert.equal(row.reading, held ? 'potential' : 'absurd');
   }
 });
 
@@ -67,6 +68,9 @@ test('native SignGraph: Wang matching section glues; changed bead seam remains o
   const { parsed } = readWorkload(t);
   // Import the actual original graph owner instead of reimplementing Laplacians.
   const { cellularSheaf, cochain, coboundary, apply } = await import('../src/cellular-sheaf.mjs');
+  const { readingOfSides } = await import('@red-cup-engineering/computer-data-engineering-services-section/four');
+  assert.equal(readingOfSides('knowledge', true, false), 'potential');
+  assert.equal(readingOfSides('knowledge', false, true), 'active');
   const fixture = parsed.get('sheaf');
   const model = cellularSheaf(fixture.sheaf);
   const x = cochain(model, fixture.cochain);
