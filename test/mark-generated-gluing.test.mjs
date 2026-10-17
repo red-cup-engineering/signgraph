@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { utterance } from "@red-cup-engineering/signcell/utterance";
-import { glueMarkUtteranceCells, glueAdjudicatedMarkUtteranceCells } from "../src/mark-gluing.mjs";
+import { glueMarkUtteranceCells, glueAdjudicatedMarkUtteranceCells, gradientOfGluedMarkCells } from "../src/mark-gluing.mjs";
 import { cell } from "@red-cup-engineering/signcell/cell";
 
 const triangleSource=[
@@ -143,4 +143,33 @@ test("evidence on the wrong positional mark pair can never be reused as the requ
       ...j,judgment:cell("port:0:token","identifies","port:1:token",{for:["source"]}),
     }],
   }),/very same two positional source ports/);
+});
+
+
+test("actual Mark-generated cell gradient uses existing exact SignGraph d0 with zero d1d0",()=>{
+  const glued=glueMarkUtteranceCells({
+    utterances:triangleSource,identifications:joins,faces:fill,
+  });
+  const input={utterances:triangleSource,identifications:joins,faces:fill,
+    potentials:[2,5,11]};
+  assert.equal(glued.topology.vertices.length,3);
+  const out=gradientOfGluedMarkCells(input);
+  assert.equal(out.kind,"signgraph.markGeneratedGradient.v1");
+  assert.equal(out.oriented1Cochain.length,3);
+  assert.deepEqual(out.exactFaceCirculation,[0]);
+  for(let i=0;i<3;i++)assert.equal(out.oriented1Cochain[i],
+    glued.topology.boundaryZero[i].reduce((sum,c,j)=>sum+c*input.potentials[j],0));
+  const shifted=gradientOfGluedMarkCells({...input,potentials:input.potentials.map(n=>n+91)});
+  assert.deepEqual(shifted.oriented1Cochain,out.oriented1Cochain,
+    "constant scalar gauge leaves every source-derived gradient unchanged");
+  assert.deepEqual(shifted.exactFaceCirculation,[0]);
+});
+
+test("no scalar potential is generated from Marks, and a fake field is refused",()=>{
+  const input={utterances:triangleSource,identifications:joins,faces:fill};
+  assert.throws(()=>gradientOfGluedMarkCells(input),/one bounded integer scalar/);
+  assert.throws(()=>gradientOfGluedMarkCells({...input,potentials:[1,2]}),/one bounded integer scalar/);
+  assert.throws(()=>gradientOfGluedMarkCells({...input,potentials:[1,2,0.5]}),/one bounded integer scalar/);
+  assert.throws(()=>gradientOfGluedMarkCells({...input,potentials:[1,2,3],energy:-1}),
+    /finite generated cell presentation/);
 });
