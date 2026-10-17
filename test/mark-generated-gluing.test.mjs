@@ -38,6 +38,12 @@ test("three independent Quot-style endpoint identifications create geometric H1 
   assert.equal(state.identificationLedger.merges,3);
   assert.equal(state.identificationLedger.residue,0);
   assert.equal(state.identificationLedger.classes,3);
+  assert.deepEqual(state.identificationLedger.identificationNerve,{
+    h0:3,h1:0,euler:3,indexBalanceHolds:true,
+  });
+  assert.equal(state.identificationLedger.presentedInstrumentCandidates,3);
+  assert.equal(state.identificationLedger.justifiedInstrumentWits,null);
+  assert.equal(state.identificationLedger.physicallyErasedBits,null);
   assert.deepEqual(state.topology.betti,{h0:1,h1:1,h2:0});
   assert.equal(state.topology.graphOnlyH1,1);
   assert.equal(state.distinction.identificationResidue,0);
@@ -70,6 +76,9 @@ test("one redundant presented identification adds exactly one residual bit; orde
     assert.equal(v.identificationLedger.gross,4);
     assert.equal(v.identificationLedger.merges,3);
     assert.equal(v.identificationLedger.residue,1);
+    assert.deepEqual(v.identificationLedger.identificationNerve,{
+      h0:3,h1:1,euler:2,indexBalanceHolds:true,
+    });
     assert.deepEqual(v.topology.betti,{h0:1,h1:1,h2:0});
     assert.equal(v.identificationLedger.residue,
       v.identificationLedger.gross-(v.identificationLedger.initialPorts-
