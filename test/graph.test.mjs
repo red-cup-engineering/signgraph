@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
 import { defineType } from "@red-cup-engineering/signcell/type-system";
-import { createSignGraph } from "@red-cup-engineering/signcell/semantic-graph";
+import { createSignGraph } from "../src/semantic-graph.mjs";
 import { projectSignGraphTopology } from "../src/graph.mjs";
 
 const accepted = (r) => { assert.equal(r.ok, true, JSON.stringify(r)); return r.value; };
