@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { layout } from "../src/diagram.mjs";
+import { layout, presentedCategoryDiagram, writeMermaid, readMermaid } from "../src/diagram.mjs";
 
 const opts = Object.freeze({ margin: 34, nodeWidth: 190, nodeHeight: 42, hGap: 34, vGap: 76 });
 const directed = (pairs) => pairs.map(([from, to]) => ({ from, to }));
@@ -57,4 +57,40 @@ test("the empty drawing keeps its historical blank canvas contract", () => {
   assert.equal(result.width, 258);
   assert.equal(result.height, 68);
   assert.deepEqual(boxes(result), []);
+});
+
+
+test("diagram Mermaid projections retain five distinct Mark/NI addresses that sanitize identically", () => {
+  const ids = ["a b", "a/b", "a_b", "ni:///sha-256;a.b", "ni:///sha-256;a_b"];
+  const pairs = [["a b", "a/b"], ["a_b", "ni:///sha-256;a.b"], ["ni:///sha-256;a.b", "ni:///sha-256;a_b"]];
+  const diagram = presentedCategoryDiagram({
+    title: "address-sensitive graph",
+    objects: ids.map(id => ({ id, label: id })),
+    morphisms: pairs.map(([from, to]) => ({ from, to, label: "relates", kind: "relation" })),
+  });
+  const mermaid = writeMermaid(diagram);
+  const aliases = new Map([...mermaid.matchAll(/^  (m\d+)\["([^"]+)"\]$/gm)]
+    .map(([, alias, id]) => [id, alias]));
+  assert.deepEqual([...aliases.keys()].sort(), [...ids].sort());
+  assert.equal(new Set(aliases.values()).size, ids.length, "rendering cannot merge addresses");
+  for (const [from, to] of pairs)
+    assert.ok(mermaid.includes("  " + aliases.get(from) + " -->|relation: relates| " + aliases.get(to)));
+  const reread = readMermaid(mermaid);
+  assert.deepEqual(reread.objects, diagram.objects, "roundtrip source metadata retains complete object identities");
+  assert.deepEqual(reread.morphisms, diagram.morphisms);
+  const reordered = presentedCategoryDiagram({
+    title: "address-sensitive graph",
+    objects: [...ids].reverse().map(id => ({ id, label: id })),
+    morphisms: pairs.map(([from, to]) => ({ from, to, label: "relates", kind: "relation" })),
+  });
+  const rereadAliases = new Map([...writeMermaid(reordered).matchAll(/^  (m\d+)\["([^"]+)"\]$/gm)]
+    .map(([, alias, id]) => [id, alias]));
+  assert.deepEqual(rereadAliases, aliases, "local aliases are independent of object insertion order");
+});
+
+test("diagram projection refuses foreign or duplicate object positions rather than drawing forged edges", () => {
+  const objects = [{ id: "a" }, { id: "b" }];
+  const graph = (members, morphisms) => presentedCategoryDiagram({ objects: members, morphisms });
+  assert.throws(() => writeMermaid(graph(objects, [{ from: "a", to: "foreign" }])), /declared objects/);
+  assert.throws(() => writeMermaid(graph([objects[0], objects[0]], [])), /distinct/);
 });
