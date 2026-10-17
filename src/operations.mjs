@@ -14,7 +14,7 @@ import {
   cellular2Complex, cellular3Complex, burgersOfComplex, affineHolonomyOfComplex,
 } from "./cohomology.mjs";
 import { geometricReceiving, metricSquareOfVector } from "./embedding.mjs";
-import { unfoldArticulatingIncidenceTower } from "./mark-gluing.mjs";
+import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing } from "./mark-gluing.mjs";
 
 export const LIMITS = Object.freeze({
   vertices: 64,
@@ -225,6 +225,27 @@ export const operations = Object.freeze({
         topology: topologicalSummary(complex, steps, volumeSteps),
         ...affineHolonomyOfComplex(complex, input.edgeMotions),
       });
+    },
+  }),
+  observedHeadGluing: Object.freeze({
+    id:"signgraph.mark-incidence.observed-head-gluing",
+    description:"Construct source-generated head-identification incidence cycles AFTER Articulating, with exact candidate WIT accounting and no physical erasure assertion.",
+    inputSchema:Object.freeze({
+      type:"object",additionalProperties:false,
+      required:Object.freeze(["articulating"]),
+      properties:Object.freeze({
+        articulating:{type:"object"},
+        steps:{type:"integer",minimum:0,maximum:6},
+      }),
+    }),
+    execute(input){
+      if(!input||typeof input!=="object"||Array.isArray(input)||
+         Object.keys(input).some(k=>!["articulating","steps"].includes(k))||
+         !Object.hasOwn(input,"articulating"))
+        throw new TypeError("source head quotient operation only admits Articulating plus bounded steps");
+      const {source}=boundedArticulating({articulating:input.articulating,maxLayers:16});
+      return generateHeadObservationGluing({articulating:source,
+        ...(input.steps===undefined?{}:{steps:input.steps})});
     },
   }),
   articulatingTower: Object.freeze({
