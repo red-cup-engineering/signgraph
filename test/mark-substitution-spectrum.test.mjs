@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mark } from "@red-cup-engineering/signcell/mark";
-import { utterance } from "@red-cup-engineering/signcell/utterance";
+import { utterance, articulatingUtter, articulatingPair } from "@red-cup-engineering/signcell/utterance";
 import { spectrumOfMarkSubstitution } from "../src/substitution-spectrum.mjs";
 
 const a=mark("a"),b=mark("b"),c=mark("c");
@@ -82,4 +82,34 @@ test("the original source is retained without assigning physical dimensions or a
   assert.equal(Object.hasOwn(built,"eigenvalues"),false);
   assert.equal(Object.hasOwn(built,"closureRegime"),false);
   assert.equal(Object.hasOwn(built,"cohomologyRank"),false);
+});
+
+
+test("Padovan recurrence matrix really descends from a native Mark→Articulating source",()=>{
+  const original=padovan();
+  let carrier=articulatingUtter(original[0]);
+  carrier=articulatingPair(original[1],carrier);
+  carrier=articulatingPair(original[2],carrier);
+  const prior=JSON.stringify(carrier);
+  const fromSource=spectrumOfMarkSubstitution(carrier);
+  const fromList=spectrumOfMarkSubstitution(original);
+  assert.equal(fromSource.source.kind,"native-articulating-trace");
+  assert.equal(fromList.source.kind,"original-utterance-list-presentation");
+  assert.deepEqual(fromSource.source.finiteSourceOrdinal,
+    {kind:"finite-successor",length:3,pairMoves:2});
+  assert.equal(typeof fromSource.source.articulatingId,"string");
+  assert.deepEqual(fromSource.words,fromList.words);
+  assert.deepEqual(fromSource.substitution,fromList.substitution);
+  assert.deepEqual(fromSource.chu,fromList.chu);
+  assert.deepEqual(fromSource.adjacencyGraph,fromList.adjacencyGraph);
+  assert.deepEqual(fromSource.substitution.characteristicPolynomialDescending,[1,0,-1,-1]);
+  assert.equal(JSON.stringify(carrier),prior);
+});
+
+test("an Articulating substitution is not secretly a free list of additional laws",()=>{
+  const source=articulatingPair(utterance(b,[a]),articulatingUtter(utterance(a,[a,b])));
+  assert.equal(spectrumOfMarkSubstitution(source).substitution.alphabetSize,2);
+  assert.throws(()=>spectrumOfMarkSubstitution({
+    kind:"articulating.pair",utterance:utterance(a,[a]),articulating:{kind:"alien"},
+  }),/finite and acyclic|native ordered Mark roles/);
 });
