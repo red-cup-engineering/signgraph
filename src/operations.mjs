@@ -17,6 +17,8 @@ import { geometricReceiving, metricSquareOfVector } from "./embedding.mjs";
 import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing } from "./mark-gluing.mjs";
 
 export const LIMITS = Object.freeze({
+  inputBytes: 65536,
+  sourceLayers: 16,
   vertices: 64,
   edges: 128,
   faces: 64,
@@ -25,15 +27,31 @@ export const LIMITS = Object.freeze({
   volumeSteps: 2048,
 });
 
-/** Bound the actual structural work before allocating incidence matrices. */
-function bounded(input, operation) {
+/** Default host safety policy, not a finite-complex theorem.
+ * Only a trusted in-process host can pass a different budget; a JSON
+ * operation input is never allowed to select the host's capacity.
+ */
+function budgetOf(override) {
+  if (override === undefined) return LIMITS;
+  if (!override || typeof override !== "object" || Array.isArray(override) ||
+      Object.keys(override).some(key => !Object.hasOwn(LIMITS, key)))
+    throw new TypeError("SignGraph work budget has undeclared fields");
+  const budget = Object.freeze({ ...LIMITS, ...override });
+  if (Object.values(budget).some(value => !Number.isSafeInteger(value) || value < 1))
+    throw new RangeError("SignGraph work budget entries must be positive safe integers");
+  return budget;
+}
+
+/** Bound structural work according to the selecting execution host. */
+function bounded(input, operation, workBudget) {
+  const budget = budgetOf(workBudget);
   if (!input || typeof input !== "object" || Array.isArray(input))
     throw new TypeError("signgraph operation requires an input record");
   // The same size budget applies to direct MetroPlat and host calls,
   // not only the JSONL executable. Admit a bounded JSON carrier before
   // exact rational matrix construction. TextEncoder is host-portable.
   const bytes = new TextEncoder().encode(JSON.stringify(input)).length;
-  if (bytes > 65536)
+  if (bytes > budget.inputBytes)
     throw new RangeError("signgraph operation exceeds the 64KiB input work budget");
   const allowed = new Set([
     "vertices", "edges", "faces", "volumes",
@@ -47,28 +65,28 @@ function bounded(input, operation) {
   const { vertices, edges, faces, volumes } = input;
   if (![vertices, edges, faces].every(Array.isArray))
     throw new TypeError("signgraph operation requires arrays of vertices, edges and faces");
-  if (vertices.length > LIMITS.vertices || edges.length > LIMITS.edges ||
-      faces.length > LIMITS.faces)
+  if (vertices.length > budget.vertices || edges.length > budget.edges ||
+      faces.length > budget.faces)
     throw new RangeError("signgraph operation exceeds the finite-complex work budget");
   let steps = 0;
   for (const face of faces) {
     if (!face || !Array.isArray(face.boundary))
       throw new TypeError("signgraph operation requires an oriented face walk");
     steps += face.boundary.length;
-    if (steps > LIMITS.faceSteps)
+    if (steps > budget.faceSteps)
       throw new RangeError("signgraph operation exceeds the face-walk work budget");
   }
   let volumeSteps = 0;
   if (volumes !== undefined) {
     if (!Array.isArray(volumes))
       throw new TypeError("signgraph operation requires an array of volumes");
-    if (volumes.length > LIMITS.volumes)
+    if (volumes.length > budget.volumes)
       throw new RangeError("signgraph operation exceeds the volume count work budget");
     for (const volume of volumes) {
       if (!volume || !Array.isArray(volume.boundary))
         throw new TypeError("signgraph operation requires an oriented volume boundary");
       volumeSteps += volume.boundary.length;
-      if (volumeSteps > LIMITS.volumeSteps)
+      if (volumeSteps > budget.volumeSteps)
         throw new RangeError("signgraph operation exceeds the volume boundary work budget");
     }
   }
@@ -96,15 +114,16 @@ function bounded(input, operation) {
  * it must carry a real original Articulating and a bounded finite prefix.
  * The original source-derived constructor owns everything after admission.
  */
-function boundedArticulating(input) {
+function boundedArticulating(input, workBudget) {
+  const budget = budgetOf(workBudget);
   if(!input||typeof input!=="object"||Array.isArray(input)||
      Object.keys(input).some(k=>!["articulating","maxLayers"].includes(k))||
      !Object.hasOwn(input,"articulating"))
     throw new TypeError("Mark tower operation needs an original Articulating and optional maxLayers");
-  if(new TextEncoder().encode(JSON.stringify(input)).length>65536)
+  if(new TextEncoder().encode(JSON.stringify(input)).length>budget.inputBytes)
     throw new RangeError("Mark tower operation exceeds the 64KiB original source budget");
   const maxLayers=input.maxLayers??16;
-  if(!Number.isSafeInteger(maxLayers)||maxLayers<1||maxLayers>16)
+  if(!Number.isSafeInteger(maxLayers)||maxLayers<1||maxLayers>budget.sourceLayers)
     throw new RangeError("Mark tower operation requires 1-16 finite source layers");
   return Object.freeze({source:input.articulating,maxLayers});
 }
@@ -137,10 +156,10 @@ const commonInput = Object.freeze({
   required: Object.freeze(["vertices", "edges", "faces"]),
   additionalProperties: false,
   properties: Object.freeze({
-    vertices: { type: "array", maxItems: LIMITS.vertices },
-    edges: { type: "array", maxItems: LIMITS.edges },
-    faces: { type: "array", maxItems: LIMITS.faces },
-    volumes: { type: "array", maxItems: LIMITS.volumes },
+    vertices: { type: "array" },
+    edges: { type: "array" },
+    faces: { type: "array" },
+    volumes: { type: "array" },
   }),
 });
 const schema = (requiredExtra, propertyExtra) => Object.freeze({
@@ -154,8 +173,8 @@ export const operations = Object.freeze({
     id: "signgraph.holonomy.topology",
     description: "Compute exact rational cellular ranks and distinguish filled 2-cells from graph-only cycles.",
     inputSchema: commonInput,
-    execute(input) {
-      const { complex, steps, volumeSteps } = bounded(input, this.id);
+    execute(input, { workBudget } = {}) {
+      const { complex, steps, volumeSteps } = bounded(input, this.id, workBudget);
       return topologicalSummary(complex, steps, volumeSteps);
     },
   }),
@@ -163,10 +182,10 @@ export const operations = Object.freeze({
     id: "signgraph.holonomy.burgers",
     description: "Read local integral Burgers face curl, exact vertex potential and global translational holonomy.",
     inputSchema: schema(["edgeDisplacements"], {
-      edgeDisplacements: { type: "array", maxItems: LIMITS.edges },
+      edgeDisplacements: { type: "array",  },
     }),
-    execute(input) {
-      const { complex, steps, volumeSteps } = bounded(input, this.id);
+    execute(input, { workBudget } = {}) {
+      const { complex, steps, volumeSteps } = bounded(input, this.id, workBudget);
       return Object.freeze({
         topology: topologicalSummary(complex, steps, volumeSteps),
         ...burgersOfComplex(complex, input.edgeDisplacements),
@@ -177,17 +196,17 @@ export const operations = Object.freeze({
     id: "signgraph.holonomy.geometry",
     description: "Receive a real three-cell geometry through exact edge lengths, regular faces, convex supporting planes, outward volume and metric-calibrated Burgers face residues.",
     inputSchema: schema(["volumes", "positions", "metric"], {
-      positions: { type: "array", maxItems: LIMITS.vertices },
+      positions: { type: "array",  },
       metric: { type: "object", additionalProperties: false,
         required: ["diagonal", "denominator"], properties: {
           diagonal: { type: "array", minItems: 3, maxItems: 3 },
           denominator: { type: "integer", minimum: 1 },
         },
       },
-      edgeDisplacements: { type: "array", maxItems: LIMITS.edges },
+      edgeDisplacements: { type: "array",  },
     }),
-    execute(input) {
-      const { complex, steps, volumeSteps } = bounded(input, this.id);
+    execute(input, { workBudget } = {}) {
+      const { complex, steps, volumeSteps } = bounded(input, this.id, workBudget);
       const geometry = geometricReceiving(complex, input.positions, input.metric);
       const result = {
         topology: topologicalSummary(complex, steps, volumeSteps),
@@ -217,10 +236,10 @@ export const operations = Object.freeze({
     id: "signgraph.holonomy.affine",
     description: "Read nonabelian C6-semidirect-Z2 local affine defects and global monodromy up to conjugacy.",
     inputSchema: schema(["edgeMotions"], {
-      edgeMotions: { type: "array", maxItems: LIMITS.edges },
+      edgeMotions: { type: "array",  },
     }),
-    execute(input) {
-      const { complex, steps, volumeSteps } = bounded(input, this.id);
+    execute(input, { workBudget } = {}) {
+      const { complex, steps, volumeSteps } = bounded(input, this.id, workBudget);
       return Object.freeze({
         topology: topologicalSummary(complex, steps, volumeSteps),
         ...affineHolonomyOfComplex(complex, input.edgeMotions),
@@ -238,12 +257,12 @@ export const operations = Object.freeze({
         steps:{type:"integer",minimum:0,maximum:6},
       }),
     }),
-    execute(input){
+    execute(input, { workBudget } = {}){
       if(!input||typeof input!=="object"||Array.isArray(input)||
          Object.keys(input).some(k=>!["articulating","steps"].includes(k))||
          !Object.hasOwn(input,"articulating"))
         throw new TypeError("source head quotient operation only admits Articulating plus bounded steps");
-      const {source}=boundedArticulating({articulating:input.articulating,maxLayers:16});
+      const {source}=boundedArticulating({articulating:input.articulating,maxLayers:16}, workBudget);
       return generateHeadObservationGluing({articulating:source,
         ...(input.steps===undefined?{}:{steps:input.steps})});
     },
@@ -256,18 +275,18 @@ export const operations = Object.freeze({
       required:Object.freeze(["articulating"]),
       properties:Object.freeze({
         articulating:{type:"object"},
-        maxLayers:{type:"integer",minimum:1,maximum:16},
+        maxLayers:{type:"integer",minimum:1},
       }),
     }),
-    execute(input) {
-      const {source,maxLayers}=boundedArticulating(input);
+    execute(input, { workBudget } = {}) {
+      const {source,maxLayers}=boundedArticulating(input, workBudget);
       return unfoldArticulatingIncidenceTower(source,{maxLayers});
     },
   }),
 });
 
-export function executeOperation(id, input) {
+export function executeOperation(id, input, { workBudget } = {}) {
   const op = Object.values(operations).find(op => op.id === id);
   if (!op) throw new RangeError("signgraph operation id is not installed");
-  return op.execute(input);
+  return op.execute(input, { workBudget });
 }

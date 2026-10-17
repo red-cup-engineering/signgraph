@@ -141,6 +141,15 @@ additional exact scaled Cartesian metric, spatial positions, and a signed
 single-volume boundary from a source-owned carrier. No physical
 thermometry, hidden material instance, or remote execution is invented.
 
+The limits below are **default host/JSONL work budgets**, not an algebraic
+upper bound on admissible finite complexes. A trusted in-process caller can
+explicitly select a larger finite resource allowance through
+`executeOperation(id, input, {workBudget: {vertices: 256, edges: 512}})`.
+Omitted dimensions retain the conservative default; unrecognized or invalid
+budget entries refuse, as do budget fields smuggled into an operation input.
+This does not promise physical host capacity or permission for a public
+request to grant itself more work. The JSONL executable retains its defaults.
+
 An installed package also exposes the executable `signgraph-holonomy`
 for newline-delimited JSON requests and receipts. For example:
 

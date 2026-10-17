@@ -108,6 +108,37 @@ test("operation work limits and undeclared data fail before expensive rank elimi
   assert.throws(() => executeOperation("signgraph.holonomy.invalid", base), /not installed/);
 });
 
+test("trusted hosts can select higher finite capacity without weakening default admission", () => {
+  const baseline = triangle();
+  const extended = {
+    ...baseline,
+    vertices: [...baseline.vertices, ...Array.from({ length: LIMITS.vertices }, (_, i) => `isolated-${i}`)],
+  };
+  assert.throws(() => executeOperation("signgraph.holonomy.topology", extended), /work budget/);
+  assert.equal(operations.topology.inputSchema.properties.vertices.maxItems, undefined);
+  const admitted = executeOperation("signgraph.holonomy.topology", extended, {
+    workBudget: { vertices: extended.vertices.length },
+  });
+  assert.deepEqual(admitted.betti, { h0: LIMITS.vertices + 1, h1: 0, h2: 0 });
+  assert.throws(() => executeOperation("signgraph.holonomy.topology", baseline, {
+    workBudget: { edges: 2 },
+  }), /work budget/);
+  assert.throws(() => executeOperation("signgraph.holonomy.topology", baseline, {
+    workBudget: { vertices: 0 },
+  }), /positive safe integers/);
+  assert.throws(() => executeOperation("signgraph.holonomy.topology", baseline, {
+    workBudget: { unlicensed: 100 },
+  }), /undeclared fields/);
+  assert.throws(() => executeOperation("signgraph.holonomy.topology", {
+    ...baseline, workBudget: { vertices: 100000 },
+  }), /undeclared input fields/);
+  const longName = { vertices: ["v".repeat(70000)], edges: [], faces: [] };
+  assert.throws(() => executeOperation("signgraph.holonomy.topology", longName), /64KiB/);
+  assert.equal(executeOperation("signgraph.holonomy.topology", longName, {
+    workBudget: { inputBytes: 80000 },
+  }).betti.h0, 1);
+});
+
 const bin = fileURLToPath(new URL("../scripts/holonomy.mjs", import.meta.url));
 
 test("installed CLI batches successful and rejected JSONL requests without side effects", () => {
