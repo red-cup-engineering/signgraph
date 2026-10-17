@@ -104,3 +104,52 @@ test("truth-order comparison covers omitted local pairs and refuses mislabeled p
     assert.throws(() => operation(foreignLabel, small), /distinct predicate labels/);
   }
 });
+
+
+test("indexed fiber reads by canonical content identities without flattening subject/object boundaries", () => {
+  // Distinct coordinates may contain separator-like bytes, nested properties,
+  // or reordered map keys. A string-concatenated index would be unsound.
+  const a = { z: "a\\u0000b", x: 1 };
+  const b = { x: 1, z: "a\\u0000b" };
+  const c = "a";
+  const d = "b\\u0000c";
+  let reads = 0;
+  const section = predicateFiber("jurisdiction", [a, c, d], (subject, object) => {
+    reads += 1;
+    return typeof subject === "object" && object === d ? "stable" : "potential";
+  }, [[a, d], [c, d]]);
+  assert.equal(reads, 2, "each present coordinate is read exactly once");
+  assert.equal(section.at(b, d), "stable", "canonical object key ordering preserves identity");
+  assert.equal(section.at(c, d), "potential");
+  assert.equal(section.at(d, c), "absurd", "unlisted is knowledge-bottom, not false");
+  assert.equal(section.at({ z: "changed", x: 1 }, d), "absurd");
+  assert.deepEqual(section.pairs, [[{ x: 1, z: "a\\u0000b" }, d], [c, d]]);
+  assert.equal(Object.isFrozen(section.entities[0]), true);
+  assert.equal(Object.isFrozen(section.pairs[0]), true);
+});
+
+test("finite indexed predicate fiber supports repeated Chu/FCA locality readings on a whole addressed site", () => {
+  // A finite tiling site can carry thousands of explicit incidences.
+  // Repeated consumer reads of those cells must not scan all stored pairs.
+  const N = 128, entities = Array.from({ length: N }, (_, i) => ({ tile: i, region: "A" }));
+  let admitted = 0;
+  const section = predicateFiber({ predicate: "meets" }, entities, (subject, object) => {
+    admitted += 1;
+    return subject.tile === object.tile ? "stable" :
+      (subject.tile + 1) % N === object.tile ? "potential" : "absurd";
+  });
+  assert.equal(admitted, N * N);
+  assert.equal(section.pairs.length, N * N);
+  for (let i = 0; i < N * 16; i += 1) {
+    const s = { region: "A", tile: i % N };
+    const same = { tile: i % N, region: "A" };
+    const next = { tile: (i + 1) % N, region: "A" };
+    assert.equal(section.at(s, same), "stable");
+    assert.equal(section.at(s, next), "potential");
+  }
+  assert.equal(section.at({ tile: 128, region: "A" }, entities[0]), "absurd");
+  const local = predicateFiber({ predicate: "meets" }, entities, () => "stable",
+    [[entities[0], entities[1]]]);
+  assert.equal(local.at(entities[1], entities[0]), "absurd");
+  assert.equal(fiberFusion(local, local, [[entities[0], entities[1]]]).pairs.length, 1);
+});
