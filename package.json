@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "type": "module",
   "description": "SignCell and SignChain sites, transport, relations and graph projections.",
   "files": [
@@ -35,11 +35,12 @@
     "./embedding": "./src/embedding.mjs",
     "./bit-sheaf": "./src/bit-sheaf.mjs",
     "./mark-gluing": "./src/mark-gluing.mjs",
-    "./substitution-spectrum": "./src/substitution-spectrum.mjs"
+    "./substitution-spectrum": "./src/substitution-spectrum.mjs",
+    "./j26-surface": "./src/j26-surface.mjs"
   },
   "dependencies": {
     "@red-cup-engineering/uri-services-section": "0.1.1",
-    "@red-cup-engineering/metrologic": "0.4.0",
+    "@red-cup-engineering/metrologic": "0.9.0",
     "@red-cup-engineering/cbor-services-section": "0.1.1",
     "@red-cup-engineering/json-services-section": "0.4.0",
     "@red-cup-engineering/eavt-services-section": "0.11.0",
