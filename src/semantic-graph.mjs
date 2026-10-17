@@ -62,17 +62,6 @@ export function createSignGraph(input) {
   graphFields.set(graph, field.value);
   return accepted(graph);
 }
-/** Read outgoing edges, optionally restricting their existing statement positions.
- * Subject selection retains the established id-only convention. The pattern is
- * the upstream relational-field query, so scoped reads preserve addressed edges
- * and every witness rather than requiring a complete graph in agent context.
- */
-export function edgesFrom(graph, subject, pattern = {}) {
-  const reference = subject?.kind === "sign.cell" ? referenceOf(subject) : subject;
-  const field = graphFields.get(graph) ?? { statements: graph.edges.map(entry => ({ id: entry.id, statement: entry.edge })) };
-  const selected = new Set(queryRelationalField(field, pattern).map(entry => entry.statement));
-  return Object.freeze(graph.edges.filter(entry => entry.edge.subject.id === reference.id && selected.has(entry.edge)));
-}
 const throwRefusal = result => {
   if (result.ok) return result.value;
   const error = new TypeError(result.refusal.message);
@@ -88,9 +77,18 @@ function admittedGraphScope(graph, subject) {
   const selected = throwRefusal(checkedReference(cells, reference.value, verified.cells.map(cell => cell.type), "subject"));
   return { graph: verified, reference: selected };
 }
+/** A query must preserve the selected typed subject and source provenance.
+ * No legacy id-only shortcut or mutation-tolerant unadmitted read is offered.
+ * Delegate candidate selection to the one SignCell relational-field index. */
 function admittedQuery(graph, subject, pattern) {
   const scope = admittedGraphScope(graph, subject);
-  return edgesFrom(scope.graph, scope.reference, pattern);
+  const selected = typeof pattern === "string" ? { predicate: pattern } : pattern;
+  if (!selected || typeof selected !== "object" || Array.isArray(selected) ||
+      (Object.hasOwn(selected, "subject") && !coincides(selected.subject, scope.reference)))
+    throwRefusal(refused("invalid-query", "query pattern cannot replace the admitted typed subject"));
+  const field = graphFields.get(scope.graph);
+  const addressed = new Set(queryRelationalField(field, { ...selected, subject: scope.reference }).map(row => row.id));
+  return Object.freeze(scope.graph.edges.filter(row => addressed.has(row.id)));
 }
 /** Admission for an external query: throws on the existing upstream refusal,
  * so an x402 validate binding can refuse the request before a payment challenge.
