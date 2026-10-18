@@ -39,7 +39,7 @@ test("the real Obsmetrologia 5–7 dipole gives Burgers (0,-sep), not rotation c
   assert.deepEqual(asArray(sixfoldDevelop([...Array(5).fill(1), ...Array(7).fill(1)])), [0, 0, 0]);
   for (const sep of [0, 1, 2, 3, 7, 20]) {
     const result = sixfoldDevelop(loop(sep));
-    assert.deepEqual(asArray(result), [0, 0, -sep], `dipole at separation ${sep}`);
+    assert.deepEqual(asArray(result), [0, 0, sep === 0 ? 0 : -sep], `dipole at separation ${sep}`);
     assert.equal(result.rotation, 0, "frame neutral despite nonzero Burgers charge");
   }
   const five = sixfoldDevelop(Array(5).fill(1));

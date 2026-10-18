@@ -136,7 +136,9 @@ test("diffuse: rejects unstable steps and non-finite inputs instead of certifyin
   assert.throws(() => diffuse(s, [0, 10], { tolerance: -1 }), /tolerance/);
   assert.throws(() => diffuse(s, [0, 10], { maxSteps: -1 }), /maxSteps/);
   assert.throws(() => diffuse(s, [0, 10], { maxSteps: 1.5 }), /maxSteps/);
-  assert.throws(() => diffuse(s, [1e308, -1e308]), /non-finite numeric/);
+  assert.throws(() => diffuse(s, [1e308, -1e308]), {
+    name: "RangeError", message: "apply: numerical sum overflowed host arithmetic",
+  });
 });
 
 test("diffusion with pinned vertices: boundary conditions are admitted evidence", () => {
@@ -377,18 +379,21 @@ test("numeric sheaf and weighted Dirichlet receipts reject overflow instead of f
     edges: [{ id: "e", from: "a", to: "b", dim: 1,
       restrict: { from: [[1e200]], to: [[1e200]] } }],
   });
-  assert.throws(() => sheafLaplacian(high), /numerical Laplacian exceeded finite host arithmetic/);
-  assert.throws(() => weightedSheafLaplacian(high, [[[1]]]), /numerical Laplacian exceeded finite host arithmetic/);
+  const productOverflow = {
+    name: "RangeError", message: "cellularSheaf Gram: numerical product overflowed or underflowed host arithmetic",
+  };
+  assert.throws(() => sheafLaplacian(high), productOverflow);
+  assert.throws(() => weightedSheafLaplacian(high, [[[1]]]), productOverflow);
 
   const s = constantSheaf(["a", "b"], [["a", "b"]]);
   assert.equal(weightedSheafDirichlet(s, [[[1]]], [0, 2]).energy, 4);
   assert.throws(
     () => weightedSheafDirichlet(s, [[[1]]], [1e308, -1e308]),
-    /numerical coboundary residual is not finite/,
+    { name: "RangeError", message: "apply: numerical sum overflowed host arithmetic" },
   );
   assert.throws(
     () => weightedSheafDirichlet(s, [[[1e308]]], [0, 1e100]),
-    /numerical edge energy exceeded finite host arithmetic/,
+    { name: "RangeError", message: "weightedSheafDirichlet: numerical product overflowed or underflowed host arithmetic" },
   );
 });
 
