@@ -1,3 +1,4 @@
+import { semanticId } from "@red-cup-engineering/semiotic-content-address";
 /**
  * mesh — reading a body of SignCell cells whose positions are terms.
  *
@@ -118,4 +119,134 @@ export function generatedConcepts({ subjects, predicates = null, minimumClaims =
   const aliases = [...byExtent.values()].filter((group) => group.generatedBy.length > 1)
     .map((group) => Object.freeze({ subjects: Object.freeze(group.generatedBy.sort()), intent: Object.freeze(group.intent.map((claim) => JSON.parse(claim))) }));
   return Object.freeze({ subjects: profiled.length, attributes: attributes.length, aliases: Object.freeze(aliases), broader: Object.freeze(broader) });
+}
+
+/**
+ * An intensional dossier of one spoken NAME over actual source-qualified
+ * SignCells. This is the pure SignGraph producer for any term, not a MetroPlat
+ * or Markdown-specific keyword scraper.
+ *
+ * There are three noninterchangeable levels:
+ *   name -> source reading (what THIS source said, in THIS revision)
+ *   source reading -> claim coordinate, with independently retained FOR/AGAINST
+ *   actual Thing/secondary intension: unknown until a separately qualified
+ *       anchored reference is supplied by the appropriate authority.
+ *
+ * Primary readings are partial epistemic claim profiles, not total mappings
+ * from all conceivable scenarios to referents. FCA closure is informative
+ * about shared incidence but cannot recover a forgotten performance history
+ * (Obsmetrologia.Site.Intension.performedConcept_not_injective).
+ *
+ * Mentioned words are mere lexical observations, not asserted relations.
+ * Content identity of claim coordinates does not establish semantic
+ * identity of Marks, and copying a source does not authenticate its testimony.
+ */
+export function intensionalDossier({
+  name, readings = [], mentions = [], incomplete = false,
+} = {}) {
+  if (typeof name !== "string" || name.trim() === "" || !Array.isArray(readings)
+    || !Array.isArray(mentions) || typeof incomplete !== "boolean")
+    throw new TypeError("intensional dossier requires a term, source readings, and mentions");
+  if (mentions.some(path => typeof path !== "string" || !path))
+    throw new TypeError("intensional dossier mentions require original source paths");
+  const query = name.trim();
+  const queryId = semanticId(["term-name", query]);
+  const nodeById = new Map();
+  const links = [];
+  const nameNode = Object.freeze({ id: queryId, kind: "spoken-name", surface: query });
+  nodeById.set(queryId, nameNode);
+  const sourceCoordinates = new Set();
+  const primary = [];
+  for (const reading of readings) {
+    if (!reading || typeof reading.key !== "string" || !reading.key
+      || (reading.revision !== undefined && (typeof reading.revision !== "string" || !reading.revision))
+      || (reading.locale !== undefined && (typeof reading.locale !== "string" || !reading.locale))
+      || !Array.isArray(reading.cells))
+      throw new TypeError("intensional dossier requires located, optionally revisioned SignCell readings");
+    const coordinate = semanticId(["source-reading", reading.key, reading.revision ?? null]);
+    if (sourceCoordinates.has(coordinate))
+      throw new TypeError("intensional dossier repeats one source revision; preserve one original reading");
+    sourceCoordinates.add(coordinate);
+    const source = Object.freeze({
+      id: coordinate, kind: "source-reading", path: reading.key,
+      revision: reading.revision ?? null, locale: reading.locale ?? null,
+    });
+    nodeById.set(coordinate, source);
+    links.push(Object.freeze({
+      from: queryId, to: coordinate, kind: "answers-to-name",
+      semantics: "lexical-source-match-not-actual-reference",
+    }));
+    const assertions = [];
+    for (const cell of reading.cells) {
+      if (!cell || !Object.hasOwn(cell, "predicate") || !Object.hasOwn(cell, "object")
+        || !Array.isArray(cell.for) || !Array.isArray(cell.against))
+        throw new TypeError("intensional dossier requires original sided SignCells");
+      const claimId = semanticId(["claim-coordinate", cell.predicate, cell.object]);
+      if (!nodeById.has(claimId)) nodeById.set(claimId, Object.freeze({
+        id: claimId, kind: "claim-coordinate",
+        predicate: cell.predicate, object: cell.object,
+        semantics: "presentation-only-not-semantic-Mark-equality",
+      }));
+      // A source's negative tellings and untold cells are retained; neither
+      // becomes an absent or positive assertion when projecting a concept.
+      const readingName = knowledgeReading(cell);
+      const assertion = Object.freeze({
+        claim: claimId, reading: readingName,
+        for: Object.freeze([...cell.for]), against: Object.freeze([...cell.against]),
+      });
+      assertions.push(assertion);
+      links.push(Object.freeze({
+        from: coordinate, to: claimId, kind: "source-telling",
+        reading: readingName, for: assertion.for, against: assertion.against,
+      }));
+    }
+    primary.push(Object.freeze({
+      source, claims: Object.freeze(assertions),
+      witnessedProfileSize: profile(reading.cells).size,
+      census: settledness(reading.cells),
+    }));
+  }
+  const answeredPaths = new Set(primary.map(reading => reading.source.path));
+  for (const path of new Set(mentions)) {
+    if (answeredPaths.has(path)) continue;
+    const id = semanticId(["textual-mention-source", path]);
+    nodeById.set(id, Object.freeze({ id, kind: "textual-mention-source", path }));
+    links.push(Object.freeze({
+      from: id, to: queryId, kind: "mentions-name",
+      semantics: "textual-occurrence-not-source-telling",
+    }));
+  }
+  // The context closure below only compares already-told source profiles.
+  // Its alias/broader readings NEVER authenticate an actual referent.
+  const concepts = primary.length > 1
+    ? generatedConcepts({
+        subjects: readings.map(reading => ({ key: reading.key, cells: reading.cells })),
+        minimumClaims: 1, minimumSupport: 2,
+      })
+    : Object.freeze({ subjects: 0, attributes: 0, aliases: Object.freeze([]), broader: Object.freeze([]) });
+  return Object.freeze({
+    kind: "signgraph.intensional-dossier/v1", name: query,
+    coverage: Object.freeze({
+      sourceReadings: primary.length, textualMentions: links.filter(e => e.kind === "mentions-name").length,
+      incomplete,
+    }),
+    graph: Object.freeze({
+      nodes: Object.freeze([...nodeById.values()]),
+      edges: Object.freeze(links),
+    }),
+    primary: Object.freeze({
+      kind: "partial-epistemic-source-profile",
+      readings: Object.freeze(primary), concepts,
+    }),
+    secondary: Object.freeze({
+      kind: "actual-world-anchored-reference",
+      status: "unanchored",
+      explanation: "No qualified actual referent, counterfactual transport or independent institutional identity follows from source-name coincidence.",
+    }),
+    actualThing: Object.freeze({
+      status: "not-derived",
+      known: Object.freeze(primary.map(r => r.source)),
+      explanation: "Original source objects are identified; the named Thing's actual identity and powers still require independently qualified reference and authorization.",
+    }),
+  });
 }
