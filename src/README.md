@@ -288,6 +288,6 @@ obstructions use the canonical semiotic-content-address owner's NFC-aware UTF-8
 byte ordering, not host `localeCompare`. This does not assert that matching
 Mark presentations establish observational equality or external evidence:
 SignCell continues to own typed source identity and SignChain owns the actual
-tellings. The SignGraph source edition 0.5.0 selects exact SignCell 0.9.0,
+tellings. The SignGraph source edition 0.5.0 selects exact SignCell 0.10.0,
 whose concept address ordering is defined by the same canonical byte comparator.
 This needs genuine package/lock selection before a running consumer can claim it.
