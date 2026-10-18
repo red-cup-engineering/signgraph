@@ -32,6 +32,8 @@ test("source performances are distinct even with identical claim profiles", () =
   assert.notEqual(graph.primary.readings[0].source.id,graph.primary.readings[1].source.id);
   assert.equal(graph.primary.readings[0].witnessedProfileSize,1);
   assert.equal(graph.primary.readings[1].witnessedProfileSize,1);
+  assert.equal(graph.primary.concepts.subjects,2,
+    "FCA reads two performed source editions without collapsing their source identity");
   assert.equal(graph.actualThing.status,"not-derived");
 });
 test("a mere text mention is never promoted into source testimony",()=>{
@@ -49,4 +51,20 @@ test("bad source identity, malformed evidence and duplicate source editions refu
   }
   assert.throws(()=>intensionalDossier({name:"",readings:[]}),TypeError);
   assert.throws(()=>intensionalDossier({name:"term",mentions:[null]}),TypeError);
+});
+
+test("located spoken prose remains primary source evidence, not an asserted proposition",()=>{
+  const graph=intensionalDossier({name:"MetroPlat",mentions:[
+    {path:"notes/speaker.md",revision:"rev-one",line:20,evidence:["MetroPlat installs apps"]},
+    {path:"notes/speaker.md",revision:"rev-two",line:20,evidence:["MetroPlat is an application platform"]},
+    {path:"notes/speaker.md",revision:"rev-one",line:20,evidence:["MetroPlat installs apps"]},
+  ]});
+  assert.equal(graph.coverage.textualMentions,2,"same passage deduplicates; changed editions remain");
+  assert.equal(graph.primary.passages[0].line,20);
+  assert.equal(graph.primary.passages[0].revision,"rev-one");
+  assert.deepEqual(graph.primary.passages[0].evidence,["MetroPlat installs apps"]);
+  assert.equal(graph.graph.edges.filter(e=>e.kind==="source-telling").length,0,
+    "a full-text occurrence cannot silently become sworn evidence");
+  assert.equal(graph.secondary.status,"unanchored");
+  assert.throws(()=>intensionalDossier({name:"x",mentions:[{path:"a",line:-2}]}),TypeError);
 });

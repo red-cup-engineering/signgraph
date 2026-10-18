@@ -147,8 +147,14 @@ export function intensionalDossier({
   if (typeof name !== "string" || name.trim() === "" || !Array.isArray(readings)
     || !Array.isArray(mentions) || typeof incomplete !== "boolean")
     throw new TypeError("intensional dossier requires a term, source readings, and mentions");
-  if (mentions.some(path => typeof path !== "string" || !path))
-    throw new TypeError("intensional dossier mentions require original source paths");
+  if (mentions.some(item => {
+    if (typeof item === "string") return !item;
+    return !item || typeof item.path !== "string" || !item.path
+      || (item.revision !== undefined && (typeof item.revision !== "string" || !item.revision))
+      || (item.line !== undefined && (!Number.isSafeInteger(item.line) || item.line < 1))
+      || (item.evidence !== undefined && (!Array.isArray(item.evidence)
+        || item.evidence.some(value => typeof value !== "string")));
+  })) throw new TypeError("intensional dossier mentions require located source passages");
   const query = name.trim();
   const queryId = semanticId(["term-name", query]);
   const nodeById = new Map();
@@ -206,28 +212,38 @@ export function intensionalDossier({
       census: settledness(reading.cells),
     }));
   }
-  const answeredPaths = new Set(primary.map(reading => reading.source.path));
-  for (const path of new Set(mentions)) {
-    if (answeredPaths.has(path)) continue;
-    const id = semanticId(["textual-mention-source", path]);
-    nodeById.set(id, Object.freeze({ id, kind: "textual-mention-source", path }));
+  const passages = new Map();
+  for (const mention of mentions) {
+    const { path, revision, line, evidence } = typeof mention === "string"
+      ? { path: mention } : mention;
+    const id = semanticId(["source-passage", path, revision ?? null, line ?? null, evidence ?? []]);
+    if (passages.has(id)) continue;
+    const passage = Object.freeze({
+      id, path, revision: revision ?? null, line: line ?? null,
+      evidence: Object.freeze([...(evidence ?? [])]),
+      status: "uninterpreted-textual-occurrence",
+    });
+    passages.set(id, passage);
+    nodeById.set(id, Object.freeze({ ...passage, kind: "source-passage" }));
     links.push(Object.freeze({
       from: id, to: queryId, kind: "mentions-name",
-      semantics: "textual-occurrence-not-source-telling",
+      semantics: "source-located-text-not-licensed-claim-or-actual-reference",
     }));
   }
   // The context closure below only compares already-told source profiles.
   // Its alias/broader readings NEVER authenticate an actual referent.
   const concepts = primary.length > 1
     ? generatedConcepts({
-        subjects: readings.map(reading => ({ key: reading.key, cells: reading.cells })),
+        subjects: primary.map((reading, index) => ({
+          key: reading.source.id, cells: readings[index].cells,
+        })),
         minimumClaims: 1, minimumSupport: 2,
       })
     : Object.freeze({ subjects: 0, attributes: 0, aliases: Object.freeze([]), broader: Object.freeze([]) });
   return Object.freeze({
     kind: "signgraph.intensional-dossier/v1", name: query,
     coverage: Object.freeze({
-      sourceReadings: primary.length, textualMentions: links.filter(e => e.kind === "mentions-name").length,
+      sourceReadings: primary.length, textualMentions: passages.size,
       incomplete,
     }),
     graph: Object.freeze({
@@ -236,7 +252,11 @@ export function intensionalDossier({
     }),
     primary: Object.freeze({
       kind: "partial-epistemic-source-profile",
-      readings: Object.freeze(primary), concepts,
+      readings: Object.freeze(primary),
+      // Actual located prose remains evidence for later qualified semantic
+      // analysis, never a silently inferred predicate or secondary intension.
+      passages: Object.freeze([...passages.values()]),
+      concepts,
     }),
     secondary: Object.freeze({
       kind: "actual-world-anchored-reference",
