@@ -1,54 +1,59 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isUtterance } from "@red-cup-engineering/signcell/utterance";
+import { utterEvidenceSet, isUtterance } from "@red-cup-engineering/signcell/utterance";
 import {
   markdownFrontmatterClaims, javascriptModuleClaims, eavtRelations,
-  utteredRelationObservations,
 } from "../src/relation-adapters.mjs";
 
-test("existing author, code, and ERP adapters all produce original Mark Utterances", () => {
-  const sourceKinds = [
-    [markdownFrontmatterClaims([{id:"doc:1",frontmatter:{contains:["actor:1"]}}],{
-      relations:{contains:"authored-tag"}}), "markdown-frontmatter"],
-    [javascriptModuleClaims([{id:"module:1",imports:["engine:1"]}]), "javascript-module"],
-    [eavtRelations([{e:"agent:1",a:"located-in",v:"harbor",t:"row:1"}]), "eavt"],
-  ];
-  for (const [rows,kind] of sourceKinds) {
-    const result = utteredRelationObservations(rows);
-    assert.equal(result.kind,"signgraph.utteredRelationObservations.v1");
-    assert.equal(result.entries.length,1);
-    const [{sourceOrdinal,observation,utterance}]=result.entries;
-    assert.equal(sourceOrdinal,0);
-    assert.equal(isUtterance(utterance),true);
-    assert.equal(utterance.token.mark.value.subject,rows[0].subject);
-    assert.deepEqual(utterance.token.mark.value.object,rows[0].object);
-    assert.equal(utterance.claim.mark.value,rows[0].predicate);
-    assert.deepEqual(observation.evidence,rows[0].evidence);
-    assert.equal(observation.evidence.substrate,kind);
-    assert.equal(Object.isFrozen(result.entries),true);
-    assert.match(result.attribution,/no semantic identification/);
+const sources = [
+  ["markdown-frontmatter", () => markdownFrontmatterClaims([
+    { id:"doc:1", frontmatter:{ related:["world:harbor"] } },
+  ], { relations:{ related:"authored-tag" } })],
+  ["javascript-module", () => javascriptModuleClaims([
+    { id:"module:1", imports:["engine:1"] },
+  ])],
+  ["eavt", () => eavtRelations([
+    { e:"actor:1", a:"located-in", v:"world:harbor", t:"row:1" },
+  ])],
+];
+
+test("existing graph observations compose with SignCell's ONE original Utterance constructor", () => {
+  for (const [substrate,produce] of sources) {
+    const rows=produce(), before=JSON.stringify(rows);
+    const utterances=utterEvidenceSet(rows);
+    assert.equal(utterances.length,1,substrate);
+    assert.equal(isUtterance(utterances[0]),true,substrate);
+    assert.deepEqual(utterances[0].token.mark.value,
+      {subject:rows[0].subject,object:rows[0].object},substrate);
+    assert.equal(utterances[0].claim.mark.value,rows[0].predicate,substrate);
+    assert.equal(rows[0].evidence.substrate,substrate);
+    assert.equal(JSON.stringify(rows),before,"original source observations are not rewritten");
+    assert.equal(Object.hasOwn(utterances[0],"evidence"),false,
+      "source metadata is distinct from unwitnessed Mark presentations");
   }
 });
 
-test("repeated equal observations retain both source occurrences without inventing a witness", () => {
+test("repeated EAVT statements preserve source occurrences without minting a second identity", () => {
   const rows=eavtRelations([
     {e:"npc:1",a:"entered",v:"world:1",t:"ledger:one"},
     {e:"npc:1",a:"entered",v:"world:1",t:"ledger:two"},
   ]);
-  const result=utteredRelationObservations(rows);
-  assert.deepEqual(result.entries.map(x=>x.sourceOrdinal),[0,1]);
-  assert.deepEqual(result.entries[0].utterance,result.entries[1].utterance,
-    "equal Mark presentations may coincide without occurrence identification");
-  assert.notDeepEqual(result.entries[0].observation.evidence,result.entries[1].observation.evidence);
-  assert.equal(Object.hasOwn(result,"authorized"),false);
-  assert.equal(Object.hasOwn(result,"settled"),false);
+  const utterances=utterEvidenceSet(rows);
+  assert.deepEqual(utterances[0],utterances[1],
+    "equal content does not merge or identify original occurrences");
+  assert.notDeepEqual(rows[0].evidence,rows[1].evidence);
+  assert.equal(utterances.length,rows.length);
+  assert.deepEqual(rows.map((row,ordinal)=>({ordinal,witness:row.evidence.witness})),[
+    {ordinal:0,witness:"ledger:one"},{ordinal:1,witness:"ledger:two"},
+  ]);
 });
 
-test("malformed observations refuse at one adapter instead of producing ungrounded typed claims",()=>{
-  for(const invalid of [
-    null, {}, {subject:"actor",predicate:"",object:"area",evidence:{}},
-    {subject:"actor",object:"area",evidence:{}},
-    {subject:"actor",predicate:"in",evidence:{}},
-  ])assert.throws(()=>utteredRelationObservations([invalid]),/requires subject\/predicate\/object\/evidence/);
-  assert.throws(()=>utteredRelationObservations({}),/Relation records must be an array/);
+test("upstream source guards and graph-specific EAVT selectors both refuse malformed observations", () => {
+  assert.throws(()=>utterEvidenceSet([{object:"world:1",predicate:"entered"}]),
+    /original evidence record needs a present subject and predicate/);
+  assert.throws(()=>eavtRelations([{e:"npc:1",a:"entered",v:"world:1"}]),
+    /EAVT rows require e, a, v, and t/);
+  assert.throws(()=>markdownFrontmatterClaims([{}],{relations:{related:"x"}}),
+    /Markdown records require id and frontmatter object/);
+  assert.throws(()=>javascriptModuleClaims([{}]),/JavaScript module records require id/);
 });
