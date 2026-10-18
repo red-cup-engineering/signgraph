@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { coincidenceKey } from "@red-cup-engineering/signcell/cell";
-import { closeSpecialization, specializationMorphism } from "../src/site.mjs";
+import { closeSpecialization, specializationMorphism, site, transportRules } from "../src/site.mjs";
+import { cell } from "@red-cup-engineering/signcell/cell";
 
 const pairs = base => base.specialization.map(edge => [edge.domain, edge.codomain]);
 const keyPair = ([a, b]) => JSON.stringify([coincidenceKey(a), coincidenceKey(b)]);
@@ -85,4 +86,29 @@ test("a long sparse chain closes without the historical repeated all-edge rescan
   assert.equal(closed.specialization.length, count * (count - 1) / 2);
   assert.ok(closed.specialization.some(e => e.domain === nodes[0] && e.codomain === nodes.at(-1)));
   assert.equal(direct.length, count - 1);
+});
+
+
+test("transportRules realizes both evidence directions across an actual multi-hop site", () => {
+  const general = cell("actor", "receives", "claim");
+  const specific = cell("actor", "acknowledges", "claim");
+  const moreSpecific = cell("actor", "acknowledges-with-evidence", "claim");
+  const source = site([general, specific, moreSpecific], [
+    specializationMorphism("acknowledges", "receives"),
+    specializationMorphism("acknowledges-with-evidence", "acknowledges"),
+  ]);
+  const rules = transportRules(source);
+  assert.equal(rules.length, 6, "two polarity rules per admitted direct or derived specialization");
+  const transitiveFor = rules.find(row =>
+    row.consequent.cell.predicate === "receives" &&
+    row.antecedent[0]?.cell.predicate === "acknowledges-with-evidence" &&
+    row.consequent.reading === "potential");
+  assert.ok(transitiveFor, "for-evidence travels from specialized to general predicate");
+  const transitiveAgainst = rules.find(row =>
+    row.consequent.cell.predicate === "acknowledges-with-evidence" &&
+    row.antecedent[0]?.cell.predicate === "receives" &&
+    row.consequent.reading === "active");
+  assert.ok(transitiveAgainst, "against-evidence travels from general to specialized predicate");
+  assert.equal(source.base.specialization.length, 2, "source category remains unmutated");
+  assert.equal(new Set(rules.map(rule => rule.name)).size, 6, "no duplicate derivation rules");
 });
