@@ -21,6 +21,7 @@
  */
 import { cell, coincidenceKey, coincides, triple, tripleKey } from "@red-cup-engineering/signcell/cell";
 import { rule } from "@red-cup-engineering/signchain/rules";
+import { createGraph, reachable } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 
 // Distinct values by coincidence, first occurrence kept, in one pass over canonical-byte keys
 // (comparing every value with every kept one was quadratic in the number of cells).
@@ -74,20 +75,44 @@ export const presentSite = (value) => Object.freeze({ kind: "signgraph.site", ce
 /** The full site back from its generators. */
 export const freeSite = (generators) => site(generators.cells, generators.specializations);
 
-/** The base with its specialization relation transitively closed. */
+/** The base with its specialization relation transitively closed.
+ * Metrologic supplies the original finite directed reachability algorithm;
+ * SignGraph only supplies its *semantic* predicate presentations and the
+ * existing morphism carrier. No second graph search or content hash lives
+ * here. Reachability is positive-length: a reflexive specialization appears
+ * only where the source has a loop/cycle, not by inventing the identity edge.
+ */
 export function closeSpecialization(base) {
-  const edges = base.specialization.map((edge) => [edge.domain, edge.codomain]);
-  const has = (domain, codomain) => edges.some(([d, c]) => coincides(d, domain) && coincides(c, codomain));
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const [leftDomain, leftCodomain] of [...edges]) {
-      for (const [rightDomain, rightCodomain] of [...edges]) {
-        if (coincides(leftCodomain, rightDomain) && !has(leftDomain, rightCodomain)) { edges.push([leftDomain, rightCodomain]); changed = true; }
-      }
-    }
+  const graph = createGraph();
+  const terms = new Map();
+  const edges = [];
+  const seen = new Set();
+  const keyOf = (value) => {
+    const id = coincidenceKey(value);
+    if (!terms.has(id)) terms.set(id, value);
+    return id;
+  };
+  const include = (from, to) => {
+    const pair = JSON.stringify([from, to]);
+    if (seen.has(pair)) return;
+    seen.add(pair);
+    edges.push(Object.freeze({
+      kind: "signgraph.specialization",
+      domain: terms.get(from),
+      codomain: terms.get(to),
+    }));
+  };
+  for (const edge of base.specialization) {
+    const from = keyOf(edge.domain), to = keyOf(edge.codomain);
+    graph.addEdge({ from, to, kind: "specializes" });
+    include(from, to);
   }
-  return Object.freeze({ ...base, specialization: Object.freeze(edges.map(([domain, codomain]) => Object.freeze({ kind: "signgraph.specialization", domain, codomain }))) });
+  // Preserve admitted direct edges first. Append only the genuinely derived
+  // pairs in original node and reachable order; no O(E^3+) replay over pairs.
+  for (const { id: from } of graph.nodes())
+    for (const to of reachable(graph, from, { kind: "specializes" }))
+      include(from, to);
+  return Object.freeze({ ...base, specialization: Object.freeze(edges) });
 }
 
 /** Cohere a site: its cells, and the residue with specialization closed. */
