@@ -292,3 +292,22 @@ test("the two-sorted native incidence assembler keeps >128 separately witnessed 
   assert.throws(()=>assembleMarkWallCellIncidence({utterances:source,attachments:refused}),
     /refuses incidence/);
 });
+
+test("strict upstream Utterance admission protects source positions in a downstream graph",()=>{
+  const original=utterance({entity:"actor:one"},{claim:"told"});
+  const transported=JSON.parse(JSON.stringify(original));
+  const baseline=glueMarkUtteranceCells({utterances:[original]});
+  const revived=glueMarkUtteranceCells({utterances:[transported]});
+  assert.deepEqual(revived,baseline,"a native transported source still constructs a graph");
+  const forged=[
+    {...transported,token:{...transported.token,hand:"right"}},
+    {...transported,claim:{...transported.claim,hand:"left"}},
+    {...transported,token:{...transported.token,arbitraryRole:"actor"}},
+    {...transported,claim:{...transported.claim,mark:{...transported.claim.mark,authority:true}}},
+    {...transported,accepted:true},
+  ];
+  for(const source of forged)
+    assert.throws(()=>glueMarkUtteranceCells({utterances:[source]}),
+      /native SignCell Utterance or two original Marks/,
+      "SignGraph must use upstream source admission rather than infer a lawful position");
+});
