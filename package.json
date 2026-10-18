@@ -53,7 +53,8 @@
     "@red-cup-engineering/signcell": "0.9.0",
     "@red-cup-engineering/signchain": "0.3.0",
     "@red-cup-engineering/json-schema-services-section": "0.5.0",
-    "@red-cup-engineering/computer-content-address-engineering-services-section": "0.2.0"
+    "@red-cup-engineering/computer-content-address-engineering-services-section": "0.2.0",
+    "@red-cup-engineering/computer-code-engineering-services-section": "0.1.2"
   },
   "scripts": {
     "test": "node --test \"test/**/*.test.mjs\"",
@@ -65,9 +66,6 @@
     "url": "git+https://github.com/red-cup-engineering/signgraph.git"
   },
   "private": false,
-  "devDependencies": {
-    "@red-cup-engineering/computer-code-engineering-services-section": "0.1.2"
-  },
   "bin": {
     "signgraph-holonomy": "scripts/holonomy.mjs"
   },
