@@ -34,7 +34,8 @@ test("overlap conflict, gaps, wrong address, invalid coordinates refuse",()=>{
   assert.equal(glueBitPatches([a],{fromBit:0,bitCount:8}).reason,"uncovered-bit");
   assert.equal(glueBitPatches([a,bitPatchOfBytes(Uint8Array.from([0xA4]))]).reason,"different-source-content");
   assert.throws(()=>glueBitPatches([{...full,bits:[2]}]),/0 or 1/);
-  assert.throws(()=>restrictBitPatch(full,{fromBit:7,bitCount:2}),/outside/);
+  assert.throws(()=>restrictBitPatch(full,{fromBit:7,bitCount:2}),/invalid or unbounded finite interval/);
+  assert.throws(()=>restrictBitPatch(a,{fromBit:4,bitCount:2}),/restriction outside the patch/);
 });
 
 test("protected region selects a subcoverage; it does not assert sovereign authority",()=>{
