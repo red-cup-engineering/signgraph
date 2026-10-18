@@ -1,3 +1,5 @@
+import { utterEvidenceSet } from "@red-cup-engineering/signcell/utterance";
+import { canonicalCarrier } from "@red-cup-engineering/semiotic-content-address";
 const assertRecords = (records, label) => {
   if (!Array.isArray(records)) throw new TypeError(`${label} records must be an array`);
   return records;
@@ -41,3 +43,35 @@ export function eavtRelations(rows, { polarityByAttribute = {} } = {}) {
 }
 
 export const observeClaims = (drew, { source, claims, id }) => drew.observe({ source, relations: claims, ...(id === undefined ? {} : { id }) });
+
+/**
+ * Turn existing ERP EAVT rows, ECS/module graphs and authored-source
+ * observations into the SAME Mark-rooted Utterances that SignCell admits.
+ *
+ * This is one observation adapter over the existing normalized relation
+ * carrier, not a second token/claim codec, graph equality, evidence log,
+ * or authorization source. Every input occurrence has a separate ordinal
+ * even when its encoded content coincides with another occurrence.
+ * Source metadata survives separately as observation, not an invented
+ * witness supporting the uttered proposition.
+ */
+export function utteredRelationObservations(records) {
+  const rows = assertRecords(records, "Relation");
+  const observations = rows.map((row,index) => {
+    if (!row || typeof row !== "object" || Array.isArray(row)
+      || !Object.hasOwn(row,"subject") || !Object.hasOwn(row,"predicate")
+      || !Object.hasOwn(row,"object") || !Object.hasOwn(row,"evidence")
+      || typeof row.predicate !== "string" || !row.predicate.trim())
+      throw new TypeError(`relation observation ${index} requires subject/predicate/object/evidence`);
+    return canonicalCarrier(row);
+  });
+  // Construct every Mark and its two positional hands through SignCell only.
+  const utterances = utterEvidenceSet(observations);
+  return canonicalCarrier({
+    kind:"signgraph.utteredRelationObservations.v1",
+    entries:observations.map((observation,sourceOrdinal) => ({
+      sourceOrdinal, utterance:utterances[sourceOrdinal], observation,
+    })),
+    attribution:"original observation only; no semantic identification, witness, authority or delivery follows",
+  });
+}
