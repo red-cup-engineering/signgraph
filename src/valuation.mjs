@@ -46,8 +46,16 @@ export function posit(site, valuation) {
 /** A presheaf's latest valuation. */
 export const lastValuation = (presheaf) => presheaf.traces[presheaf.traces.length - 1];
 
-/** A presheaf with one more valuation in its trace. */
-export const withTrace = (presheaf, valuation) => Object.freeze({ ...presheaf, traces: Object.freeze([...presheaf.traces, cellSet(valuation)]) });
+/** Extend a presheaf by a valuation over the SAME base site.
+ * Reuse the existing posit admission: without it, subsequent traces could
+ * introduce arbitrary cells from another site and fabricate a global section.
+ * A new context/site needs an explicit base-change, not a silent append. */
+export function withTrace(presheaf, valuation) {
+  if (presheaf?.kind !== "signgraph.presheaf" || !Array.isArray(presheaf.traces) || presheaf.traces.length === 0)
+    throw new TypeError("withTrace requires an existing posited presheaf");
+  const next = posit(presheaf.site, valuation);
+  return Object.freeze({ ...presheaf, traces: Object.freeze([...presheaf.traces, next.traces[0]]) });
+}
 
 /** The presheaf of a valuation over the site its own cells generate. */
 export const presheafOfValuation = (valuation) => posit(siteOf(valuation), valuation);
