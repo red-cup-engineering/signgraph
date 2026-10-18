@@ -154,3 +154,17 @@ test("SignGraph gluing respects the EAVT member addresses issued by the relation
   assert.equal(refused.refusal.code, "identity-mismatch");
 });
 
+
+test("canonical graph order uses address-space bytes, never ambient locale collation", () => {
+  const type = defined.value.id;
+  const original = [
+    { id: "\u00e9", subjectTypes: [type], objectTypes: [type], witnessTypes: [type] },
+    { id: "z", subjectTypes: [type], objectTypes: [type], witnessTypes: [type] },
+  ];
+  const first = createSignGraph({ cells: [cell.value], relations: original, edges: [] });
+  const reversed = createSignGraph({ cells: [cell.value], relations: [...original].reverse(), edges: [] });
+  assert.equal(first.ok, true, JSON.stringify(first));
+  assert.equal(reversed.ok, true, JSON.stringify(reversed));
+  assert.deepEqual(first.value.relations.map(item => item.id), ["z", "\u00e9"]);
+  assert.equal(first.value.id, reversed.value.id, "one canonical addressed graph across producer enumeration");
+});

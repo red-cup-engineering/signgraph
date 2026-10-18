@@ -276,3 +276,14 @@ the new geometry data is a concrete carrier on which to attempt them.
 `@lenticule-science/metrologic` for mathematics, SignCell for cells, and
 SignChain for cell order and FOUR evidence profiles. Nothing here imports
 SignCraft; SignCraft imports this.
+
+## Canonical graph ordering across runtime locales
+
+Content-addressed semantic graph cells, relations, witness edges and gluing
+obstructions use the shared semiotic-content-address provider's NFC-aware UTF-8
+byte ordering, not host `localeCompare`. This does not assert that matching
+Mark presentations establish observational equality or external evidence:
+SignCell continues to own typed source identity and SignChain owns the actual
+tellings. The SignGraph source edition 0.5.0 selects SignCell ^0.7.0,
+whose concept address ordering is defined by the same Data-owned byte comparator.
+This needs genuine package/lock selection before a running consumer can claim it.

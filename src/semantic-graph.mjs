@@ -1,11 +1,13 @@
 import { createRelationalField, defineRelation, queryRelationalField, queryRelationalFieldPage } from "@red-cup-engineering/signcell/type-system/relations";
-import { semanticId, coincides } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
+import { semanticId, coincides, bytesCompare, utf8Bytes } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
 import { admit } from "@red-cup-engineering/signcell/type-system";
 import { semanticGraphType } from "./semantic-graph-schema.mjs";
 import { admitTypedMarkCarrier, referenceOf, typedMarkReferenceType } from "@red-cup-engineering/signcell/typed-mark";
 const accepted = (value) => Object.freeze({ ok: true, value });
 const refused = (code, message) => Object.freeze({ ok: false, refusal: Object.freeze({ code, message }) });
-const ordered = values => Object.freeze([...values].sort((left, right) => left.id.localeCompare(right.id)));
+// The canonical graph address cannot depend on process/host ICU collation.
+const compareIds = (left, right) => bytesCompare(utf8Bytes(left.normalize("NFC")), utf8Bytes(right.normalize("NFC")));
+const ordered = values => Object.freeze([...values].sort((left, right) => compareIds(left.id, right.id)));
 const names = values => Array.isArray(values) && values.length > 0 && values.every(value => typeof value === "string" && value.trim() !== "") && new Set(values).size === values.length;
 const graphFields = new WeakMap();
 // The existing SignCell relational index already selects and pages by EAVT address.
@@ -231,6 +233,6 @@ export function glueSignGraphs(...graphs) {
   const obstructed = new Set(obstructions.map(obstruction => obstruction.relation));
   const glued = createSignGraph({ cells: [...cells.values()], relations, edges: [...edges.values()].filter(edge => !obstructed.has(edge.predicate)) });
   if (!glued.ok) return glued;
-  return accepted(Object.freeze({ graph: glued.value, obstructions: Object.freeze(obstructions.sort((left, right) => left.relation.localeCompare(right.relation))) }));
+  return accepted(Object.freeze({ graph: glued.value, obstructions: Object.freeze(obstructions.sort((left, right) => compareIds(left.relation, right.relation))) }));
 }
 
