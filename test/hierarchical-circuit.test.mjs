@@ -1,7 +1,7 @@
 // Pure placement-independent SEN die assay.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { semanticId } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
+import { semanticId } from "@red-cup-engineering/semiotic-content-address";
 import {
   CIRCUIT_ASSEMBLY_PROFILE,
   HIERARCHICAL_CIRCUIT_PROFILE,

@@ -11,7 +11,7 @@
  * reciprocity for ∃) are checked on fibers.
  */
 import { coincides, coincidenceKey, knowledgeReading } from "@red-cup-engineering/signcell/cell";
-import { canonicalCarrier } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
+import { canonicalCarrier } from "@red-cup-engineering/semiotic-content-address";
 import { evidenceAt } from "./valuation.mjs";
 import { reindex, existsAlong, forallAlong } from "@red-cup-engineering/metrologic/hyperdoctrine/adjoints";
 import { isReading, knowledgeBottom, samePoint, fusionReading, residuumReading } from "@red-cup-engineering/computer-data-engineering-services-section/four";

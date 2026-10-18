@@ -273,17 +273,21 @@ the new geometry data is a concrete carrier on which to attempt them.
 
 ## Depends on
 
-`@lenticule-science/metrologic` for mathematics, SignCell for cells, and
-SignChain for cell order and FOUR evidence profiles. Nothing here imports
+`@red-cup-engineering/metrologic` for mathematics, SignCell for cells, and
+SignChain for cell order and FOUR evidence profiles. Canonical carrier snapshots,
+semantic addresses and portable byte operations come directly from
+`@red-cup-engineering/semiotic-content-address` 0.1.0, the same owner selected by
+Data, Cell, Chain and Craft. The shipped `chu-term` module also receives its
+declared runtime dependency on Computer Code 0.1.2. Nothing here imports
 SignCraft; SignCraft imports this.
 
 ## Canonical graph ordering across runtime locales
 
 Content-addressed semantic graph cells, relations, witness edges and gluing
-obstructions use the shared semiotic-content-address provider's NFC-aware UTF-8
+obstructions use the canonical semiotic-content-address owner's NFC-aware UTF-8
 byte ordering, not host `localeCompare`. This does not assert that matching
 Mark presentations establish observational equality or external evidence:
 SignCell continues to own typed source identity and SignChain owns the actual
-tellings. The SignGraph source edition 0.5.0 selects SignCell ^0.7.0,
-whose concept address ordering is defined by the same Data-owned byte comparator.
+tellings. The SignGraph source edition 0.5.0 selects exact SignCell 0.9.0,
+whose concept address ordering is defined by the same canonical byte comparator.
 This needs genuine package/lock selection before a running consumer can claim it.
