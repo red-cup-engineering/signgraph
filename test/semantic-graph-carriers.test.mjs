@@ -3,7 +3,7 @@ import test from "node:test";
 import { defineType } from "@red-cup-engineering/signcell/type-system";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
 import { createSignGraph, querySignGraph, glueSignGraphs } from "../src/semantic-graph.mjs";
-import { semanticId } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
+import { semanticId } from "@red-cup-engineering/semiotic-content-address";
 const defined = defineType({ id: "test.semantic.source@1", name: "Semantic source", description: "A source used to prove carrier admission.", schema: { type: "object", required: ["text"], properties: { text: { type: "string", minLength: 1 } }, additionalProperties: false }, parents: [] });
 if (!defined.ok) throw new Error(defined.refusal.message);
 const cell = createTypedMark(defined.value, { text: "retained evidence" });

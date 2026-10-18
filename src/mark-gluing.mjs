@@ -8,7 +8,7 @@
 import { utterance, isUtterance, formalBoundaryOfUtterance, markRoleIncidenceOfUtterance, traceOfArticulating, reattendArticulating, compareImmediateArticulating }
   from "@red-cup-engineering/signcell/utterance";
 import { semanticId }
-  from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
+  from "@red-cup-engineering/semiotic-content-address";
 import { cellular2Complex } from "./cohomology.mjs";
 import * as chain from "@red-cup-engineering/signchain/bilattice";
 

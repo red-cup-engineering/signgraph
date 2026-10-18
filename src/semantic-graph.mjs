@@ -1,5 +1,5 @@
 import { createRelationalField, defineRelation, queryRelationalField, queryRelationalFieldPage } from "@red-cup-engineering/signcell/type-system/relations";
-import { semanticId, coincides, bytesCompare, utf8Bytes } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
+import { semanticId, coincides, bytesCompare, utf8Bytes } from "@red-cup-engineering/semiotic-content-address";
 import { admit } from "@red-cup-engineering/signcell/type-system";
 import { semanticGraphType } from "./semantic-graph-schema.mjs";
 import { admitTypedMarkCarrier, referenceOf, typedMarkReferenceType } from "@red-cup-engineering/signcell/typed-mark";

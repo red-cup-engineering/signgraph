@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { defineType } from "@red-cup-engineering/signcell/type-system";
-import { semanticId } from "@red-cup-engineering/computer-content-address-engineering-services-section/semiotic-content-address";
+import { semanticId } from "@red-cup-engineering/semiotic-content-address";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
 import { createSignGraph, querySignGraph, querySignGraphPage, validateSignGraphPage, validateSignGraphQuery } from "../src/semantic-graph.mjs";
 
