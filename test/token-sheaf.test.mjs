@@ -151,3 +151,22 @@ test("indexed claim coordinates coincide across representational key order", () 
   assert.equal(fiber.sources[0].length, 1,
     "two original tellings of one cell are knowledge-joined by SignCell, not counted as independent source tokens");
 });
+
+test("mutable wire token-frame presentations cannot retain stale claim-fiber indices", () => {
+  const generated = tokenFrame([
+    cell("specific", SPECIALIZES, "general", { for: ["classification"] }),
+    cell("general", "requires", "release", { for: ["first"] }),
+  ]);
+  const wire = { kind: generated.kind, predicate: generated.predicate, cells: [...generated.cells] };
+  const first = inheritedClaim(wire, "specific", "requires", "release");
+  assert.deepEqual(first.cells[0].for, ["first"]);
+  assert.deepEqual(first.cells[0].against, []);
+  wire.cells.push(cell("general", "requires", "release", { against: ["second"] }));
+  const updated = inheritedClaim(wire, "specific", "requires", "release");
+  assert.deepEqual(updated.cells[0].for, ["first"]);
+  assert.deepEqual(updated.cells[0].against, ["second"]);
+  assert.equal(updated.contested.length, 1);
+  const full = inherited(wire, "specific");
+  assert.deepEqual(full.cells.find((at) => at.predicate === "requires").against, ["second"],
+    "full-section and exact-claim reads both reobserve changed mutable sources");
+});
