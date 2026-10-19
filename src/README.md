@@ -125,6 +125,27 @@ service.
   SignCraft, where consumers supply their own lawful constraints.
   `verifyCircuitEquivalence` checks only the modeled behavior, not a
   physical or deployed circuit.
+- `cellular-sheaf-complex` — `cellular2Sheaf({vertices,edges,faces})` is the
+  exact-Q, **2-dimensional cellular-sheaf** construction over the existing
+  source-admitted oriented 2-complex. Its degree-0, -1 and -2 cochain
+  spaces carry individually typed finite-dimensional stalks with
+  non-identity vertex→edge and edge→face restrictions. The face
+  incidence maps must be explicit, with exact `d1*d0=0`; a graph-only
+  cycle and a filled face are not interchangeable. It computes
+  `(H0,H1,H2)` by the existing Exact Number rational ranks, retains
+  each cellular basis coordinate and refuses noncommuting restrictions.
+  It is an exact finite linearization of source-selected incidences,
+  **not** an automatic proof of original source validity, a nonlinear
+  FOUR-valued sheaf, or an Obsmetrologia foundational derivation.
+  `matrixMarketCoboundary(reading, 0|1)` exports the actual sparse
+  differentials using the established NIST Matrix Market coordinate
+  exchange format (1-based indices; standard integer/real fields) for
+  SciPy and other solver consumers. Integer entries stay exact; general
+  rational entries explicitly undergo rounded binary64 real projection,
+  refusing nonzero underflow or overflow. Keep the exact-Q source and
+  basis labels: Matrix Market alone has no stalk identity, witnesses,
+  transport or proof information. No invented Matrix Market rational
+  extension or custom network transport is introduced.
 - `cohomology` — `cellular2Complex({vertices, edges, faces})` extends the
   existing graph incidence to **oriented 2-cells**. Every face must
   attach by a composable closed walk, `δ¹δ⁰=0` is checked, and exact rational
