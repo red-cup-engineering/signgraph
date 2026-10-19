@@ -23,6 +23,10 @@ const frozen = (values) => Object.freeze([...values]);
 const byKey = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
 const sections = new WeakMap();
 const claimSections = new WeakMap();
+// A wire presentation can be mutable; cache only an immutable admitted frame,
+// never keep an obsolete subject/claim index after the caller changes its cells.
+const cacheableFrame = frame => Object.isFrozen(frame) && Object.isFrozen(frame.cells)
+  && frame.cells.every(Object.isFrozen);
 
 // The same canonical predicate/object coordinate already used by SignChain's
 // token fiber: its null-subject cell is ONLY a private index key. It is never
@@ -32,7 +36,7 @@ const claimSections = new WeakMap();
 // Preserve the original direct section index for the common full-section
 // reader. A claim index is materialized only when a caller selects a claim.
 function sectionsOf(frame) {
-  if (!sections.has(frame)) {
+  if (!cacheableFrame(frame) || !sections.has(frame)) {
     const bySubject = new Map();
     for (const at of frame.cells) {
       if (coincides(at.predicate, frame.predicate)) continue;
@@ -40,13 +44,14 @@ function sectionsOf(frame) {
       if (!bySubject.has(token)) bySubject.set(token, []);
       bySubject.get(token).push(at);
     }
-    sections.set(frame, bySubject);
+    if (cacheableFrame(frame)) sections.set(frame, bySubject);
+    else return bySubject;
   }
   return sections.get(frame);
 }
 
 function claimSectionsOf(frame) {
-  if (!claimSections.has(frame)) {
+  if (!cacheableFrame(frame) || !claimSections.has(frame)) {
     const byToken = new Map();
     for (const [token, tellings] of sectionsOf(frame)) {
       const byClaim = new Map();
@@ -57,7 +62,8 @@ function claimSectionsOf(frame) {
       }
       byToken.set(token, byClaim);
     }
-    claimSections.set(frame, byToken);
+    if (cacheableFrame(frame)) claimSections.set(frame, byToken);
+    else return byToken;
   }
   return claimSections.get(frame);
 }
