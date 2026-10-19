@@ -270,3 +270,187 @@ export function intensionalDossier({
     }),
   });
 }
+
+
+/**
+ * A bounded FCA comparison category built from explicitly supplied, source-
+ * distinguished *anchored term readings*. This is the ordinary mathematical
+ * projection of Obsmetrologia.Site.Intension's anchored secondaryConcept,
+ * NOT a semantic interpretation of counterfactual-world reference itself.
+ *
+ * Claim objects and term attributes are oriented like Claim.TermContext:
+ * incidence is witnessed positive SignCell telling. The existing Metrologic
+ * formal-context owner performs closure; this module never reimplements FCA.
+ * Contradiction and negative witnesses stay addressed as source evidence.
+ *
+ * Inputs must enumerate every selected context for every term with coverage
+ * "complete". Missing source observations refuse category admission; declaring
+ * coverage does not independently authenticate the underlying corpus.
+ */
+export function categoricalIntensions({actualContext, contexts, terms} = {}) {
+  const string = x => typeof x === "string" && x.length > 0;
+  if (!string(actualContext) || !Array.isArray(contexts) || contexts.length === 0 ||
+      contexts.length > 16 || contexts.some(x=>!string(x)) ||
+      new Set(contexts).size !== contexts.length || !contexts.includes(actualContext) ||
+      !Array.isArray(terms) || terms.length === 0 || terms.length > 32)
+    throw new TypeError("categorical intensions require bounded, unique contexts with one actual context and terms");
+  const worlds=Object.freeze([...contexts].sort());
+  const sourceIds=new Set(),observed=[],missing=[];
+  let nCells=0;
+  for(const term of terms) {
+    if(!term || typeof term !== "object" || Array.isArray(term) ||
+       !term.source || typeof term.source !== "object" ||
+       !string(term.source.key) || !string(term.source.revision) ||
+       !Object.hasOwn(term,"actualTerm") ||
+       !Array.isArray(term.readings))
+      throw new TypeError("categorical intensions require source-revisioned actual terms and context readings");
+    const sourceId=semanticId(["source-reading",term.source.key,term.source.revision]);
+    if(sourceIds.has(sourceId))
+      throw new TypeError("categorical intensions cannot repeat one source revision");
+    sourceIds.add(sourceId);
+    const readings=new Map();
+    for(const reading of term.readings) {
+      if(!reading || typeof reading !== "object" || !worlds.includes(reading.context) ||
+         readings.has(reading.context) || !Object.hasOwn(reading,"term") ||
+         !Array.isArray(reading.cells) || !["complete","unknown"].includes(reading.coverage))
+        throw new TypeError("categorical intensions require unique, typed context readings and explicit coverage");
+      nCells+=reading.cells.length;
+      if(nCells>4096) throw new RangeError("categorical intensions exceed finite cell budget");
+      const termId=semanticId(reading.term);
+      const cells=[];
+      for(const cell of reading.cells) {
+        if(!cell || typeof cell !== "object" ||
+           !Object.hasOwn(cell,"subject") || !Object.hasOwn(cell,"predicate") ||
+           !Object.hasOwn(cell,"object") || !Array.isArray(cell.for) ||
+           !Array.isArray(cell.against) || semanticId(cell.subject)!==termId)
+          throw new TypeError("categorical intensions require original sided SignCells of the stated contextual term");
+        cells.push(Object.freeze({
+          address:semanticId(["source-cell",sourceId,reading.context,cell]),
+          claim:claimOf(cell),
+          positive:Object.freeze([...cell.for]),
+          negative:Object.freeze([...cell.against]),
+        }));
+      }
+      readings.set(reading.context,Object.freeze({
+        context:reading.context,termId,coverage:reading.coverage,
+        cells:Object.freeze(cells),
+        // Extent of a term in Claim.TermContext: claims positively told for it.
+        profile:Object.freeze([...new Set(cells.filter(c=>c.positive.length>0).map(c=>c.claim))].sort()),
+      }));
+    }
+    const atActual=readings.get(actualContext);
+    if(atActual && atActual.termId!==semanticId(term.actualTerm))
+      throw new TypeError("actual context's term must equal the actual anchored term by content address");
+    for(const context of worlds) {
+      if(!readings.has(context) || readings.get(context).coverage!=="complete")
+        missing.push(Object.freeze({sourceId,context,reason:"unobserved-context-reading"}));
+    }
+    observed.push(Object.freeze({
+      source:Object.freeze({id:sourceId,key:term.source.key,revision:term.source.revision}),
+      actualTermId:semanticId(term.actualTerm),readings,
+    }));
+  }
+  if(missing.length) return Object.freeze({
+    kind:"signgraph.categorical-intension/v1",status:"unresolved",
+    actualContext,contexts:worlds,unknown:Object.freeze(missing),
+    reason:"An omitted/unknown reading is not an empty FCA profile; no category or morphisms were inferred.",
+  });
+  // Canonical ids use deterministic UTF-16 lexical ordering, not host ICU locale collation.
+  const ordered=observed.sort((a,b)=>a.source.id < b.source.id ? -1 : a.source.id > b.source.id ? 1 : 0);
+  const concepts=new Map(ordered.map(t=>[t.source.id,[]]));
+  for(const context of worlds) {
+    const termsAt=ordered.map(t=>t.source.id);
+    const profiles=ordered.map(t=>t.readings.get(context).profile);
+    const claims=[...new Set(profiles.flat())].sort();
+    const incidence=ordered.flatMap((t,i)=>
+      profiles[i].map(claim=>[claim,t.source.id]));
+    const K=makeContext(claims,termsAt,incidence);
+    for(let i=0;i<ordered.length;i++) {
+      // FCA: (profile)' is the terms sharing every claim in that profile;
+      // (profile)'' is the resulting closed *claim* extent.
+      const closedExtent=[...extent(K,intent(K,new Set(profiles[i])))].sort();
+      const closedIntent=[...intent(K,new Set(closedExtent))].sort();
+      const reading=ordered[i].readings.get(context);
+      concepts.get(ordered[i].source.id).push(Object.freeze({
+        context,termId:reading.termId,
+        directClaims:reading.profile,
+        extent:Object.freeze(closedExtent),
+        intent:Object.freeze(closedIntent),
+        originalCells:reading.cells,
+      }));
+    }
+  }
+  const objects=Object.freeze(ordered.map(term=>Object.freeze({
+    id:semanticId(["anchored-fca-term",actualContext,term.source.id,term.actualTermId]),
+    source:term.source,actualTermId:term.actualTermId,
+    concepts:Object.freeze(concepts.get(term.source.id)),
+  })));
+  const categoryId=semanticId(["anchored-fca-profile-category",actualContext,worlds,objects]);
+  const morphisms=[],obstructions=[];
+  for(const from of objects) for(const to of objects) {
+    let counterexample;
+    for(let i=0;i<worlds.length&&!counterexample;i++){
+      const target=new Set(to.concepts[i].extent);
+      const claim=from.concepts[i].extent.find(x=>!target.has(x));
+      if(claim!==undefined)
+        counterexample=Object.freeze({context:worlds[i],claim:JSON.parse(claim)});
+    }
+    if(counterexample){
+      obstructions.push(Object.freeze({from:from.id,to:to.id,counterexample}));
+    }else{
+      const address=semanticId(["fca-pointwise-inclusion",categoryId,from.id,to.id]);
+      morphisms.push(Object.freeze({
+        kind:"signgraph.categorical-intension-morphism/v1",
+        categoryId,address,from:from.id,to:to.id,
+        steps:Object.freeze([address]),
+        pathAddress:semanticId(["fca-proof-path",categoryId,[address]]),
+      }));
+    }
+  }
+  return Object.freeze({
+    kind:"signgraph.categorical-intension/v1",
+    status:"finite-fca-comparison-only",
+    categoryId,actualContext,contexts:worlds,
+    objects,morphisms:Object.freeze(morphisms),
+    obstructions:Object.freeze(obstructions),
+    semanticQualification:"actual-world reference-fixing, contextual term transport, and Chalmers extension semantics are not established by supplied claim profiles",
+  });
+}
+
+/**
+ * Compose two admitted routes in the already-generated thin FCA category.
+ * Equality of the *arrow* is not equality of performed proof paths.
+ * Path addresses use the existing canonical content-address supplier.
+ */
+export function composeCategoricalIntensionPaths(category,left,right) {
+  if(category?.kind!=="signgraph.categorical-intension/v1" ||
+     category.status!=="finite-fca-comparison-only")
+    throw new TypeError("a complete admitted categorical-intension comparison is required");
+  const edges=new Map(category.morphisms.map(m=>[m.address,m]));
+  const route = value => {
+    if(!value || value.categoryId!==category.categoryId || !Array.isArray(value.steps) ||
+       value.steps.length<1 || value.steps.length>1024 ||
+       value.steps.some(step=>!edges.has(step)))
+      throw new TypeError("a route must contain the admitted original arrow addresses");
+    const parts=value.steps.map(step=>edges.get(step));
+    for(let i=1;i<parts.length;i++) if(parts[i-1].to!==parts[i].from)
+      throw new TypeError("source and target of adjacent proof steps do not compose");
+    if(parts[0].from!==value.from || parts.at(-1).to!==value.to ||
+       semanticId(["fca-proof-path",category.categoryId,value.steps])!==value.pathAddress)
+      throw new TypeError("route endpoints or proof-path content address do not match");
+    return parts;
+  };
+  const l=route(left),r=route(right);
+  if(l.at(-1).to!==r[0].from)
+    throw new TypeError("noncomposable categorical-intension morphisms");
+  const from=l[0].from,to=r.at(-1).to;
+  if(!category.morphisms.some(m=>m.from===from&&m.to===to))
+    throw new TypeError("the transitive arrow is absent from this admitted category");
+  const steps=Object.freeze([...left.steps,...right.steps]);
+  return Object.freeze({
+    kind:"signgraph.categorical-intension-path/v1",
+    categoryId:category.categoryId,
+    from,to,steps,
+    pathAddress:semanticId(["fca-proof-path",category.categoryId,steps]),
+  });
+}
