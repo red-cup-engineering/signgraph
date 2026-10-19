@@ -170,3 +170,28 @@ test("mutable wire token-frame presentations cannot retain stale claim-fiber ind
   assert.deepEqual(full.cells.find((at) => at.predicate === "requires").against, ["second"],
     "full-section and exact-claim reads both reobserve changed mutable sources");
 });
+
+test("nested claim mutation under a shallow-frozen wire frame cannot reuse stale Graph indexes", () => {
+  const mutableObject = { state: "old" };
+  const admitted = tokenFrame([
+    cell("child", SPECIALIZES, "parent", { for: ["classification"] }),
+    cell("parent", "reports", { state: "old" }, { for: ["provider"] }),
+  ]);
+  const wire = Object.freeze({
+    kind: admitted.kind, predicate: admitted.predicate,
+    cells: Object.freeze([
+      admitted.cells.find((x) => x.predicate === SPECIALIZES),
+      Object.freeze({
+        subject: "parent", predicate: "reports", object: mutableObject,
+        for: Object.freeze(["provider"]), against: Object.freeze([]),
+      }),
+    ]),
+  });
+  const earlier = inheritedClaim(wire, "child", "reports", { state: "old" });
+  assert.equal(earlier.cells.length, 1);
+  mutableObject.state = "new";
+  assert.deepEqual(inheritedClaim(wire, "child", "reports", { state: "old" }).cells, []);
+  const later = inheritedClaim(wire, "child", "reports", { state: "new" });
+  assert.equal(later.cells.length, 1);
+  assert.deepEqual(later.cells[0].for, ["provider"]);
+});
