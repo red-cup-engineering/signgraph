@@ -162,3 +162,103 @@ test("required support declarations snapshot data and refuse sparse, accessor an
   assert.throws(()=>glueBitPatches([full],{protectedIntervals:[[2,2]]}),/outside target/);
   assert.throws(()=>glueBitPatches([full],{protectedIntervals:new Array(32769)}),/bounded array/);
 });
+
+
+test("minimum patch cover reuses one genuine source patch without suppressing contradictory evidence",()=>{
+  const full=bitPatchOfBytes(Uint8Array.of(0xa5));
+  const patches=[
+    restrictBitPatch(full,{fromBit:0,bitCount:5}),
+    restrictBitPatch(full,{fromBit:3,bitCount:5}),
+    restrictBitPatch(full,{fromBit:2,bitCount:4}),
+  ];
+  const supports=[[0,2],[2,6],[6,8]];
+  const selected=glueBitPatches(patches,{protectedIntervals:supports,minimumCover:true});
+  assert.equal(selected.kind,"signgraph.bitSheaf:section");
+  assert.equal(selected.minimumCover.cardinality,3);
+  assert.deepEqual(selected.minimumCover.patchIndices,[0,2,1]);
+  assert.equal(selected.coverCount,3);
+  assert(Object.isFrozen(selected.minimumCover));
+  assert(Object.isFrozen(selected.minimumCover.patchIndices));
+  const withWhole=glueBitPatches([...patches,full],{protectedIntervals:supports,minimumCover:true});
+  assert.equal(withWhole.minimumCover.cardinality,1);
+  assert.deepEqual(withWhole.minimumCover.patchIndices,[3]);
+  assert.equal(withWhole.coverCount,4,"all supplied patches were admitted and checked");
+
+  const incompatible={...patches[0],bits:patches[0].bits.map((b,i)=>i===3?1-b:b)};
+  const obstruction=glueBitPatches([...patches,full,incompatible],{
+    protectedIntervals:supports,minimumCover:true,
+  });
+  assert.equal(obstruction.reason,"incompatible-overlap",
+    "even a complete one-patch subcover cannot erase contradictory observed data");
+  assert.equal(obstruction.minimumCover,undefined);
+  const ordinary=glueBitPatches([full]);
+  assert.equal(ordinary.minimumCover,undefined,"the original API remains unchanged by default");
+  assert.throws(()=>glueBitPatches([full],{minimumCover:"yes"}),/minimumCover must be a boolean/);
+});
+
+test("minimum whole-support bit cover matches independent exhaustive subset optimum (35672 cases)",()=>{
+  const full=bitPatchOfBytes(Uint8Array.of(0xa5));
+  const universe=[];
+  for(let left=0;left<4;left++)
+    for(let right=left+1;right<=4;right++)
+      universe.push([left,right]);
+  const sourcePatches=universe.map(([left,right])=>
+    restrictBitPatch(full,{fromBit:left,bitCount:right-left}));
+  const reqFamilies=[[],...universe.map(x=>[x])];
+  for(let i=0;i<universe.length;i++)
+    for(let j=i+1;j<universe.length;j++)
+      reqFamilies.push([universe[i],universe[j]]);
+  const enumerate=(items,size,start,chosen,visit)=>{
+    if(chosen.length===size){visit(chosen);return;}
+    for(let i=start;i<=items.length-(size-chosen.length);i++){
+      chosen.push(i);enumerate(items,size,i+1,chosen,visit);chosen.pop();
+    }
+  };
+  const satisfies=(indices,patches,demands)=>demands.every(([left,right])=>
+    indices.some(i=>patches[i].fromBit<=left &&
+      patches[i].fromBit+patches[i].bits.length>=right));
+  const bruteMinimum=(patches,demands)=>{
+    for(let count=0;count<=patches.length;count++){
+      let found=false;
+      enumerate(patches,count,0,[],selection=>{
+        if(satisfies(selection,patches,demands)) found=true;
+      });
+      if(found)return count;
+    }
+    return null;
+  };
+  let examined=0;
+  for(let count=1;count<=5;count++){
+    enumerate(sourcePatches,count,0,[],family=>{
+      const patches=family.map(i=>sourcePatches[i]);
+      for(const requirements of reqFamilies){
+        const demands=[[0,1],[1,2],[2,3],[3,4],...requirements];
+        const optimal=bruteMinimum(patches,demands);
+        const result=glueBitPatches(patches,{
+          fromBit:0,bitCount:4,protectedIntervals:requirements,minimumCover:true,
+        });
+        if(optimal===null){
+          assert.equal(result.kind,"signgraph.bitSheaf:obstruction");
+        }else{
+          assert.equal(result.kind,"signgraph.bitSheaf:section");
+          assert.equal(result.minimumCover.cardinality,optimal);
+          assert.equal(result.minimumCover.patchIndices.length,optimal);
+          assert.equal(new Set(result.minimumCover.patchIndices).size,optimal);
+          assert(satisfies(result.minimumCover.patchIndices,patches,demands),
+            "selected patches must cover every bit and each indivisible support");
+        }
+        examined++;
+      }
+    });
+  }
+  assert.equal(examined,35672);
+});
+
+test("minimum cover is well-defined for the admitted empty target",()=>{
+  const full=bitPatchOfBytes(Uint8Array.of(0xa5));
+  const zero=restrictBitPatch(full,{fromBit:0,bitCount:0});
+  const section=glueBitPatches([zero],{fromBit:0,bitCount:0,minimumCover:true});
+  assert.deepEqual(section.bits,[]);
+  assert.equal(section.minimumCover.cardinality,0);
+  assert.deepEqual(section.minimumCover.patchIndices,[]);
+});
