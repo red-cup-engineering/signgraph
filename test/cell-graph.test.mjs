@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { samePoint } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 import { toInt } from "@red-cup-engineering/exact-number-data-service/exact-number";
-import { cell } from "@red-cup-engineering/signcell/cell";
+import { cell, sameCell, valueOf } from "@red-cup-engineering/signcell/cell";
 import { at, transpose } from "@red-cup-engineering/metrologic/chu";
 import { cellGraph, relationGraphOfCells, flowNetworkOfCells, flowNetwork } from "../src/cell-graph.mjs";
 
@@ -114,4 +114,22 @@ test("the exact weighted reader counts large parallel evidence without per-matri
   assert.equal(graph.weights[0].length,n);
   assert.equal(toInt(graph.weights[0][1]),Math.ceil(4000/n));
   assert.equal(toInt(graph.weights[0][0]),0);
+});
+
+test("cellGraph presents one stable SignCell point despite contrary later testimony", () => {
+  const supported = cell("engine", "claims-role", "server", { for: ["witness-A"] });
+  const opposed = cell("engine", "claims-role", "server", { against: ["witness-B"] });
+  assert.ok(sameCell(supported, opposed), "triple identity survives evidence changes");
+  const observations = [];
+  const graph = cellGraph([supported, opposed], [
+    { name: "joined-knowledge", evaluate: (point) => {
+      observations.push(point);
+      return valueOf(point);
+    } },
+  ]);
+  assert.equal(observations.length, 1, "two tellings are joined before graph evaluation");
+  assert.deepEqual(observations[0].for, ["witness-A"]);
+  assert.deepEqual(observations[0].against, ["witness-B"]);
+  assert.ok(samePoint(at(graph, supported, "joined-knowledge"), "stable"));
+  assert.ok(samePoint(at(graph, opposed, "joined-knowledge"), "stable"));
 });
