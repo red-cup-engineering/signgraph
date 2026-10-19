@@ -321,6 +321,18 @@ the new geometry data is a concrete carrier on which to attempt them.
 
 ## Depends on
 
+### Data-owned resource composition
+
+The direct Computer Data dependency is exactly `0.7.1`. A host supplying
+`markResource` or `markSpace(...).get(address)` to `bitPatchOfResource` must
+resolve that same Data module instance. Data retains private admission and
+byte ownership; a matching NI address or resource-shaped JSON is not admission.
+Dependency composition must preserve this identity instead of overriding all
+transitive Data versions, weakening its guard, or copying and re-admitting bytes.
+SignGraph restricts the original resource through Data's bounded `bitValues`
+operation without re-reading host media or acquiring file/network authority.
+Separate module instances remain foreign even when their versions match.
+
 `@red-cup-engineering/metrologic` for mathematics, SignCell for cells, and
 SignChain for cell order and FOUR evidence profiles. Canonical carrier snapshots,
 semantic addresses and portable byte operations come directly from
