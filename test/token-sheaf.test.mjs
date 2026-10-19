@@ -136,3 +136,18 @@ test("one claim preserves opposing original witnesses and refuses foreign tokens
   assert.throws(() => inheritedClaim(frame, "unadmitted-token", "promises", "service"), /not a token/u);
   assert.throws(() => inheritedClaim(frame, "specific", "promises", undefined), /object must be present/u);
 });
+
+test("indexed claim coordinates coincide across representational key order", () => {
+  const original = { z: 2, a: { y: "two", x: "one" } };
+  const equivalent = { a: { x: "one", y: "two" }, z: 2 };
+  const frame = tokenFrame([
+    cell("observed-token", "describes", original, { for: [{ source: "original", revision: 1 }] }),
+    cell("observed-token", "describes", original, { against: [{ source: "counterevidence", revision: 2 }] }),
+  ]);
+  const fiber = inheritedClaim(frame, "observed-token", "describes", equivalent);
+  assert.equal(fiber.cells.length, 1);
+  assert.deepEqual(sidesOf(fiber.cells[0]), [true, true]);
+  assert.equal(fiber.contested.length, 1);
+  assert.equal(fiber.sources[0].length, 1,
+    "two original tellings of one cell are knowledge-joined by SignCell, not counted as independent source tokens");
+});
