@@ -66,6 +66,37 @@ export function cellular2Sheaf({ vertices, edges, faces }) {
     });
     return Object.freeze({ id: face.id, dim, boundary: Object.freeze(boundary) });
   });
+  // A zero composite alone does not make a cellular sheaf: on non-regular
+  // attaching walks, different incidence paths can cancel in d1*d0 while
+  // disagreeing as restriction maps. Admit the *poset* functoriality law
+  // at every face: the edge→face map is unique for each (edge,face)
+  // and every vertex→edge→face composite is independent of the edge.
+  const compose = (faceMap, edgeMap, vertexDimension) => faceMap.map(row =>
+    Array.from({ length: vertexDimension }, (_, j) => {
+      let sum = ratZero;
+      row.forEach((entry, k) => {
+        sum = ratAdd(sum, ratMultiply(rational(entry), rational(edgeMap[k][j])));
+      });
+      return fraction(sum);
+    }));
+  for (const face of admittedFaces) {
+    const byEdge = new Map(), byVertex = new Map();
+    for (const step of face.boundary) {
+      const e = edgeIndex.get(coincidenceKey(step.edge));
+      const edge = sheaf.edges[e];
+      const eid = coincidenceKey(edge.id), map = JSON.stringify(step.restrict);
+      if (byEdge.has(eid) && byEdge.get(eid) !== map)
+        throw new RangeError('cellular2Sheaf: ambiguous edge-to-face restriction for repeated incidence');
+      byEdge.set(eid, map);
+      for (const [side, vertexIndex] of [['from', sheaf.fromIndex[e]], ['to', sheaf.toIndex[e]]]) {
+        const vid = coincidenceKey(sheaf.vertices[vertexIndex].id);
+        const path = JSON.stringify(compose(step.restrict, edge.restrict[side], sheaf.vertices[vertexIndex].dim));
+        if (byVertex.has(vid) && byVertex.get(vid) !== path)
+          throw new RangeError('cellular2Sheaf: noncommuting restriction diagram at vertex-to-face paths');
+        byVertex.set(vid, path);
+      }
+    }
+  }
   const zero = matrixOf(sheaf.c1, sheaf.c0);
   sheaf.edges.forEach((edge, e) => {
     for (const [side, vertexIndex, sign] of [['from', sheaf.fromIndex[e], -1], ['to', sheaf.toIndex[e], 1]]) {
