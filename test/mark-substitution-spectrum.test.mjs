@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mark } from "@red-cup-engineering/signcell/mark";
 import { utterance, articulatingUtter, articulatingPair } from "@red-cup-engineering/signcell/utterance";
-import { spectrumOfMarkSubstitution } from "../src/substitution-spectrum.mjs";
+import { spectrumOfMarkSubstitution, selectSourceMarkReactions } from "../src/substitution-spectrum.mjs";
 
 const a=mark("a"),b=mark("b"),c=mark("c");
 const fib=()=>[
@@ -112,4 +112,142 @@ test("an Articulating substitution is not secretly a free list of additional law
   assert.throws(()=>spectrumOfMarkSubstitution({
     kind:"articulating.pair",utterance:utterance(a,[a]),articulating:{kind:"alien"},
   }),/finite and acyclic|native ordered Mark roles/);
+});
+
+
+const nativeRules=(utterances)=>{
+  let a=articulatingUtter(utterances[0]);
+  for(const u of utterances.slice(1))a=articulatingPair(u,a);
+  return a;
+};
+
+test("a real Mark rule firing produces the minimum target word without manufacturing mutations",()=>{
+  const original=nativeRules(fib());
+  const root=JSON.stringify(original);
+  const selected=selectSourceMarkReactions({
+    articulating:original,seed:[a],target:[a,b],maxReactions:3,
+  });
+  assert.equal(selected.status,"selected");
+  assert.equal(selected.minimalSourceReactions,1);
+  assert.equal(selected.selected.length,1);
+  assert.equal(selected.selected[0].steps.length,1);
+  const spectrum=spectrumOfMarkSubstitution(original);
+  assert.equal(selected.selected[0].steps[0].sourceUtteranceId,spectrum.source.utteranceIds[0]);
+  assert.deepEqual(selected.selected[0].word,[spectrum.source.alphabetMarkIds[0],spectrum.source.alphabetMarkIds[1]]);
+  assert.equal(selected.work.visitedSourcePaths,2);
+  assert.equal(JSON.stringify(original),root);
+});
+
+test("two source-distinct rewrite histories to one Mark word remain separate selection winners",()=>{
+  const source=nativeRules([utterance(a,[a,a]),utterance(b,[b,b])]);
+  const r=selectSourceMarkReactions({articulating:source,seed:[a,b],target:[a,a,b,b],maxReactions:2});
+  assert.equal(r.status,"selected");
+  assert.equal(r.minimalSourceReactions,2);
+  assert.equal(r.selected.length,2);
+  const [first,second]=r.selected;
+  assert.equal(first.wordAddress,second.wordAddress);
+  assert.notEqual(first.pathAddress,second.pathAddress);
+  assert.notDeepEqual(first.steps.map(step=>step.atPosition),second.steps.map(step=>step.atPosition));
+  assert(r.projectionCollisions.some(c=>c.wordAddress===first.wordAddress &&
+    c.pathAddresses.length===2),"forgetting reaction paths loses two different performances");
+  assert(r.work.pathsLostByWordProjection>=1);
+  assert(Object.isFrozen(r));
+  assert(Object.isFrozen(first.steps));
+});
+
+test("a source identity rewrite performs a distinct event without pretending the word changed",()=>{
+  const source=nativeRules([utterance(a,[a]),utterance(b,[b])]);
+  const r=selectSourceMarkReactions({articulating:source,seed:[a],target:[b],maxReactions:2});
+  assert.equal(r.status,"depth-limited");
+  assert.equal(r.work.visitedSourcePaths,3);
+  assert.equal(r.work.distinctWordReadouts,1);
+  assert.equal(r.work.pathsLostByWordProjection,2);
+  assert.equal(r.projectionCollisions.length,1);
+  assert.equal(r.projectionCollisions[0].pathAddresses.length,3);
+});
+
+test("an original source deletion rewrites to an empty molecule with its exact source lineage",()=>{
+  const source=nativeRules([utterance(a,[])]);
+  const r=selectSourceMarkReactions({articulating:source,seed:[a],target:[],maxReactions:3});
+  assert.equal(r.status,"selected");
+  assert.equal(r.minimalSourceReactions,1);
+  assert.deepEqual(r.selected[0].word,[]);
+  const none=selectSourceMarkReactions({articulating:source,seed:[],target:[a],maxReactions:3});
+  assert.equal(none.status,"source-exhausted");
+  assert.equal(none.selected.length,0);
+});
+
+test("bounded truncation cannot be misreported as an unreachable or minimal solution",()=>{
+  const source=nativeRules([utterance(a,[a,a]),utterance(b,[b,b])]);
+  const budget=selectSourceMarkReactions({
+    articulating:source,seed:[a,b],target:[a,a,b,b],maxReactions:2,maxCandidates:2,
+  });
+  assert.equal(budget.status,"candidate-capacity-obstructed");
+  assert.equal(budget.minimalSourceReactions,null);
+  assert.equal(budget.selected.length,0);
+  assert(budget.obstructions.some(o=>o.reason==="distinct-source-path-capacity-exceeded"));
+  const long=selectSourceMarkReactions({
+    articulating:source,seed:[a],target:[],maxReactions:3,maxWordLength:1,
+  });
+  assert.equal(long.status,"word-capacity-obstructed");
+  assert(long.obstructions.some(o=>o.reason==="source-reaction-exceeds-word-budget"));
+  assert.equal(long.selected.length,0);
+  const zero=selectSourceMarkReactions({
+    articulating:source,seed:[a],target:[a],maxReactions:0,
+  });
+  assert.equal(zero.status,"selected");
+  assert.equal(zero.minimalSourceReactions,0);
+});
+
+test("an invented rule, foreign Mark or synthetic category cannot enter the native reaction space",()=>{
+  const source=nativeRules(fib());
+  assert.throws(()=>selectSourceMarkReactions({articulating:fib(),seed:[a],target:[a,b]}),
+    /genuine Articulating/);
+  assert.throws(()=>selectSourceMarkReactions({articulating:source,seed:[c],target:[a]}),
+    /no original source rule/);
+  assert.throws(()=>selectSourceMarkReactions({articulating:source,seed:[a],target:[c]}),
+    /no original source rule/);
+  assert.throws(()=>selectSourceMarkReactions({articulating:source,seed:[a],target:[b],
+    guessedMorphisms:[["A","B"]]}),/genuine Articulating, seed and target only/);
+  assert.throws(()=>selectSourceMarkReactions({articulating:source,seed:[a],target:[b],
+    maxReactions:100}),/reaction budgets/);
+});
+
+test("finite selection agrees with independently enumerated one-occurrence reactions (147 cases)",()=>{
+  const options=[[],["a"],["b"],["a","a"],["a","b"],["b","a"],["b","b"]];
+  const markOf={a,b};
+  const targets=[[],["a","b"],["b","b"]];
+  const naive=(rules,target)=>{
+    let layer=[["a"]];
+    for(let depth=0;depth<=2;depth++){
+      if(layer.some(word=>JSON.stringify(word)===JSON.stringify(target)))return depth;
+      if(depth===2)return null;
+      layer=layer.flatMap(word=>word.flatMap((name,i)=>{
+        const image=rules[name];
+        return [[...word.slice(0,i),...image,...word.slice(i+1)]];
+      }));
+    }
+    return null;
+  };
+  let cases=0;
+  for(const forA of options)for(const forB of options){
+    const rules={a:forA,b:forB};
+    const source=nativeRules([
+      utterance(a,forA.map(x=>markOf[x])),
+      utterance(b,forB.map(x=>markOf[x])),
+    ]);
+    for(const target of targets){
+      const expected=naive(rules,target);
+      const actual=selectSourceMarkReactions({
+        articulating:source,seed:[a],target:target.map(x=>markOf[x]),
+        maxReactions:2,maxCandidates:128,maxWordLength:8,
+      });
+      assert.equal(actual.minimalSourceReactions,expected,
+        "original rule family="+JSON.stringify(rules)+" target="+JSON.stringify(target));
+      if(expected===null)assert.notEqual(actual.status,"selected");
+      else assert.equal(actual.status,"selected");
+      cases++;
+    }
+  }
+  assert.equal(cases,147);
 });
