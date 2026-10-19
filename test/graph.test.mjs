@@ -103,6 +103,11 @@ test("a structural route retains both parallel witnesses without promoting trans
     new Set([refs[3].id, refs[4].id]));
   assert.equal(route.hops[1].edges.length, 1);
   assert.ok(!route.hops.some(hop => hop.edges.some(entry => entry.edge.predicate === "disputes")));
+  const unfiltered = findSignGraphRoute(graph, refs[0], refs[2]);
+  assert.equal(unfiltered.hops[0].edges.length, 3);
+  assert.deepEqual(new Set(unfiltered.hops[0].edges.map(entry => entry.edge.predicate)),
+    new Set(["links", "disputes"]),
+    "a structural route retains contradictory named predicates without resolving them");
   assert.equal(Object.isFrozen(route.hops[0].edges), true);
   assert.equal(JSON.stringify(graph), original);
   // Traversal alone does not mint an asserted start-to-finish edge.
