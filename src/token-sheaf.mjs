@@ -15,7 +15,7 @@
  * claim at a time, the inherited section is the fiber SignChain's possibilizing gives: gluing over ↑t
  * is ◇. The object position is reached through the converse generator.
  */
-import { address, cell, coincidenceKey, coincides, evidenceOf, merge, sidesOf } from "@red-cup-engineering/signcell/cell";
+import { address, cell, claimCoordinate, coincidenceKey, coincides, evidenceOf, merge, sidesOf } from "@red-cup-engineering/signcell/cell";
 import { generalizations } from "@red-cup-engineering/signcell/token-frame";
 
 const INHERITED = "signgraph.inherited-tellings";
@@ -27,7 +27,7 @@ const claimSections = new WeakMap();
 // The same canonical predicate/object coordinate already used by SignChain's
 // token fiber: its null-subject cell is ONLY a private index key. It is never
 // emitted as an observed cell or represented as an admitted witness.
-const claimKey = (predicate, object) => address(cell(null, predicate, object));
+// Predicate/object identity comes from SignCell, not another SignGraph codec.
 
 // Preserve the original direct section index for the common full-section
 // reader. A claim index is materialized only when a caller selects a claim.
@@ -51,7 +51,7 @@ function claimSectionsOf(frame) {
     for (const [token, tellings] of sectionsOf(frame)) {
       const byClaim = new Map();
       for (const telling of tellings) {
-        const claim = claimKey(telling.predicate, telling.object);
+        const claim = claimCoordinate(telling.predicate, telling.object);
         if (!byClaim.has(claim)) byClaim.set(claim, []);
         byClaim.get(claim).push(telling);
       }
@@ -127,5 +127,5 @@ export function inherited(frame, token) {
 export function inheritedClaim(frame, token, predicate, object) {
   // Check actual token membership before even interpreting a claim coordinate.
   generalizations(frame, token);
-  return glueInherited(frame, token, claimKey(predicate, object));
+  return glueInherited(frame, token, claimCoordinate(predicate, object));
 }
