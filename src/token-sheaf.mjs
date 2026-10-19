@@ -22,37 +22,50 @@ const INHERITED = "signgraph.inherited-tellings";
 const frozen = (values) => Object.freeze([...values]);
 const byKey = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
 const sections = new WeakMap();
+const claimSections = new WeakMap();
 
 // The same canonical predicate/object coordinate already used by SignChain's
 // token fiber: its null-subject cell is ONLY a private index key. It is never
 // emitted as an observed cell or represented as an admitted witness.
 const claimKey = (predicate, object) => address(cell(null, predicate, object));
 
-// Index the original cells ONCE by their source token and exact claim. This is
-// an interpretation of the admitted token frame, not a second journal or
-// content-addressing algorithm. The full-section and one-claim reads share it.
+// Preserve the original direct section index for the common full-section
+// reader. A claim index is materialized only when a caller selects a claim.
 function sectionsOf(frame) {
   if (!sections.has(frame)) {
-    const bySubject = new Map(), byClaim = new Map();
+    const bySubject = new Map();
     for (const at of frame.cells) {
       if (coincides(at.predicate, frame.predicate)) continue;
-      const token = coincidenceKey(at.subject), claim = claimKey(at.predicate, at.object);
+      const token = coincidenceKey(at.subject);
       if (!bySubject.has(token)) bySubject.set(token, []);
       bySubject.get(token).push(at);
-      if (!byClaim.has(token)) byClaim.set(token, new Map());
-      const claims = byClaim.get(token);
-      if (!claims.has(claim)) claims.set(claim, []);
-      claims.get(claim).push(at);
     }
-    sections.set(frame, Object.freeze({ bySubject, byClaim }));
+    sections.set(frame, bySubject);
   }
   return sections.get(frame);
 }
 
+function claimSectionsOf(frame) {
+  if (!claimSections.has(frame)) {
+    const byToken = new Map();
+    for (const [token, tellings] of sectionsOf(frame)) {
+      const byClaim = new Map();
+      for (const telling of tellings) {
+        const claim = claimKey(telling.predicate, telling.object);
+        if (!byClaim.has(claim)) byClaim.set(claim, []);
+        byClaim.get(claim).push(telling);
+      }
+      byToken.set(token, byClaim);
+    }
+    claimSections.set(frame, byToken);
+  }
+  return claimSections.get(frame);
+}
+
 /** An existing section of an already-generated token, not an empty foreign one. */
-const directTellings = (frame, token) => frozen(sectionsOf(frame).bySubject.get(coincidenceKey(token)) ?? []);
+const directTellings = (frame, token) => frozen(sectionsOf(frame).get(coincidenceKey(token)) ?? []);
 const directClaim = (frame, token, claim) =>
-  sectionsOf(frame).byClaim.get(coincidenceKey(token))?.get(claim) ?? [];
+  claimSectionsOf(frame).get(coincidenceKey(token))?.get(claim) ?? [];
 /** The section at a token: what is told of it directly. */
 export const tellingsAt = (frame, token) => {
   generalizations(frame, token); // the frame owns the membership law
