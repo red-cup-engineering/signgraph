@@ -355,7 +355,8 @@ export function categoricalIntensions({actualContext, contexts, terms} = {}) {
     actualContext,contexts:worlds,unknown:Object.freeze(missing),
     reason:"An omitted/unknown reading is not an empty FCA profile; no category or morphisms were inferred.",
   });
-  const ordered=observed.sort((a,b)=>a.source.id.localeCompare(b.source.id));
+  // Canonical ids use deterministic UTF-16 lexical ordering, not host ICU locale collation.
+  const ordered=observed.sort((a,b)=>a.source.id < b.source.id ? -1 : a.source.id > b.source.id ? 1 : 0);
   const concepts=new Map(ordered.map(t=>[t.source.id,[]]));
   for(const context of worlds) {
     const termsAt=ordered.map(t=>t.source.id);
