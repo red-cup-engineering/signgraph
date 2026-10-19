@@ -15,8 +15,8 @@
  * claim at a time, the inherited section is the fiber SignChain's possibilizing gives: gluing over ↑t
  * is ◇. The object position is reached through the converse generator.
  */
-import { address, cell, claimCoordinate, coincidenceKey, coincides, evidenceOf, merge, sidesOf } from "@red-cup-engineering/signcell/cell";
-import { cacheableTokenFrame, generalizations } from "@red-cup-engineering/signcell/token-frame";
+import { address, cell, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, sidesOf } from "@red-cup-engineering/signcell/cell";
+import { cacheableTokenFrame, generalizations, top } from "@red-cup-engineering/signcell/token-frame";
 
 const INHERITED = "signgraph.inherited-tellings";
 const frozen = (values) => Object.freeze([...values]);
@@ -129,4 +129,70 @@ export function inheritedClaim(frame, token, predicate, object) {
   // Check actual token membership before even interpreting a claim coordinate.
   generalizations(frame, token);
   return glueInherited(frame, token, claimCoordinate(predicate, object));
+}
+
+/**
+ * Navigate the ACTUAL source-told sheaf, not a textual document index.
+ *
+ * The caller supplies a frame already scoped to the current legitimate
+ * reader. An optional exact token, predicate, object and FOUR reading select
+ * its witnessed cells; without a token this walks all admitted frame tokens.
+ * The optimized exact-claim path uses the same SignCell claim-coordinate
+ * index as inheritedClaim. Predicate-only/broad selections use the existing
+ * whole-section gluing, never another synthetic relation engine.
+ *
+ * Unsaid claims are not returned as negative evidence. An explicitly
+ * source-authored zero-evidence cell may read absurd, but missing cells do
+ * not materialize into rows. Pagination has stable meaning only over an
+ * unchanged source frame; a host serving remote pages must bind the actual
+ * reader grant and source revision before using its next offset.
+ */
+export function queryInheritedTellings(frame, selection = {}, page = {}) {
+  const admitted = (record, keys, label) => {
+    if (record === null || typeof record !== "object" || Array.isArray(record) ||
+        Reflect.ownKeys(record).some((key) => typeof key !== "string" || !keys.includes(key) ||
+          !Object.hasOwn(Object.getOwnPropertyDescriptor(record, key), "value")))
+      throw new TypeError("signgraph " + label + ": only declared plain data fields are admitted");
+  };
+  admitted(selection, ["token", "predicate", "object", "reading"], "claim selection");
+  admitted(page, ["offset", "limit"], "claim page");
+  const { token, predicate, object, reading } = selection;
+  const { offset = 0, limit = 24 } = page;
+  if (Reflect.ownKeys(selection).some((key) => selection[key] === undefined) ||
+      !Number.isSafeInteger(offset) || offset < 0 ||
+      !Number.isSafeInteger(limit) || limit < 1 || limit > 128 ||
+      (reading !== undefined && !["absurd", "potential", "active", "stable"].includes(reading)))
+    throw new TypeError("signgraph claim query: noncanonical coordinate, reading or page");
+  const tokens = Object.hasOwn(selection, "token")
+    ? (generalizations(frame, token), [token]) : top(frame);
+  const exact = Object.hasOwn(selection, "predicate") && Object.hasOwn(selection, "object");
+  const entries = [];
+  for (const selectedToken of tokens) {
+    const section = exact
+      ? inheritedClaim(frame, selectedToken, predicate, object)
+      : inherited(frame, selectedToken);
+    const contests = new Map(section.contested.map((entry) => [address(entry.cell), entry]));
+    for (let i = 0; i < section.cells.length; i++) {
+      const at = section.cells[i];
+      if ((Object.hasOwn(selection, "predicate") && !coincides(at.predicate, predicate)) ||
+          (Object.hasOwn(selection, "object") && !coincides(at.object, object))) continue;
+      const value = knowledgeReading(at);
+      if (reading !== undefined && value !== reading) continue;
+      entries.push(Object.freeze({
+        token: selectedToken, cell: at, reading: value,
+        sources: section.sources[i],
+        contested: contests.get(address(at)) ?? null,
+      }));
+    }
+  }
+  if (offset > entries.length)
+    throw new RangeError("signgraph claim query: page outside admitted source readings");
+  const window = Object.freeze(entries.slice(offset, offset + limit));
+  return Object.freeze({
+    kind: "signgraph.inherited-telling-query", version: 1,
+    selection: Object.freeze({ ...selection }),
+    total: entries.length, offset, limit,
+    next: offset + window.length < entries.length ? offset + window.length : null,
+    entries: window,
+  });
 }
