@@ -134,6 +134,10 @@ service.
   cycle and a filled face are not interchangeable. It computes
   `(H0,H1,H2)` by the existing Exact Number rational ranks, retains
   each cellular basis coordinate and refuses noncommuting restrictions.
+  Moreover, each edge→face restriction is unique across repeated attaching
+  incidences and every vertex→edge→face composite agrees across paths.
+  The latter is tested separately because cancellation in `d1*d0=0` alone
+  does **not** prove functoriality on non-regular attaching walks.
   It is an exact finite linearization of source-selected incidences,
   **not** an automatic proof of original source validity, a nonlinear
   FOUR-valued sheaf, or an Obsmetrologia foundational derivation.
