@@ -31,6 +31,7 @@
     "./cohomology": "./src/cohomology.mjs",
     "./paths": "./src/paths.mjs",
     "./cellular-sheaf": "./src/cellular-sheaf.mjs",
+    "./cellular-sheaf-complex": "./src/cellular-sheaf-complex.mjs",
     "./operations": "./src/operations.mjs",
     "./embedding": "./src/embedding.mjs",
     "./bit-sheaf": "./src/bit-sheaf.mjs",
