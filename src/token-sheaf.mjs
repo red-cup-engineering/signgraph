@@ -25,8 +25,17 @@ const sections = new WeakMap();
 const claimSections = new WeakMap();
 // A wire presentation can be mutable; cache only an immutable admitted frame,
 // never keep an obsolete subject/claim index after the caller changes its cells.
-const cacheableFrame = frame => Object.isFrozen(frame) && Object.isFrozen(frame.cells)
-  && frame.cells.every(Object.isFrozen);
+const frameImmutability = new WeakMap();
+const cacheableFrame = frame => {
+  if (!frame || typeof frame !== "object" || !Object.isFrozen(frame) ||
+      !Array.isArray(frame.cells) || !Object.isFrozen(frame.cells))
+    return false;
+  // Frozen carrier elements cannot be swapped later, so this O(n) admission
+  // scan is done ONCE per frame, not on each fiber read/generalization.
+  if (!frameImmutability.has(frame))
+    frameImmutability.set(frame, frame.cells.every(Object.isFrozen));
+  return frameImmutability.get(frame);
+};
 
 // The same canonical predicate/object coordinate already used by SignChain's
 // token fiber: its null-subject cell is ONLY a private index key. It is never
