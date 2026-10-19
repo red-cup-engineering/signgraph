@@ -137,13 +137,54 @@ function requiredCoverWitnesses(admitted,supports) {
   return witnesses;
 }
 
+/** Select a minimum-cardinality subfamily after full gluing has already
+ * admitted ALL patches (including conflicting observations). A demand for every
+ * target bit plus each unsplittable required interval becomes interval-cover
+ * containment. In ascending demand-start order, choose the available patch
+ * with farthest right endpoint whenever no previously chosen patch covers the
+ * demand. Exchange argument: at the first uncovered demand, replacing any
+ * feasible patch with the farthest-reaching eligible patch cannot harm any
+ * later demand (every later start is at least the current start). Thus the
+ * selected count is optimal for equal per-patch cost, not weighted costs.
+ *
+ * Crucial: a minimum subset is NEVER used to suppress contradictory input
+ * patches. This is a post-admission transport/reuse witness only.
+ */
+function minimumCoverIndices(admitted,required,start,end) {
+  const demands=[];
+  for(let at=start;at<end;at++) demands.push([at,at+1]);
+  demands.push(...required);
+  demands.sort((a,b)=>a[0]-b[0] || b[1]-a[1]);
+  const patches=admitted.map((p,i)=>({start:p.fromBit,end:p.fromBit+p.bits.length,i}))
+    .sort((a,b)=>a.start-b.start || a.i-b.i);
+  const selected=[];
+  let current=0,bestEnd=-1,bestIndex=-1,selectedReach=-1;
+  for(const [a,b] of demands) {
+    while(current<patches.length && patches[current].start<=a) {
+      const p=patches[current++];
+      if(p.end>bestEnd || (p.end===bestEnd && (bestIndex===-1 || p.i<bestIndex))) {
+        bestEnd=p.end;
+        bestIndex=p.i;
+      }
+    }
+    if(selectedReach>=b) continue;
+    if(bestEnd<b)
+      throw new Error("bit sheaf: admitted global section lacks a required source patch");
+    selected.push(bestIndex);
+    selectedReach=bestEnd;
+  }
+  return Object.freeze(selected);
+}
+
 /** Glue compatible coordinates on a finite cover. Every protected support
  * must be contained WHOLE in an actual patch; a jointly reconstructable bit
  * sequence is not enough when a requirement forbids splitting one region.
  * These are caller-declared cover constraints, never grants of authority. */
-export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval,protectedIntervals}={}) {
+export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval,protectedIntervals,minimumCover=false}={}) {
   if (!Array.isArray(patches) || patches.length<1 || patches.length>MAX_BIT_SECTION)
     fail("a nonempty bounded family of patches is required");
+  if (typeof minimumCover!=="boolean")
+    fail("minimumCover must be a boolean");
   const admitted=patches.map(admitPatch);
   const {address,totalBits}=admitted[0];
   if (admitted.some(p=>p.address!==address || p.totalBits!==totalBits))
@@ -170,7 +211,12 @@ export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval,prote
   }
   const missing=values.findIndex(v=>v===undefined);
   if (missing!==-1) return obstruction("uncovered-bit",{atBit:start+missing});
+  const selected=minimumCover?minimumCoverIndices(admitted,required,start,end):null;
   return Object.freeze({...patch(address,totalBits,start,values),
     kind:"signgraph.bitSheaf:section",coverCount:admitted.length,
-    ...(required.length ? {protectedCoverage:Object.freeze(witnesses)} : {})});
+    ...(required.length ? {protectedCoverage:Object.freeze(witnesses)} : {}),
+    ...(selected ? {minimumCover:Object.freeze({
+      patchIndices:selected, cardinality:selected.length,
+      scope:"finite-equal-cost-bit-cover-with-whole-required-intervals",
+    })} : {})});
 }
