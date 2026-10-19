@@ -151,6 +151,7 @@ test("source address, actual-world fixing, and contrary witness are not lost in 
     "input ordering must not determine canonical content address");
   const corrupted=structuredClone(a);
   corrupted.readings[0].term="someone else";
+  corrupted.readings[0].cells=[];
   assert.throws(()=>form([corrupted]),/actual anchored term/);
   const foreign=structuredClone(a);
   foreign.readings[0].cells=[claimCell("not A","p")];
