@@ -581,3 +581,103 @@ export function generateHeadObservationGluing(raw) {
     frontier:"no first pre-Mark exclusion theorem, no uncountable aperiodic limit, no physical matter/heat inference",
   });
 }
+
+
+/**
+ * Derive finite composable observation routes FROM performed Articulating,
+ * never FROM an arbitrary caller-supplied category or table of possible worlds.
+ *
+ * This receives the existing source-head-observation generator, which itself
+ * creates each re-attending using SignCell's native constructor. The "objects"
+ * are the successive distinct performed source acts; an edge exists exactly
+ * where the source supplied its own immediate HeadCoincidence continuation.
+ * The empty route and path concatenation can THEN be recognized as the unit
+ * and associative composition of this particular generated chain.
+ *
+ * These are source-relative, content-addressed formal routes. The
+ * observational quotient of the graph is STILL conditional: no actual
+ * Lean/WitLedger receipt, Chalmers semantic reference, physics, actor
+ * authority, or new necessary utterance before the Mark floor is claimed.
+ */
+const generatedRouteReceipts=new WeakMap();
+
+export function derivePerformedObservationRoutes(raw) {
+  const observation=generateHeadObservationGluing(raw);
+  const headSteps=observation.identification.instruments;
+  const source=observation.originalSourceId;
+  const nodes=[source],edges=[];
+  for(const [index,step] of headSteps.entries()) {
+    if(step.fromArticulatingId!==nodes[index] ||
+      step.step!==index+1 ||
+      step.fromArticulatingId===step.toArticulatingId)
+      throw new TypeError("native re-attending failed to generate a distinct, contiguous source act");
+    edges.push(freeze({
+      step:index+1,
+      from:step.fromArticulatingId,
+      to:step.toArticulatingId,
+      head:step.sourceHeadPresentation,
+      address:semanticId([
+        "obsmetrologia.performed-head-observation-step/v1",
+        source,step.step,step.fromArticulatingId,
+        step.toArticulatingId,step.sourceHeadPresentation,
+      ]),
+    }));
+    nodes.push(step.toArticulatingId);
+  }
+  if(nodes.at(-1)!==observation.continuedSourceId ||
+     new Set(nodes).size!==nodes.length)
+    throw new TypeError("performed re-attending did not retain distinct source history");
+  const paths=[];
+  for(let i=0;i<nodes.length;i++)for(let j=i;j<nodes.length;j++) {
+    const steps=freeze(edges.slice(i,j).map(e=>e.address));
+    paths.push(freeze({
+      kind:"signgraph.performedObservationRoute/v1",
+      from:nodes[i],to:nodes[j],
+      first:i,last:j,steps,
+      address:semanticId([
+        "obsmetrologia.performed-observation-route/v1",
+        source,nodes[i],nodes[j],steps,
+      ]),
+    }));
+  }
+  const result=freeze({
+    kind:"signgraph.generatedPerformedObservationRoutes/v1",
+    status:"generated-from-native-Articulating-formal-source",
+    originalSourceId:source,
+    continuedSourceId:observation.continuedSourceId,
+    nodes:freeze(nodes),edges:freeze(edges),
+    paths:freeze(paths),
+    observationalQuotient:freeze({
+      candidateQuotSoundUses:observation.identification.candidateQuotSoundUses,
+      justifiedLeanWits:observation.identification.justifiedLeanWits,
+      status:observation.identification.acceptance,
+    }),
+    // This is deliberately NOT "Chalmers Category": no secondary referent
+    // extensions, naturality or source-forced pre-Mark generator was proved.
+    scope:"finite source-generated re-attending and composable trace routes only; category is a downstream mathematical reading",
+  });
+  const key= (i,j) => i+":"+j;
+  generatedRouteReceipts.set(result,new Map(paths.map(p=>[key(p.first,p.last),p])));
+  return result;
+}
+
+/**
+ * Composition is *read off* the generated path, not freely appointed by a
+ * user's FCA preorder. Return the original contiguous source route.
+ * A deserialized graph/route must be regenerated from the original
+ * Articulating before taking part; a matching hash is not a proof receipt.
+ */
+export function composePerformedObservationRoutes(result,left,right) {
+  const received=generatedRouteReceipts.get(result);
+  if(!received ||
+     !left || !right ||
+     received.get(left.first+":"+left.last)!==left ||
+     received.get(right.first+":"+right.last)!==right)
+    throw new TypeError("composition requires original generated observation routes");
+  if(left.to!==right.from || left.last!==right.first)
+    throw new TypeError("performed observation routes are not composable");
+  const composite=received.get(left.first+":"+right.last);
+  if(!composite)
+    throw new TypeError("source did not generate that composite observation route");
+  return composite;
+}

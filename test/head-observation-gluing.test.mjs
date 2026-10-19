@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   utterance,articulatingUtter,articulatingPair,
 } from "@red-cup-engineering/signcell/utterance";
-import { generateHeadObservationGluing } from "../src/mark-gluing.mjs";
+import { generateHeadObservationGluing, derivePerformedObservationRoutes, composePerformedObservationRoutes } from "../src/mark-gluing.mjs";
 
 const source=()=>articulatingUtter(utterance("excluding","excluded"));
 const older=()=>articulatingPair(
@@ -94,4 +94,65 @@ test("coincident old Mark contents are NOT silently glued: only the actual newly
   assert.equal(result.projected.cohomology.h1,1);
   assert.equal(result.identification.identificationNerveH1,0);
   assert.equal(result.identification.justifiedLeanWits,null);
+});
+
+
+
+test("composition and identities are consequences of performed head-re-attending, not caller-given arrows",()=>{
+  const g=derivePerformedObservationRoutes({articulating:source(),steps:3});
+  assert.equal(g.kind,"signgraph.generatedPerformedObservationRoutes/v1");
+  assert.equal(g.nodes.length,4);
+  assert.equal(new Set(g.nodes).size,4);
+  assert.equal(g.edges.length,3);
+  assert.equal(g.paths.length,10,"only contiguous paths of the native chain are generated");
+  const p=(i,j)=>g.paths.find(x=>x.first===i&&x.last===j);
+  assert(g.nodes.every((id,i)=>p(i,i).from===id&&p(i,i).to===id));
+  assert.equal(composePerformedObservationRoutes(g,p(0,0),p(0,3)),p(0,3));
+  assert.equal(composePerformedObservationRoutes(g,p(0,3),p(3,3)),p(0,3));
+  assert.equal(composePerformedObservationRoutes(g,p(0,1),p(1,2)),p(0,2));
+  const left=composePerformedObservationRoutes(g,
+    composePerformedObservationRoutes(g,p(0,1),p(1,2)),p(2,3));
+  const right=composePerformedObservationRoutes(g,
+    p(0,1),composePerformedObservationRoutes(g,p(1,2),p(2,3)));
+  assert.equal(left,right,"associativity is read from the actual generated sequence");
+  assert.equal(left.address,p(0,3).address);
+  assert.equal(g.observationalQuotient.justifiedLeanWits,null);
+  assert.match(g.observationalQuotient.status,/pending native Lean/);
+  assert(Object.isFrozen(g));
+  assert(Object.isFrozen(g.edges[0]));
+});
+
+test("a source with zero re-attending generates only its own neutral path",()=>{
+  const g=derivePerformedObservationRoutes({articulating:source(),steps:0});
+  assert.deepEqual(g.edges,[]);
+  assert.equal(g.nodes.length,1);
+  assert.equal(g.paths.length,1);
+  assert.equal(composePerformedObservationRoutes(g,g.paths[0],g.paths[0]),g.paths[0]);
+  assert.equal(g.originalSourceId,g.continuedSourceId);
+});
+
+test("source-distinct performances survive coincident Mark head projections",()=>{
+  const repeated=utterance("same","same");
+  const a=articulatingPair(repeated,articulatingUtter(repeated));
+  const g=derivePerformedObservationRoutes({articulating:a,steps:2});
+  assert.equal(g.nodes.length,3);
+  assert.equal(new Set(g.nodes).size,3);
+  assert.notEqual(g.edges[0].address,g.edges[1].address);
+  assert.equal(g.paths.filter(path=>path.first===path.last).length,3);
+  assert.equal(g.observationalQuotient.candidateQuotSoundUses,2);
+  assert.equal(g.observationalQuotient.justifiedLeanWits,null);
+});
+
+test("forged, reserialized or noncontiguous paths never manufacture new source movements",()=>{
+  const g=derivePerformedObservationRoutes({articulating:source(),steps:3});
+  const p=(i,j)=>g.paths.find(x=>x.first===i&&x.last===j);
+  assert.throws(()=>composePerformedObservationRoutes(g,{...p(0,1)},p(1,2)),
+    /original generated observation routes/);
+  assert.throws(()=>composePerformedObservationRoutes({...g},p(0,1),p(1,2)),
+    /original generated observation routes/);
+  assert.throws(()=>composePerformedObservationRoutes(g,p(0,1),p(2,3)),
+    /not composable/);
+  assert.throws(()=>derivePerformedObservationRoutes({
+    articulating:source(),steps:1,contexts:["actual"],morphisms:[["invented","edge"]],
+  }),/requires only an original Articulating/);
 });
