@@ -16,7 +16,8 @@
  * is ◇. The object position is reached through the converse generator.
  */
 import { address, cell, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, sidesOf } from "@red-cup-engineering/signcell/cell";
-import { cacheableTokenFrame, generalizations, top } from "@red-cup-engineering/signcell/token-frame";
+import { cacheableTokenFrame, generalizations, tokenFrame, top } from "@red-cup-engineering/signcell/token-frame";
+import { retainedCarrier } from "@red-cup-engineering/semiotic-content-address";
 
 const INHERITED = "signgraph.inherited-tellings";
 const frozen = (values) => Object.freeze([...values]);
@@ -163,14 +164,22 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
       !Number.isSafeInteger(limit) || limit < 1 || limit > 128 ||
       (reading !== undefined && !["absurd", "potential", "active", "stable"].includes(reading)))
     throw new TypeError("signgraph claim query: noncanonical coordinate, reading or page");
+  // Materialize one immutable, owned cut of any mutable wire presentation.
+  // The original frame maker owns clone/merge/admission; this query never
+  // re-interprets an in-flight mutation as one coherent historical source.
+  const source = cacheableTokenFrame(frame)
+    ? frame : tokenFrame(frame.cells, { predicate: frame.predicate });
+  const admittedTokens = top(source);
   const tokens = Object.hasOwn(selection, "token")
-    ? (generalizations(frame, token), [token]) : top(frame);
+    ? admittedTokens.filter((known) => coincides(known, token)) : admittedTokens;
+  if (Object.hasOwn(selection, "token") && tokens.length === 0)
+    generalizations(source, token); // original precise foreign-token refusal
   const exact = Object.hasOwn(selection, "predicate") && Object.hasOwn(selection, "object");
   const entries = [];
   for (const selectedToken of tokens) {
     const section = exact
-      ? inheritedClaim(frame, selectedToken, predicate, object)
-      : inherited(frame, selectedToken);
+      ? inheritedClaim(source, selectedToken, predicate, object)
+      : inherited(source, selectedToken);
     const contests = new Map(section.contested.map((entry) => [address(entry.cell), entry]));
     for (let i = 0; i < section.cells.length; i++) {
       const at = section.cells[i];
@@ -190,7 +199,7 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   const window = Object.freeze(entries.slice(offset, offset + limit));
   return Object.freeze({
     kind: "signgraph.inherited-telling-query", version: 1,
-    selection: Object.freeze({ ...selection }),
+    selection: retainedCarrier(selection),
     total: entries.length, offset, limit,
     next: offset + window.length < entries.length ? offset + window.length : null,
     entries: window,
