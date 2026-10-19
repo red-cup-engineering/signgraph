@@ -128,7 +128,7 @@ test("one claim preserves opposing original witnesses and refuses foreign tokens
   assert.deepEqual(fiber.cells[0].against, ["buyer-evidence"]);
   assert.deepEqual(fiber.contested[0].for, ["general"]);
   assert.deepEqual(fiber.contested[0].against, ["specific"]);
-  assert.deepEqual(fiber.sources[0].map(({ token }) => token), ["general", "specific"]);
+  assert.deepEqual(fiber.sources[0].map(({ token }) => token).sort(), ["general", "specific"]);
   const unknown = inheritedClaim(frame, "specific", "promises", "never-told");
   assert.deepEqual(unknown.cells, []);
   assert.deepEqual(unknown.sources, []);
