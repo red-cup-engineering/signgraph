@@ -14,11 +14,11 @@
     "against": [
       {
         "name": "LangGraph",
-        "domain": "stateful agent graph workflows and queryable graph knowledge"
+        "domain": "Stateful agent graph workflows: conditional routing, parallel fanout and reducer joins, subgraphs, durable thread checkpoints and restart, state history/forking, interrupts/resume, and streamed execution"
       },
       {
         "name": "Oxigraph",
-        "domain": "stateful agent graph workflows and queryable graph knowledge"
+        "domain": "RDF graph database and query: SPARQL query/update, RDF datasets, serialization and canonicalization, persistent graph storage and transaction semantics"
       }
     ]
   },
@@ -48,9 +48,53 @@
     "intended-capability": "One evidence-bearing graph substrate for executable workflows and queryable knowledge, preserving provenance and contested state.",
     "derivation": "The subject is grounded in the observed owner or explicitly desired application. Target selections extend the Leader's named comparisons under the quoted delegation. Existing requirements remain additive. Manifest descriptions describe current source and do not determine the intended design.",
     "qualification-gaps": [
-      "Target identities and capability domains are selected; exact baseline versions, workloads, measures and receiving operations remain to be specified.",
-      "No comparative receiving command or evidence is attached; satisfaction remains unsettled. Native schema admission remains unreceived after the previously recorded semantic-content-identity export failure."
+      "LangGraph is the direct Leader-named target of SignGraph. The compared graph/run functionality spans multiple real package/runtime owners but the named competitive Work remains SignGraph's; neither a graph projection nor an Organizing/FeltOS-only continuation view establishes parity.",
+      "LangGraph and Oxigraph have different actual capability domains; select immutable baseline releases, same-purpose matched cases, independent production consumers and cost/latency/provenance measurements before grading.",
+      "No comparative receiving command or evidence is attached; satisfaction remains unsettled. Native schema and fully installed release/external host receiving are not established by this source change."
     ],
-    "admission": "Authored requirement data; not an assertion of signed live-enterprise admission or achieved parity."
+    "admission": "Authored requirement data; not an assertion of signed live-enterprise admission or achieved parity.",
+    "leader-reaffirmation": {
+      "on": "2026-10-18",
+      "statement": "SignGraph is meant to meet then beat LangGraph actually.",
+      "reading": "SignGraph remains the named package and accountable competitive subject for LangGraph. Its executable composition consumes the proper SignChain, SignCraft, agent orchestration, and FeltOS/system owners; downstream execution does not transfer or waive SignGraph's original market target."
+    },
+    "peer-workload-qualification": {
+      "status": "candidate-cases-from-current-primary-sources; versions-and-actual-comparative-receiving-unqualified",
+      "LangGraph": {
+        "primary-sources": [
+          "https://langchain-ai.github.io/langgraph/",
+          "https://langchain-ai.github.io/langgraph/concepts/durable_execution/",
+          "https://langchain-ai.github.io/langgraph/concepts/breakpoints/",
+          "https://langchain-ai.github.io/langgraph/reference/graphs/"
+        ],
+        "candidate-cases": [
+          "Route the same typed workload through a conditional, branching StateGraph and corresponding SignGraph-owned graph projection; compare dynamic fanout, joins, reducers, and subgraph semantics without silently losing edges or competing source witnesses.",
+          "Resume an admitted workflow after failure and a human interrupt using the same original thread and persisted state; compare actual replay, state history/fork selection, independent approval, and external-effect repetition.",
+          "Run an original multi-step graph over two distinct work/repository contexts through the installed host; compare streamed state, useful result, latency, cost, source provenance and independent recipient acceptance."
+        ],
+        "production-boundaries": {
+          "signgraph": "Admitted graph/Chu relation, typed source-indexed topology, derived graph-state/transition/query semantics, witnessed forks and original graph identity",
+          "signchain-signcraft": "Witnessed causal/evidence compositions and lawful higher-order graph evaluation/fabrication",
+          "organizing-feltos-computer-systems": "Authorized execution, durable checkpoint/store binding, host interrupts/resume, effects and recipient-facing runtime delivery",
+          "acceptance": "The SignGraph-owned market comparison remains open until the composed externally consumable result meets and then measurably improves on LangGraph under matched conditions"
+        },
+        "comparative-distinctions": [
+          "LangGraph documents restarting interrupted nodes, so compare exact external-effect semantics; do not assert SignGraph avoids duplication without installed evidence.",
+          "Content-addressed source identity and FOUR-valued contrary evidence are candidate differentiators, not demonstrated LangGraph superiority until a real equal-workload comparison.",
+          "A pure topology or test-only graph is not a shipped persistent workflow runtime; mathematical proof is separate from external user receiving."
+        ]
+      },
+      "Oxigraph": {
+        "primary-sources": [
+          "https://github.com/oxigraph/oxigraph",
+          "https://github.com/oxigraph/oxigraph/wiki/SPARQL"
+        ],
+        "candidate-cases": [
+          "Query and update the same RDF graph dataset through Oxigraph's SPARQL surface and the actually installed SignGraph-composed graph-query entrance; compare exact result semantics, provenance and contrary testimony.",
+          "Exercise named graphs, source revisions, supported RDF serialization, persistence and transaction/refusal cases without crediting an uninstalled provider."
+        ],
+        "boundary": "Separate RDF/SPARQL database competitor from LangGraph's stateful orchestration runtime; no one-size-fits-all score or invented SPARQL implementation."
+      }
+    }
   }
 }
