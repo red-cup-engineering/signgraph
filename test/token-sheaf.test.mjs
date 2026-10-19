@@ -3,7 +3,7 @@ import test from "node:test";
 import { cell, claimCoordinate, sidesOf } from "@red-cup-engineering/signcell/cell";
 import { SPECIALIZES, generalizations, tokenFrame } from "@red-cup-engineering/signcell/token-frame";
 import { possibilize, valuationOf } from "@red-cup-engineering/signchain/token-fiber";
-import { inherited, inheritedClaim, tellingsAt } from "../src/token-sheaf.mjs";
+import { inherited, inheritedClaim, queryInheritedTellings, tellingsAt } from "../src/token-sheaf.mjs";
 
 const told = (special, general, by = "leader") => cell(special, SPECIALIZES, general, { for: [by] });
 
@@ -194,4 +194,80 @@ test("nested claim mutation under a shallow-frozen wire frame cannot reuse stale
   const later = inheritedClaim(wire, "child", "reports", { state: "new" });
   assert.equal(later.cells.length, 1);
   assert.deepEqual(later.cells[0].for, ["provider"]);
+});
+
+test("one source-told sheaf supports cross-token typed queries and stable local pagination", () => {
+  const frame = tokenFrame([
+    cell("api", SPECIALIZES, "service", { for: ["classification-api"] }),
+    cell("another-api", SPECIALIZES, "service", { for: ["classification-other"] }),
+    cell("service", "has", "monitor", { for: ["catalog"] }),
+    cell("api", "has", "monitor", { against: ["observed-incident"] }),
+    cell("another-api", "has", "dashboard", { for: ["provider"] }),
+    cell("api", "offers", "query", { for: ["creator"] }),
+    cell("another-api", "offers", "query", { against: ["receiver"] }),
+  ]);
+  const claim = { predicate: "has", object: "monitor" };
+  const whole = queryInheritedTellings(frame, claim, { limit: 128 });
+  assert.equal(whole.kind, "signgraph.inherited-telling-query");
+  assert.equal(whole.total, 3, "both specialized resources inherit the general service claim");
+  assert.equal(whole.entries.filter((row) => row.reading === "stable").length, 1,
+    "contradiction does not vanish in a broad query");
+  const opposed = whole.entries.find((row) => row.token === "api");
+  assert.deepEqual(opposed.cell.for, ["catalog"]);
+  assert.deepEqual(opposed.cell.against, ["observed-incident"]);
+  assert.deepEqual(opposed.sources.map((origin) => origin.token).sort(), ["api", "service"]);
+
+  let next = 0;
+  const paged = [];
+  do {
+    const page = queryInheritedTellings(frame, claim, { offset: next, limit: 1 });
+    paged.push(...page.entries);
+    next = page.next;
+  } while (next !== null);
+  assert.deepEqual(paged, whole.entries,
+    "only original witnessed rows are paged, in the generated frame order");
+
+  assert.equal(queryInheritedTellings(frame, {
+    ...claim, reading: "stable",
+  }).total, 1);
+  assert.equal(queryInheritedTellings(frame, { predicate: "offers" }).total, 2);
+  assert.equal(queryInheritedTellings(frame, { object: "query" }).total, 2);
+  assert.equal(queryInheritedTellings(frame, { token: "api", predicate: "has" }).total, 1);
+  assert.equal(queryInheritedTellings(frame, { predicate: SPECIALIZES }).total, 0,
+    "a structural specialization generator is not relabeled as a witnessed claim");
+  assert.equal(queryInheritedTellings(frame, { predicate: "no-such-claim" }).total, 0);
+  assert.throws(() => queryInheritedTellings(frame, { token: "unauthorized" }),
+    /not a token/u);
+  assert.throws(() => queryInheritedTellings(frame, claim, { limit: 129 }),
+    /noncanonical/u);
+  assert.throws(() => queryInheritedTellings(frame, claim, { offset: 4 }),
+    /outside admitted source/u);
+  assert.throws(() => queryInheritedTellings(frame, { predicate: "has", reading: "proven" }),
+    /noncanonical/u);
+  const accessor = Object.defineProperty({}, "predicate", {
+    enumerable: true, get() { throw new Error("not an admitted data field"); },
+  });
+  assert.throws(() => queryInheritedTellings(frame, accessor), /plain data fields/u);
+});
+
+test("paged source claims retain immutable original testimony across wire edits", () => {
+  const object = { text: "before" };
+  const frame = Object.freeze({
+    kind: "signcell.token-frame", predicate: SPECIALIZES,
+    cells: Object.freeze([Object.freeze({
+      subject: "observed", predicate: "says", object,
+      for: Object.freeze(["author"]), against: Object.freeze([]),
+    })]),
+  });
+  const first = queryInheritedTellings(frame, { predicate: "says", object: { text: "before" } });
+  assert.equal(first.total, 1);
+  object.text = "after";
+  assert.equal(first.entries[0].sources[0].cell.object.text, "before",
+    "a query result holds the original source snapshot, not a mutable pointer");
+  assert.equal(queryInheritedTellings(frame, {
+    predicate: "says", object: { text: "before" },
+  }).total, 0);
+  assert.equal(queryInheritedTellings(frame, {
+    predicate: "says", object: { text: "after" },
+  }).total, 1);
 });
