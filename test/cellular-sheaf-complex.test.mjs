@@ -38,7 +38,32 @@ test('the oppositely oriented second face gives a genuine H2 sphere class', () =
 test('noncommuting restrictions refuse instead of fabricating a higher sheaf', () => {
   const bad = walk();
   bad[2].restrict[0][0] = '1/2';
-  assert.throws(() => cellular2Sheaf({ ...triangle(), faces: [face('bad', bad)] }), /noncommuting restrictions/);
+  assert.throws(() => cellular2Sheaf({ ...triangle(), faces: [face('bad', bad)] }), /noncommuting restriction/);
+});
+
+test('the sheaf diagram refuses cancellations masking incoherent path restrictions', () => {
+  // One vertex and two loop edges. The commutator attaching walk has a
+  // zero integer face boundary; thus d1=0 and d1*d0=0 regardless of d0.
+  // Nevertheless the two routes p→a→f can disagree (from=1 vs to=2).
+  const vertex = [{ id: 'p', dim: 1 }];
+  const loops = ['a', 'b'].map(id => ({ id, from:'p', to:'p', dim:1,
+    restrict:{ from:[[1]], to:[[2]] } }));
+  const boundary = [['a',1],['b',1],['a',-1],['b',-1]].map(([id,direction]) =>
+    ({edge:id,direction,restrict:[[1]]}));
+  assert.throws(() => cellular2Sheaf({ vertices:vertex, edges:loops,
+    faces:[{id:'commutator',dim:1,boundary}] }), /noncommuting restriction diagram/);
+});
+
+test('a repeated edge cannot acquire incompatible restrictions into the same face', () => {
+  const vertices = [{id:'p',dim:1}];
+  const edges = [{id:'loop',from:'p',to:'p',dim:1,
+    restrict:{from:[[1]],to:[[1]]}}];
+  const faces = [{id:'filled',dim:1,boundary:[
+    {edge:'loop',direction:1,restrict:[[1]]},
+    {edge:'loop',direction:-1,restrict:[[2]]},
+  ]}];
+  assert.throws(() => cellular2Sheaf({ vertices, edges, faces }),
+    /ambiguous edge-to-face restriction/);
 });
 
 test('no hidden identity restrictions: typed stalk dimensions and incidence-maps are checked', () => {
