@@ -7,14 +7,21 @@
  * and observation-name equality as state sameness; Chu maps between two
  * organizations are SignChain's `chuMap`.
  */
-import { coincides } from "@red-cup-engineering/signcell/cell";
+import { cellSet, coincides, sameCell } from "@red-cup-engineering/signcell/cell";
 import { natZero, natOne, natAdd, fromNatural } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { chuSpaceOfEntries } from "@red-cup-engineering/metrologic/chu";
 
 /** The Chu space of a cell set under a list of named observations. */
 export function cellGraph(cells, observations, options = {}) {
-  const entries = cells.flatMap((cell) => observations.map((observation) => [cell, observation.name, observation.evaluate(cell)]));
-  return chuSpaceOfEntries(cells, observations.map((observation) => observation.name), entries, { absent: options.absent, samePoint: coincides, sameState: (left, right) => left === right });
+  // A SignCell point is the triple, not the current evidence presentation.
+  // First join coincident tellings into one point, retaining both evidence sides.
+  // This is an extensional graph projection, NOT a substitute for original
+  // Articulating occurrences: their separately carried histories remain upstream.
+  const points = cellSet(cells);
+  const entries = points.flatMap((point) => observations.map((observation) => [point, observation.name, observation.evaluate(point)]));
+  return chuSpaceOfEntries(points, observations.map((observation) => observation.name), entries, {
+    absent: options.absent, samePoint: sameCell, sameState: (left, right) => left === right,
+  });
 }
 
 /** The relation graph of a bare list of predication CELLS — distinct subject/object terms as
