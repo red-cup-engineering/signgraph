@@ -196,3 +196,38 @@ test("all 256 two-source/two-context finite incidences agree with an independent
   }
   assert.equal(checks,256);
 });
+
+
+test("two Necessary glossaries do not become a semantic identity through shared spelling",()=>{
+  const relational=entry("science/relationality/necessary.md","Necessary",{
+    actual:["inquiry-condition"],counterfactual:["inquiry-condition"],
+  });
+  const modal=entry("science/logic/necessary.md","Necessary",{
+    actual:["accessible-world-box"],counterfactual:["accessible-world-box"],
+  });
+  const cat=form([relational,modal]);
+  assert.equal(cat.objects.length,2);
+  const [a,b]=cat.objects;
+  assert.notEqual(a.id,b.id,"source identity is independent of spelling");
+  assert.equal(Boolean(arrow(cat,a,b)),false);
+  assert.equal(Boolean(arrow(cat,b,a)),false);
+  assert.equal(cat.obstructions.length,2);
+  assert(cat.obstructions.every(o=>o.counterexample.context==="actual"));
+  assert.equal(cat.semanticQualification.includes("Chalmers extension semantics"),true);
+});
+
+test("proof route addressing refuses forged routes and noncomposable evidence",()=>{
+  const cat=form([
+    entry("source-a","A",{actual:["p"],counterfactual:["p"]}),
+    entry("source-b","B",{actual:["p","q"],counterfactual:["p","q"]}),
+    entry("source-c","C",{actual:["q"],counterfactual:["q"]}),
+  ]);
+  const by=Object.fromEntries(cat.objects.map(o=>[o.source.key,o]));
+  const ab=arrow(cat,by["source-a"],by["source-b"]);
+  const bc=arrow(cat,by["source-b"],by["source-c"]);
+  assert.equal(bc,undefined);
+  assert.throws(()=>composeCategoricalIntensionPaths(cat,ab,ab),/noncomposable/);
+  assert.throws(()=>composeCategoricalIntensionPaths(cat,
+    {...ab,pathAddress:"forged"},arrow(cat,by["source-b"],by["source-b"])),
+    /proof-path content address/);
+});
