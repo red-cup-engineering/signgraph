@@ -57,6 +57,15 @@ service.
   a page is a complete graph; gluing records schema obstructions without
   promoting projections to lossless states. All runtime graph operations and
   their twelve original regression cases were removed from SignCell.
+  The `./graph` export now includes `findSignGraphRoute(graph, sourceReference,
+  targetReference, { predicate? })`. It reuses Metrologic's shortest path over
+  the **admitted** original SignCell graph, and returns one immutable structural
+  route as typed nodes and per-hop arrays of original EAVT-addressed edges.
+  Parallel witnesses survive intact, including contrary predicates if no
+  predicate filter was selected; absent routes remain explicitly unreachable.
+  A route does not assert its composed endpoint relation, evaluate a SignChain
+  claim, perform SignCraft effects, grant an actor authority or checkpoint a
+  running agent. Those remain separate original owners.
 
 
 - `token-sheaf` — the sheaf of tellings over SignCell's token frame: the
