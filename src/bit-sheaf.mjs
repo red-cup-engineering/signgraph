@@ -79,10 +79,69 @@ export function restrictBitPatch(source,{fromBit,bitCount}) {
 }
 const obstruction=(reason,extras={})=>Object.freeze({kind:"signgraph.bitSheaf:obstruction",reason,...extras});
 
-/** Glue compatible local coordinates on a finite cover. A protected interval
- * must be contained WHOLE in one patch; this encodes a declared subcoverage
- * constraint, not the institutional power to declare the protected region. */
-export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval}={}) {
+// A protected support is a requirement about an existing patch cover, not an
+// inferred claim about the contents or legal authority of the supplied bytes.
+function admitProtectedInterval(pair,start,end) {
+  if (!Array.isArray(pair) || pair.length!==2)
+    throw new RangeError("bit sheaf: protected interval outside target");
+  const left=Object.getOwnPropertyDescriptor(pair,"0"),right=Object.getOwnPropertyDescriptor(pair,"1");
+  if (!left || !right || !Object.hasOwn(left,"value") || !Object.hasOwn(right,"value"))
+    fail("protected intervals require own data coordinates");
+  const a=left.value,b=right.value;
+  if (!natural(a) || !natural(b) || a>=b || a<start || b>end)
+    throw new RangeError("bit sheaf: protected interval outside target");
+  return Object.freeze([a,b]);
+}
+
+function admittedRequiredIntervals(single,many,start,end) {
+  const inputs=[];
+  if(single!==undefined) inputs.push(single);
+  if(many!==undefined) {
+    if(!Array.isArray(many) || many.length>MAX_BIT_SECTION)
+      fail("protected intervals require a bounded array");
+    for(let i=0;i<many.length;i++) {
+      const slot=Object.getOwnPropertyDescriptor(many,String(i));
+      if(!slot || !Object.hasOwn(slot,"value"))
+        fail("protected intervals require own data entries");
+      inputs.push(slot.value);
+    }
+  }
+  if(inputs.length>MAX_BIT_SECTION)
+    throw new RangeError("bit sheaf: too many protected intervals");
+  return inputs.map(pair=>admitProtectedInterval(pair,start,end));
+}
+
+/** For all required supports, find an actual whole covering patch.
+ * Sorted sweep: O((P+R) log(P+R)) for P patches and R requirements,
+ * rather than independently scanning every patch for every requirement.
+ * The patch indices are witnesses about supplied local sections only. */
+function requiredCoverWitnesses(admitted,supports) {
+  if(supports.length===0) return [];
+  const patches=admitted.map((p,i)=>({start:p.fromBit,end:p.fromBit+p.bits.length,i}))
+    .sort((a,b)=>a.start-b.start || a.i-b.i);
+  const required=supports.map(([a,b],i)=>({a,b,i})).sort((a,b)=>a.a-b.a || a.i-b.i);
+  const witnesses=new Array(supports.length);
+  let current=0,furthest=-1,witness=-1;
+  for(const support of required) {
+    while(current<patches.length && patches[current].start<=support.a) {
+      const p=patches[current++];
+      if(p.end>furthest || (p.end===furthest && (witness===-1 || p.i<witness))) {
+        furthest=p.end;
+        witness=p.i;
+      }
+    }
+    witnesses[support.i]=furthest>=support.b
+      ?Object.freeze({protectedInterval:supports[support.i],patchIndex:witness})
+      :null;
+  }
+  return witnesses;
+}
+
+/** Glue compatible coordinates on a finite cover. Every protected support
+ * must be contained WHOLE in an actual patch; a jointly reconstructable bit
+ * sequence is not enough when a requirement forbids splitting one region.
+ * These are caller-declared cover constraints, never grants of authority. */
+export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval,protectedIntervals}={}) {
   if (!Array.isArray(patches) || patches.length<1 || patches.length>MAX_BIT_SECTION)
     fail("a nonempty bounded family of patches is required");
   const admitted=patches.map(admitPatch);
@@ -93,15 +152,11 @@ export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval}={}) 
   const end=bitCount===undefined
     ?Math.max(...admitted.map(p=>p.fromBit+p.bits.length)):start+bitCount;
   finiteInterval(start,end-start,totalBits);
-  if (protectedInterval!==undefined) {
-    if (!Array.isArray(protectedInterval) || protectedInterval.length!==2 ||
-        !natural(protectedInterval[0]) || !natural(protectedInterval[1]) ||
-        protectedInterval[0]>=protectedInterval[1] ||
-        protectedInterval[0]<start || protectedInterval[1]>end)
-      throw new RangeError("bit sheaf: protected interval outside target");
-    const [a,b]=protectedInterval;
-    if (!admitted.some(p=>p.fromBit<=a && p.fromBit+p.bits.length>=b))
-      return obstruction("protected-region-split",{protectedInterval:Object.freeze([...protectedInterval])});
+  const required=admittedRequiredIntervals(protectedInterval,protectedIntervals,start,end);
+  const witnesses=requiredCoverWitnesses(admitted,required);
+  for(let i=0;i<witnesses.length;i++) {
+    if(witnesses[i]===null)
+      return obstruction("protected-region-split",{protectedInterval:required[i],requirementIndex:i});
   }
   const values=new Array(end-start);
   for (const local of admitted) {
@@ -116,5 +171,6 @@ export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval}={}) 
   const missing=values.findIndex(v=>v===undefined);
   if (missing!==-1) return obstruction("uncovered-bit",{atBit:start+missing});
   return Object.freeze({...patch(address,totalBits,start,values),
-    kind:"signgraph.bitSheaf:section",coverCount:admitted.length});
+    kind:"signgraph.bitSheaf:section",coverCount:admitted.length,
+    ...(required.length ? {protectedCoverage:Object.freeze(witnesses)} : {})});
 }

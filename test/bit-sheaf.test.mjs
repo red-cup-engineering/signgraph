@@ -86,3 +86,79 @@ test("admission refuses getter-backed or sparse patches before sheaf gluing", ()
   assert.throws(()=>glueBitPatches([{...full,bits:sparse}]),/own data slot/);
   assert.deepEqual(glueBitPatches([full]).bits,full.bits);
 });
+
+
+test("several protected supports must each have one whole-patch witness",()=>{
+  const full=bitPatchOfBytes(Uint8Array.of(0xa5));
+  const left=restrictBitPatch(full,{fromBit:0,bitCount:5});
+  const right=restrictBitPatch(full,{fromBit:3,bitCount:5});
+  const middle=restrictBitPatch(full,{fromBit:2,bitCount:4});
+  const requirements=[[0,2],[2,6],[6,8]];
+  const refused=glueBitPatches([left,right],{protectedIntervals:requirements});
+  assert.equal(refused.reason,"protected-region-split");
+  assert.equal(refused.requirementIndex,1);
+  assert.deepEqual(refused.protectedInterval,[2,6]);
+  // The same two patches reconstruct every bit, but cannot each witness
+  // every indivisible requirement; this is a true local/global distinction.
+  assert.deepEqual(glueBitPatches([left,right]).bits,full.bits);
+  const patches=[left,right,middle];
+  const admitted=glueBitPatches(patches,{protectedIntervals:requirements});
+  assert.equal(admitted.kind,"signgraph.bitSheaf:section");
+  assert.deepEqual(admitted.bits,full.bits);
+  assert.deepEqual(admitted.protectedCoverage.map(v=>v.patchIndex),[0,2,1]);
+  for(const {protectedInterval:[lo,hi],patchIndex} of admitted.protectedCoverage) {
+    const patch=patches[patchIndex];
+    assert(patch.fromBit<=lo && patch.fromBit+patch.bits.length>=hi);
+  }
+  assert(Object.isFrozen(admitted.protectedCoverage));
+  assert.equal(glueBitPatches(patches,{
+    protectedInterval:[0,2], protectedIntervals:[[2,6],[6,8]],
+  }).protectedCoverage.length,3);
+  assert.deepEqual(glueBitPatches([left,right],{protectedIntervals:[]}).bits,full.bits);
+});
+
+test("exhaustive finite two-support gluing agrees with an independent whole-patch oracle",()=>{
+  const full=bitPatchOfBytes(Uint8Array.of(0xa5));
+  const left=restrictBitPatch(full,{fromBit:0,bitCount:5});
+  const right=restrictBitPatch(full,{fromBit:3,bitCount:5});
+  const middle=restrictBitPatch(full,{fromBit:2,bitCount:4});
+  const all=[];
+  for(let a=0;a<8;a++) for(let b=a+1;b<=8;b++) all.push([a,b]);
+  let checked=0;
+  for(const patches of [[left,right],[left,right,middle]]) {
+    for(const first of all) for(const second of all) {
+      const supports=[first,second];
+      const expected=supports.map(([a,b])=>patches.some(p=>
+        p.fromBit<=a && p.fromBit+p.bits.length>=b));
+      const answer=glueBitPatches(patches,{protectedIntervals:supports});
+      if(expected.every(Boolean)) {
+        assert.equal(answer.kind,"signgraph.bitSheaf:section");
+        assert.deepEqual(answer.bits,full.bits);
+        for(let i=0;i<2;i++) {
+          const patch=patches[answer.protectedCoverage[i].patchIndex];
+          assert(patch.fromBit<=supports[i][0]);
+          assert(patch.fromBit+patch.bits.length>=supports[i][1]);
+        }
+      } else {
+        assert.equal(answer.reason,"protected-region-split");
+        assert.equal(answer.requirementIndex,expected.indexOf(false));
+      }
+      checked++;
+    }
+  }
+  assert.equal(checked,2592);
+});
+
+test("required support declarations snapshot data and refuse sparse, accessor and unbounded forms",()=>{
+  const full=bitPatchOfBytes(Uint8Array.of(0xa5));
+  let reads=0;
+  const intervals=[[0,2],[2,4]];
+  Object.defineProperty(intervals,"1",{get(){reads++;return [2,4];}});
+  assert.throws(()=>glueBitPatches([full],{protectedIntervals:intervals}),/own data entries/);
+  const pair=[0,2];
+  Object.defineProperty(pair,"1",{get(){reads++;return 2;}});
+  assert.throws(()=>glueBitPatches([full],{protectedIntervals:[pair]}),/own data coordinates/);
+  assert.equal(reads,0,"admission must not execute adversarial support getters");
+  assert.throws(()=>glueBitPatches([full],{protectedIntervals:[[2,2]]}),/outside target/);
+  assert.throws(()=>glueBitPatches([full],{protectedIntervals:new Array(32769)}),/bounded array/);
+});
