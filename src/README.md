@@ -10,6 +10,45 @@ brand name it uses.
 A contract of data carried between parties with demand transported back is
 what networking is. Pure.
 
+
+## Named competitive target: LangGraph
+
+[The original SignGraph package requirement](../data/records/requirements-records/signgraph-meets-then-beats-application-peers.json)
+names **LangGraph** as the Leader-selected *meet-then-beat* target. **Oxigraph**
+is a different, additional graph-database target. This named Work belongs
+to SignGraph; it must not be silently relabeled a FeltOS-only or Organizing-only
+requirement when a user asks about durable agent execution.
+
+The actual LangGraph comparator is a low-level, **running stateful graph
+orchestration framework**, not just an adjacency list: StateGraph state and
+reducers, conditional edges and Send/Command routing, subgraphs, persistent
+thread checkpoints and state history, human interrupts/resume, and event
+streaming. See [LangGraph's overview](https://langchain-ai.github.io/langgraph/),
+[graphs](https://langchain-ai.github.io/langgraph/reference/graphs/),
+[persistence](https://langchain-ai.github.io/langgraph/concepts/durable_execution/)
+and [interrupts](https://langchain-ai.github.io/langgraph/concepts/breakpoints/).
+Its interrupt contract can restart a node and repeat earlier side effects;
+that is a concrete comparative case, not an assertion that this package
+already handles effects better.
+
+SignGraph owns the **shared graph relations, identity, evidence-bearing topology
+and graph transition/query semantics** used by the competitor-facing capability.
+It must reuse SignCell for original Mark/cell admission, SignChain for witnessed
+sequential/evidence composition, and SignCraft for higher-order realization.
+Durable file/database/host lifecycle, external effects and office authority
+belong to their original Engineering/Organizing/FeltOS/Computer Systems
+suppliers. The SignGraph *market obligation* remains open until those
+dependencies form a usable, source-qualified SignGraph-composed product,
+tested on equal workloads and independently received. Do not move runtime
+code into this pure graph layer, nor waive the customer requirement because
+the graph source is pure.
+
+The selected workloads, candidate differentiators, and explicitly unknown
+parity/receiving are specified at the **existing original requirement** above,
+not in a second benchmark registry. A green graph test proves one native
+graph behavior; it does not prove LangGraph parity or a running customer
+service.
+
 ## What lives here
 
 - `semantic-graph` — one closed, NI-addressed graph over SignCell's typed
