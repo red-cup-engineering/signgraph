@@ -16,7 +16,7 @@
  * is ◇. The object position is reached through the converse generator.
  */
 import { address, cell, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, sidesOf } from "@red-cup-engineering/signcell/cell";
-import { cacheableTokenFrame, generalizations, tokenFrame, top } from "@red-cup-engineering/signcell/token-frame";
+import { cacheableTokenFrame, extent, generalizations, tokenFrame, top } from "@red-cup-engineering/signcell/token-frame";
 import { retainedCarrier } from "@red-cup-engineering/semiotic-content-address";
 
 const INHERITED = "signgraph.inherited-tellings";
@@ -48,18 +48,27 @@ function sectionsOf(frame) {
 
 function claimSectionsOf(frame) {
   if (!cacheableTokenFrame(frame) || !claimSections.has(frame)) {
-    const byToken = new Map();
+    const byToken = new Map(), byClaim = new Map();
+    const byPredicate = new Map(), byObject = new Map();
+    const add = (index, key, token) => {
+      if (!index.has(key)) index.set(key, new Set());
+      index.get(key).add(token);
+    };
     for (const [token, tellings] of sectionsOf(frame)) {
-      const byClaim = new Map();
+      const claims = new Map();
       for (const telling of tellings) {
         const claim = claimCoordinate(telling.predicate, telling.object);
-        if (!byClaim.has(claim)) byClaim.set(claim, []);
-        byClaim.get(claim).push(telling);
+        if (!claims.has(claim)) claims.set(claim, []);
+        claims.get(claim).push(telling);
+        add(byClaim, claim, token);
+        add(byPredicate, coincidenceKey(telling.predicate), token);
+        add(byObject, coincidenceKey(telling.object), token);
       }
-      byToken.set(token, byClaim);
+      byToken.set(token, claims);
     }
-    if (cacheableTokenFrame(frame)) claimSections.set(frame, byToken);
-    else return byToken;
+    const index = { byToken, byClaim, byPredicate, byObject };
+    if (cacheableTokenFrame(frame)) claimSections.set(frame, index);
+    else return index;
   }
   return claimSections.get(frame);
 }
@@ -67,7 +76,7 @@ function claimSectionsOf(frame) {
 /** An existing section of an already-generated token, not an empty foreign one. */
 const directTellings = (frame, token) => frozen(sectionsOf(frame).get(coincidenceKey(token)) ?? []);
 const directClaim = (frame, token, claim) =>
-  claimSectionsOf(frame).get(coincidenceKey(token))?.get(claim) ?? [];
+  claimSectionsOf(frame).byToken.get(coincidenceKey(token))?.get(claim) ?? [];
 /** The section at a token: what is told of it directly. */
 export const tellingsAt = (frame, token) => {
   generalizations(frame, token); // the frame owns the membership law
@@ -170,11 +179,33 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   const source = cacheableTokenFrame(frame)
     ? frame : tokenFrame(frame.cells, { predicate: frame.predicate });
   const admittedTokens = top(source);
-  const tokens = Object.hasOwn(selection, "token")
+  const scopedTokens = Object.hasOwn(selection, "token")
     ? admittedTokens.filter((known) => coincides(known, token)) : admittedTokens;
-  if (Object.hasOwn(selection, "token") && tokens.length === 0)
+  if (Object.hasOwn(selection, "token") && scopedTokens.length === 0)
     generalizations(source, token); // original precise foreign-token refusal
   const exact = Object.hasOwn(selection, "predicate") && Object.hasOwn(selection, "object");
+
+  // A source-told claim becomes available at its source and at positively
+  // witnessed specializations. Use the original frame's extent law to select
+  // only those candidate tokens BEFORE gluing their sections. A nonexistent
+  // claim does not require asking each token whether it has been denied.
+  const indexed = Object.hasOwn(selection, "predicate") || Object.hasOwn(selection, "object");
+  let tokens = scopedTokens;
+  if (indexed) {
+    const index = claimSectionsOf(source);
+    const sources = exact
+      ? index.byClaim.get(claimCoordinate(predicate, object))
+      : Object.hasOwn(selection, "predicate")
+        ? index.byPredicate.get(coincidenceKey(predicate))
+        : index.byObject.get(coincidenceKey(object));
+    const candidateKeys = new Set();
+    if (sources) for (const original of admittedTokens) {
+      if (!sources.has(coincidenceKey(original))) continue;
+      for (const descendant of extent(source, original))
+        candidateKeys.add(coincidenceKey(descendant));
+    }
+    tokens = scopedTokens.filter((known) => candidateKeys.has(coincidenceKey(known)));
+  }
   const entries = [];
   for (const selectedToken of tokens) {
     const section = exact
