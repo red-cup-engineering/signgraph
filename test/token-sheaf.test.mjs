@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cell, sidesOf } from "@red-cup-engineering/signcell/cell";
+import { address, cell, sidesOf } from "@red-cup-engineering/signcell/cell";
 import { SPECIALIZES, generalizations, tokenFrame } from "@red-cup-engineering/signcell/token-frame";
 import { possibilize, valuationOf } from "@red-cup-engineering/signchain/token-fiber";
-import { inherited, tellingsAt } from "../src/token-sheaf.mjs";
+import { inherited, inheritedClaim, tellingsAt } from "../src/token-sheaf.mjs";
 
 const told = (special, general, by = "leader") => cell(special, SPECIALIZES, general, { for: [by] });
 
@@ -82,4 +82,57 @@ test("gluing over a token's generalizations is possibilizing, claim by claim", (
   }
   assert.deepEqual(tellingsAt(frame, "signcell").map((at) => at.object), ["zero-failing-tests"]);
   assert.deepEqual(tellingsAt(frame, "thing"), []);
+});
+
+test("one token/claim fiber equals the corresponding FULL source-preserving gluing cut", () => {
+  const frame = tokenFrame([
+    ...vocabulary, ...rules,
+    cell("unit", "may-hold", "workspace-dependencies", { against: ["leader"] }),
+    cell("services-section", "may-hold", "workspace-dependencies", { for: ["old-note"] }),
+    cell("signcell", "may-hold", "workspace-dependencies", { against: ["security"] }),
+    cell("signcell", "requires", "zero-failing-tests", { against: ["customer"] }),
+    cell("independent", "needs", "none", { for: ["other-source"] }),
+  ]);
+  const claims = [
+    ["may-hold", "workspace-dependencies"], ["requires", "zero-failing-tests"],
+    ["requires", "repository-name-equals-package-name"], ["needs", "none"],
+    ["requires", "never-told"], [SPECIALIZES, "unit"],
+  ];
+  for (const token of frame.tokens) {
+    const full = inherited(frame, token);
+    for (const [predicate, object] of claims) {
+      const cut = inheritedClaim(frame, token, predicate, object);
+      const queryKey = address(cell(null, predicate, object));
+      const slots = full.cells.flatMap((telling, index) =>
+        address(cell(null, telling.predicate, telling.object)) === queryKey ? [index] : []);
+      assert.equal(cut.kind, full.kind);
+      assert.equal(cut.token, token);
+      assert.deepEqual(cut.cells, slots.map((index) => full.cells[index]), `${token}: ${predicate}/${object}`);
+      assert.deepEqual(cut.sources, slots.map((index) => full.sources[index]));
+      assert.deepEqual(cut.contested, full.contested.filter((entry) =>
+        address(cell(null, entry.cell.predicate, entry.cell.object)) === queryKey));
+    }
+  }
+});
+
+test("one claim preserves opposing original witnesses and refuses foreign tokens", () => {
+  const frame = tokenFrame([
+    cell("specific", SPECIALIZES, "general", { for: ["classification"] }),
+    cell("general", "promises", "service", { for: ["provider-evidence"] }),
+    cell("specific", "promises", "service", { against: ["buyer-evidence"] }),
+    cell("specific", "promises", "other-service", { for: ["different-claim"] }),
+  ]);
+  const fiber = inheritedClaim(frame, "specific", "promises", "service");
+  assert.equal(fiber.cells.length, 1);
+  assert.deepEqual(fiber.cells[0].for, ["provider-evidence"]);
+  assert.deepEqual(fiber.cells[0].against, ["buyer-evidence"]);
+  assert.deepEqual(fiber.contested[0].for, ["general"]);
+  assert.deepEqual(fiber.contested[0].against, ["specific"]);
+  assert.deepEqual(fiber.sources[0].map(({ token }) => token), ["general", "specific"]);
+  const unknown = inheritedClaim(frame, "specific", "promises", "never-told");
+  assert.deepEqual(unknown.cells, []);
+  assert.deepEqual(unknown.sources, []);
+  assert.deepEqual(unknown.contested, []);
+  assert.throws(() => inheritedClaim(frame, "unadmitted-token", "promises", "service"), /not a token/u);
+  assert.throws(() => inheritedClaim(frame, "specific", "promises", undefined), /object must be present/u);
 });
