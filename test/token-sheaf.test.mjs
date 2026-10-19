@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { address, cell, sidesOf } from "@red-cup-engineering/signcell/cell";
+import { cell, claimCoordinate, sidesOf } from "@red-cup-engineering/signcell/cell";
 import { SPECIALIZES, generalizations, tokenFrame } from "@red-cup-engineering/signcell/token-frame";
 import { possibilize, valuationOf } from "@red-cup-engineering/signchain/token-fiber";
 import { inherited, inheritedClaim, tellingsAt } from "../src/token-sheaf.mjs";
@@ -102,15 +102,15 @@ test("one token/claim fiber equals the corresponding FULL source-preserving glui
     const full = inherited(frame, token);
     for (const [predicate, object] of claims) {
       const cut = inheritedClaim(frame, token, predicate, object);
-      const queryKey = address(cell(null, predicate, object));
+      const queryKey = claimCoordinate(predicate, object);
       const slots = full.cells.flatMap((telling, index) =>
-        address(cell(null, telling.predicate, telling.object)) === queryKey ? [index] : []);
+        claimCoordinate(telling.predicate, telling.object) === queryKey ? [index] : []);
       assert.equal(cut.kind, full.kind);
       assert.equal(cut.token, token);
       assert.deepEqual(cut.cells, slots.map((index) => full.cells[index]), `${token}: ${predicate}/${object}`);
       assert.deepEqual(cut.sources, slots.map((index) => full.sources[index]));
       assert.deepEqual(cut.contested, full.contested.filter((entry) =>
-        address(cell(null, entry.cell.predicate, entry.cell.object)) === queryKey));
+        claimCoordinate(entry.cell.predicate, entry.cell.object) === queryKey));
     }
   }
 });
