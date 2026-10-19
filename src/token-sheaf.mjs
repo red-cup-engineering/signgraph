@@ -16,27 +16,13 @@
  * is ◇. The object position is reached through the converse generator.
  */
 import { address, cell, claimCoordinate, coincidenceKey, coincides, evidenceOf, merge, sidesOf } from "@red-cup-engineering/signcell/cell";
-import { generalizations } from "@red-cup-engineering/signcell/token-frame";
+import { cacheableTokenFrame, generalizations } from "@red-cup-engineering/signcell/token-frame";
 
 const INHERITED = "signgraph.inherited-tellings";
 const frozen = (values) => Object.freeze([...values]);
 const byKey = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
 const sections = new WeakMap();
 const claimSections = new WeakMap();
-// A wire presentation can be mutable; cache only an immutable admitted frame,
-// never keep an obsolete subject/claim index after the caller changes its cells.
-const frameImmutability = new WeakMap();
-const cacheableFrame = frame => {
-  if (!frame || typeof frame !== "object" || !Object.isFrozen(frame) ||
-      !Array.isArray(frame.cells) || !Object.isFrozen(frame.cells))
-    return false;
-  // Frozen carrier elements cannot be swapped later, so this O(n) admission
-  // scan is done ONCE per frame, not on each fiber read/generalization.
-  if (!frameImmutability.has(frame))
-    frameImmutability.set(frame, frame.cells.every(Object.isFrozen));
-  return frameImmutability.get(frame);
-};
-
 // The same canonical predicate/object coordinate already used by SignChain's
 // token fiber: its null-subject cell is ONLY a private index key. It is never
 // emitted as an observed cell or represented as an admitted witness.
@@ -45,7 +31,7 @@ const cacheableFrame = frame => {
 // Preserve the original direct section index for the common full-section
 // reader. A claim index is materialized only when a caller selects a claim.
 function sectionsOf(frame) {
-  if (!cacheableFrame(frame) || !sections.has(frame)) {
+  if (!cacheableTokenFrame(frame) || !sections.has(frame)) {
     const bySubject = new Map();
     for (const at of frame.cells) {
       if (coincides(at.predicate, frame.predicate)) continue;
@@ -53,14 +39,14 @@ function sectionsOf(frame) {
       if (!bySubject.has(token)) bySubject.set(token, []);
       bySubject.get(token).push(at);
     }
-    if (cacheableFrame(frame)) sections.set(frame, bySubject);
+    if (cacheableTokenFrame(frame)) sections.set(frame, bySubject);
     else return bySubject;
   }
   return sections.get(frame);
 }
 
 function claimSectionsOf(frame) {
-  if (!cacheableFrame(frame) || !claimSections.has(frame)) {
+  if (!cacheableTokenFrame(frame) || !claimSections.has(frame)) {
     const byToken = new Map();
     for (const [token, tellings] of sectionsOf(frame)) {
       const byClaim = new Map();
@@ -71,7 +57,7 @@ function claimSectionsOf(frame) {
       }
       byToken.set(token, byClaim);
     }
-    if (cacheableFrame(frame)) claimSections.set(frame, byToken);
+    if (cacheableTokenFrame(frame)) claimSections.set(frame, byToken);
     else return byToken;
   }
   return claimSections.get(frame);
