@@ -6,6 +6,7 @@ import { makeNiUri } from "@red-cup-engineering/uri-services-section/ni-uri";
 import { encodeCanonical } from "@red-cup-engineering/cbor-services-section";
 import { markResource, markBytes, bitAt, bitWindow } from "@red-cup-engineering/computer-data-engineering-services-section/digital-mark-space";
 import { flowNetworkOfCells } from "../src/cell-graph.mjs";
+import { cohomologyOfCells } from "../src/cohomology.mjs";
 import { address as cellAddress, cell as predicationCell, knowledgeReading } from "@red-cup-engineering/signcell/cell";
 import { typedListItems, typedListTerm } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation/json-codec";
 import {
@@ -230,4 +231,34 @@ test("arbitrary source bytes retain bit coordinates and a separate explicitly de
     "structured decoding never fabricates rights or lexical equivalence");
   assert.throws(() => bitAt({ ...a }, 0), /admitted/,
     "an asserted source shape without the original held bytes is not an admitted bit source");
+});
+
+
+test("workbench geometry: an opaque record is a structural tree until a separately witnessed relation changes its graph-only H1", () => {
+  const registry = { nomenclature: { title: "Citizen", status: "candidate" } };
+  const projection = relationalValuePredications(registry, {
+    resource: "urn:561:registry:citizen", revision: "cut-1",
+  });
+  const base = cohomologyOfCells(projection.edges, projection.nodes);
+  assert.equal(base.entities.length, projection.nodes.length);
+  assert.equal(base.zeroCohomology.rank, 1, "one canonical addressed JSON tree is connected");
+  assert.equal(base.firstCohomology.rank, 0,
+    "opaque file/field/index links alone have no graph cycle or nontrivial H1");
+  const nested = projection.edges.find(at => at.subject === projection.root
+    && at.predicate === "field:nomenclature")?.object;
+  const title = projection.edges.find(at => at.subject === nested
+    && at.predicate === "field:title")?.object;
+  assert.ok(typeof nested === "string" && typeof title === "string");
+  const separateObservation = predicationCell(projection.root, "experimental:cross-link", title, {
+    for: [{ kind: "test.separate-observer-cross-link", source: "urn:561:assay:1" }],
+  });
+  const enriched = cohomologyOfCells([...projection.edges, separateObservation], projection.nodes);
+  assert.equal(enriched.zeroCohomology.rank, 1);
+  assert.equal(enriched.firstCohomology.rank, 1,
+    "one independently supplied edge closes one graph-only cycle in the selected view");
+  assert.equal(projection.edges.length, projection.nodes.length - 1);
+  assert.equal(projection.cells.some(at => at.predicate === "experimental:cross-link"), false,
+    "the source codec did not invent this observer-selected relationship");
+  // A graph's Betti-1 is NOT a proved Čech/sheaf obstruction, causal loop,
+  // material stress, valid naming equivalence, or emergent behavior.
 });
