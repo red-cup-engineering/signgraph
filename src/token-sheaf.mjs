@@ -16,7 +16,7 @@
  * is ◇. The object position is reached through the converse generator.
  */
 import { address, cell, cellSetAddress, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, sidesOf } from "@red-cup-engineering/signcell/cell";
-import { cacheableTokenFrame, extent, generalizations, tokenFrame, top } from "@red-cup-engineering/signcell/token-frame";
+import { SPECIALIZES, cacheableTokenFrame, extent, generalizations, tokenFrame, top } from "@red-cup-engineering/signcell/token-frame";
 import { retainedCarrier, semanticId } from "@red-cup-engineering/semiotic-content-address";
 
 const INHERITED = "signgraph.inherited-tellings";
@@ -176,7 +176,7 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   // Materialize one immutable, owned cut of any mutable wire presentation.
   // The original frame maker owns clone/merge/admission; this query never
   // re-interprets an in-flight mutation as one coherent historical source.
-  const source = cacheableTokenFrame(frame)
+  const source = cacheableTokenFrame(frame) && frame.predicate !== undefined
     ? frame : tokenFrame(frame.cells, { predicate: frame.predicate });
   const admittedTokens = top(source);
   const scopedTokens = Object.hasOwn(selection, "token")
@@ -238,7 +238,7 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   const snapshot = semanticId({
     kind: "signgraph.token-frame-reading/v1",
     sourceCells,
-    specializationPredicate: source.predicate,
+    specializationPredicate: source.predicate ?? SPECIALIZES,
   });
   return Object.freeze({
     kind: "signgraph.inherited-telling-query", version: 1,
