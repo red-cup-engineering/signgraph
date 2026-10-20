@@ -14,7 +14,7 @@ import {
   cellular2Complex, cellular3Complex, burgersOfComplex, affineHolonomyOfComplex,
 } from "./cohomology.mjs";
 import { geometricReceiving, metricSquareOfVector } from "./embedding.mjs";
-import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing } from "./mark-gluing.mjs";
+import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing, derivePerformedHeadShadow } from "./mark-gluing.mjs";
 
 export const LIMITS = Object.freeze({
   inputBytes: 65536,
@@ -186,6 +186,15 @@ const schema = (requiredExtra, propertyExtra) => Object.freeze({
   properties: Object.freeze({ ...commonInput.properties, ...propertyExtra }),
 });
 
+const performedHeadInputSchema = Object.freeze({
+  type: "object", additionalProperties: false,
+  required: Object.freeze(["articulating"]),
+  properties: Object.freeze({
+    articulating: { type: "object" },
+    steps: { type: "integer", minimum: 0, maximum: 6 },
+  }),
+});
+
 export const operations = Object.freeze({
   topology: Object.freeze({
     id: "signgraph.holonomy.topology",
@@ -267,16 +276,17 @@ export const operations = Object.freeze({
   observedHeadGluing: Object.freeze({
     id:"signgraph.mark-incidence.observed-head-gluing",
     description:"Construct source-generated head-identification incidence cycles AFTER Articulating, with exact candidate WIT accounting and no physical erasure assertion.",
-    inputSchema:Object.freeze({
-      type:"object",additionalProperties:false,
-      required:Object.freeze(["articulating"]),
-      properties:Object.freeze({
-        articulating:{type:"object"},
-        steps:{type:"integer",minimum:0,maximum:6},
-      }),
-    }),
+    inputSchema: performedHeadInputSchema,
     execute(input, { workBudget } = {}){
       return generateHeadObservationGluing(boundedHeadObservation(input, workBudget));
+    },
+  }),
+  performedHeadShadow: Object.freeze({
+    id: "signgraph.mark-incidence.performed-head-shadow",
+    description: "Compute source-generated observed head paths; distinguish actual Articulating composition from observer-created nonlifting paths.",
+    inputSchema: performedHeadInputSchema,
+    execute(input, { workBudget } = {}) {
+      return derivePerformedHeadShadow(boundedHeadObservation(input, workBudget));
     },
   }),
   articulatingTower: Object.freeze({
