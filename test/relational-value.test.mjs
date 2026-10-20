@@ -143,6 +143,10 @@ test("opaque addressed nomenclature and work values become witnessed, oriented S
   assert.notDeepEqual(anotherSource.edges[0].for, projected.edges[0].for,
     "independently supplied source witnesses must remain different");
   assert.notEqual(anotherSource.source.occurrence, projected.source.occurrence);
+  const incompatible = relationalValuePredications({ ...registry, additional: "different" }, source);
+  assert.notEqual(incompatible.payload, projected.payload);
+  assert.notEqual(incompatible.source.occurrence, projected.source.occurrence,
+    "conflicting data under an unverified reused revision label must not share one occurrence");
   const newer = relationalValuePredications(registry, { ...source, revision: "record-cut-2" });
   assert.notEqual(newer.source.occurrence, projected.source.occurrence,
     "a repeated value at a later record cut is another sourced occurrence");
