@@ -119,3 +119,28 @@ test("no user can supply a shadow map, forged source graph or fake authorization
     articulating: { kind: "articulating.pair", utterance: "invented" },
   }), /native ordered Mark roles/);
 });
+
+
+test("the SAME performed Articulating generates kinematic diamond points by endpoint sequencing, not nested intervals", () => {
+  const shadow = derivePerformedHeadShadow({ articulating: performedSource(), steps: 3 });
+  const K = shadow.kinematic;
+  assert.equal(K.kind, "signgraph.performedArticulatingKinematicReadout.v1");
+  assert.equal(K.sourceEventIds.length, 5,
+    "two original prefix acts plus three source-generated re-attendings");
+  assert.equal(new Set(K.sourceEventIds).size, 5);
+  assert.equal(K.points.length, 10);
+  assert.equal(new Set(K.points.map(x =>
+    x.lowerArticulatingId + ":" + x.upperArticulatingId)).size, 10);
+  const index = (a, b) => K.points.findIndex(p =>
+    p.lowerEventIndex === a && p.upperEventIndex === b);
+  assert.ok(index(0, 1) >= 0);
+  assert.ok(index(1, 2) >= 0);
+  assert.ok(K.sequencing.some(edge =>
+    edge.parent === index(0, 1) && edge.child === index(1, 2)));
+  // Set nesting does NOT generate kinematic precedence.
+  assert.equal(K.sequencing.some(edge =>
+    edge.parent === index(0, 4) && edge.child === index(1, 2)), false);
+  assert.equal(K.sequencing.some(edge =>
+    edge.parent === index(1, 2) && edge.child === index(0, 4)), false);
+  assert.equal(K.scope.includes("not a physical metric"), true);
+});
