@@ -11,6 +11,7 @@ import { semanticId }
   from "@red-cup-engineering/semiotic-content-address";
 import { cellular2Complex } from "./cohomology.mjs";
 import { createGraph, observedTwoStepPaths } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
+import { kinematicDiamondSpaceOf } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/causal";
 import * as chain from "@red-cup-engineering/signchain/bilattice";
 
 const KIND="signgraph.markGeneratedCellGluing.v1";
@@ -720,6 +721,37 @@ export function derivePerformedHeadShadow(raw) {
     });
   }
   const image = observedTwoStepPaths(source, node => imageAt.get(node));
+  // The complete performed prefix is retained: K(C) must not be fabricated
+  // merely from the post-observation tail, nor from a chosen coordinate grid.
+  // Each original native Articulating prefix contributes exactly one causal
+  // event; the observed re-attention steps continue that SAME source chain.
+  const eventIds = freeze([
+    ...performed.prefixes.slice(0, -1).map(prefix => semanticId(prefix)),
+    ...generated.nodes,
+  ]);
+  if (new Set(eventIds).size !== eventIds.length ||
+      eventIds[performed.prefixes.length - 1] !== generated.originalSourceId)
+    throw new TypeError("source-generated causal prefix and re-attending failed to join");
+  const causalSteps = Array.from({ length: eventIds.length - 1 }, (_, index) =>
+    freeze({ parent: index, child: index + 1 }));
+  const finiteKinematic = kinematicDiamondSpaceOf({
+    eventCount: eventIds.length, edges: causalSteps,
+  });
+  const kinematicPoints = freeze(finiteKinematic.points.map(point => freeze({
+    ...point,
+    lowerArticulatingId: eventIds[point.lowerEventIndex],
+    upperArticulatingId: eventIds[point.upperEventIndex],
+  })));
+  const kinematic = freeze({
+    kind: "signgraph.performedArticulatingKinematicReadout.v1",
+    sourceEventIds: eventIds,
+    strictCausalSteps: freeze(causalSteps),
+    points: kinematicPoints,
+    sequencing: finiteKinematic.sequencing,
+    causalFrontiers: finiteKinematic.causalFrontiers,
+    causalHeight: finiteKinematic.causalHeight,
+    scope: "derived finite causal-diamond endpoint sequencing, not a physical metric or all Kinematic Space",
+  });
   if (image.atomic.length !== generated.edges.length ||
       image.sourceVertexCount !== generated.nodes.length)
     throw new TypeError("observed head image lost a native performed source occurrence");
@@ -757,6 +789,7 @@ export function derivePerformedHeadShadow(raw) {
     originalSourceNodes: generated.nodes,
     originalSourceSteps: generated.edges,
     originalSourceRoutes: generated.paths,
+    kinematic,
     observedHeads: image.observedVertices,
     observedAtomicSteps: image.atomic,
     observedTwoStepComposites: freeze(composable),
