@@ -12,6 +12,8 @@ import { semanticId }
 import { cellular2Complex } from "./cohomology.mjs";
 import { createGraph, observedTwoStepPaths } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { kinematicDiamondSpaceOf } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/causal";
+import { articulatedPredications } from "@red-cup-engineering/signcell/predication";
+import { address as cellAddress } from "@red-cup-engineering/signcell/cell";
 import * as chain from "@red-cup-engineering/signchain/bilattice";
 
 const KIND="signgraph.markGeneratedCellGluing.v1";
@@ -765,6 +767,49 @@ export function derivePerformedHeadShadow(raw) {
   ]);
   if (sourceHeadIds.length !== eventIds.length)
     throw new TypeError("original utterance occurrence count lost its performed Articulating source");
+  // Reconstruct ONLY with SignCell's native generative operation. The
+  // existing source-observation operator generated these same steps already;
+  // every replayed predecessor/continuation/head ID must match that result.
+  // No duplicate predication constructor or new Semioverse truth valuation.
+  let continued = performed.carrier;
+  for (const edge of generated.edges) {
+    const next = reattendArticulating(continued, { maxLayers: 16 });
+    if (semanticId(continued) !== edge.from ||
+        semanticId(next.presented) !== edge.to ||
+        semanticId(next.presentedHead) !== edge.head)
+      throw new TypeError("native Articulating continuation differs from original generated source");
+    continued = next.presented;
+  }
+  if (semanticId(continued) !== generated.continuedSourceId)
+    throw new TypeError("Semioverse incidence lost the original continued source");
+  // Science's finite Semioverse core composes the seeds of two original
+  // utterance occurrences. This exact constructor is already in SignCell:
+  // (u.token, u.claim, v.token). Source indices distinguish performances
+  // even where their extensional predication cells have equal addresses.
+  const generatedClaims = articulatedPredications(continued, { maxLayers: 16 });
+  if (generatedClaims.entries.length !== eventIds.length * eventIds.length)
+    throw new TypeError("generated Semioverse pair incidence is incomplete");
+  const claimEntries = freeze(generatedClaims.entries.map((entry, claimIndex) => freeze({
+    claimIndex,
+    firstOccurrenceIndex: entry.subjectOccurrence,
+    secondOccurrenceIndex: entry.objectOccurrence,
+    firstOccurrenceId: eventIds[entry.subjectOccurrence],
+    secondOccurrenceId: eventIds[entry.objectOccurrence],
+    claimAddress: cellAddress(entry.cell),
+  })));
+  const semioverse = freeze({
+    kind: "signgraph.performedSemioverseIncidence.v1",
+    originalSourceId: generated.originalSourceId,
+    continuedSourceId: generated.continuedSourceId,
+    sourceEventIds: eventIds,
+    claimEntries,
+    loci: freeze(kinematicPoints.map((point, pointIndex) => freeze({
+      pointIndex,
+      maximumAdmittedOccurrenceIndex: point.upperEventIndex,
+      admittedClaimCount: (point.upperEventIndex + 1) ** 2,
+    }))),
+    scope: "source-ordered performed pair incidence only; not all FOAM evidence, logical truth, admitted authority or universal Semioverse",
+  });
   const lspace = freeze({
     kind: "signgraph.performedLocalLSpaceIncidence.v1",
     sourceEventIds: eventIds,
@@ -817,6 +862,7 @@ export function derivePerformedHeadShadow(raw) {
     originalSourceRoutes: generated.paths,
     kinematic,
     lspace,
+    semioverse,
     observedHeads: image.observedVertices,
     observedAtomicSteps: image.atomic,
     observedTwoStepComposites: freeze(composable),
@@ -825,5 +871,60 @@ export function derivePerformedHeadShadow(raw) {
     observationalQuotient: generated.observationalQuotient,
     sourceAuthority: "only original generated Articulating routes compose in the source",
     observationAuthority: "none: head coincidence cannot authorize or prove a source arrow",
+  });
+}
+
+/** A bounded observation fiber over an ORIGINAL generated kinematic point.
+ * This is a readout of this source-derived object, never a new claim,
+ * proof, permission, signed witness, or authority to consume private data.
+ */
+export function readPerformedSemioverseFiber(shadow, pointIndex) {
+  const W = shadow?.kinematic, semi = shadow?.semioverse;
+  if (shadow?.kind !== "signgraph.performedHeadObservationShadow.v1" ||
+      semi?.kind !== "signgraph.performedSemioverseIncidence.v1" ||
+      !Array.isArray(W?.points) || !Array.isArray(semi?.claimEntries) ||
+      !Number.isSafeInteger(pointIndex) || pointIndex < 0 ||
+      pointIndex >= W.points.length)
+    throw new TypeError("Semioverse fiber requires a generated shadow and an existing kinematic point");
+  const point = W.points[pointIndex];
+  const admitted = semi.claimEntries.filter(entry =>
+    entry.firstOccurrenceIndex <= point.upperEventIndex &&
+    entry.secondOccurrenceIndex <= point.upperEventIndex);
+  return freeze({
+    kind: "signgraph.performedSemioverseFiber.v1",
+    pointIndex, point,
+    entries: freeze(admitted),
+    source: semi.continuedSourceId,
+    admission: "readout of source-paired utterances at a generated kinematic upper prefix",
+  });
+}
+
+/** Unique forward lift of a SAME source pair along K(C) sequencing.
+ * Equality is the kinematic identity. No unproved backwards restriction
+ * is allowed: the future original performance is absent from its past.
+ */
+export function transportPerformedSemioverseClaim(shadow, fromPointIndex, toPointIndex, claimIndex) {
+  const from = readPerformedSemioverseFiber(shadow, fromPointIndex);
+  const target = readPerformedSemioverseFiber(shadow, toPointIndex);
+  if (!Number.isSafeInteger(claimIndex) || claimIndex < 0 ||
+      claimIndex >= shadow.semioverse.claimEntries.length)
+    throw new TypeError("Semioverse transport requires a genuine original claim occurrence");
+  const claim = shadow.semioverse.claimEntries[claimIndex];
+  if (!from.entries.includes(claim))
+    throw new TypeError("Semioverse transport cannot backdate a source-performed claim");
+  const precedes = fromPointIndex === toPointIndex ||
+    shadow.kinematic.sequencing.some(edge =>
+      edge.parent === fromPointIndex && edge.child === toPointIndex);
+  if (!precedes)
+    throw new TypeError("Semioverse transport requires original kinematic endpoint sequencing");
+  if (!target.entries.includes(claim))
+    throw new TypeError("Semioverse kinematic transport lost the original performed occurrence");
+  return freeze({
+    kind: "signgraph.performedSemioverseForwardLift.v1",
+    fromPointIndex, toPointIndex, claimIndex,
+    claimAddress: claim.claimAddress,
+    firstOccurrenceId: claim.firstOccurrenceId,
+    secondOccurrenceId: claim.secondOccurrenceId,
+    source: shadow.semioverse.continuedSourceId,
   });
 }
