@@ -4,12 +4,15 @@ import { decodeSemantic, semanticBytes, semanticId } from "@red-cup-engineering/
 
 import { makeNiUri } from "@red-cup-engineering/uri-services-section/ni-uri";
 import { encodeCanonical } from "@red-cup-engineering/cbor-services-section";
+import { flowNetworkOfCells } from "../src/cell-graph.mjs";
+import { address as cellAddress, knowledgeReading } from "@red-cup-engineering/signcell/cell";
 import { typedListItems, typedListTerm } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation/json-codec";
 import {
   admitRelationalValuePayload,
   decodeRelationalValue,
   encodeRelationalValue,
   relationalValueId,
+  relationalValuePredications,
   identifyRelationalValuePayload,
   verifyRelationalValuePayload,
 } from "../src/relational-value.mjs";
@@ -77,4 +80,98 @@ test("typed relational SEN is canonical and round-trips without JSON", () => {
   assert.deepEqual(decodeRelationalValue(encoded.type, encoded.term), source);
   assert.deepEqual(decodeSemantic(semanticBytes(term)), term);
   assert.equal(relationalValueId(source), semanticId(term));
+});
+
+
+test("opaque addressed nomenclature and work values become witnessed, oriented SignCells and a selected 1-skeleton", () => {
+  const registry = {
+    nomenclature: {
+      preferred: "Citizen", alternatives: ["Inhabitant", "resident"], score: 7, stringScore: "7",
+    },
+    endeavor: {
+      title: "Cold Red Gate Colony",
+      workflow: ["observe", "admit", "assay"],
+      complete: false,
+    },
+  };
+  const source = { resource: "urn:561:records:citizen-register", revision: "record-cut-1" };
+  const projected = relationalValuePredications(registry, source);
+  const second = relationalValuePredications({
+    endeavor: registry.endeavor, nomenclature: {
+      stringScore: "7", score: 7, alternatives: ["Inhabitant", "resident"], preferred: "Citizen",
+    },
+  }, source);
+  assert.equal(projected.kind, "signgraph.relational-value-predications/v1");
+  assert.equal(projected.payload, identifyRelationalValuePayload(registry).token);
+  assert.deepEqual(projected, second,
+    "changing the insertion order of record keys does not invent different structure");
+  assert.equal(projected.source.resource, source.resource);
+  assert.equal(projected.source.revision, source.revision);
+  assert.ok(projected.source.occurrence.startsWith("ni:///sha-256;"));
+  assert.ok(projected.edges.length > 0);
+  assert.ok(projected.edges.some(edge => edge.predicate === "field:nomenclature"));
+  assert.ok(projected.edges.some(edge => edge.predicate === "field:workflow"));
+  assert.ok(projected.edges.some(edge => edge.predicate === "index:0"));
+  assert.ok(projected.edges.every(edge => edge.subject.startsWith("ni:///sha-256;")
+    && edge.object.startsWith("ni:///sha-256;")));
+  assert.ok(projected.attributes.some(at => at.predicate === "relational-value:kind"
+    && at.object === "integer"));
+  assert.ok(projected.attributes.some(at => at.predicate === "relational-value:kind"
+    && at.object === "text"));
+  assert.ok(projected.attributes.some(at => at.predicate === "relational-value:lexical"
+    && at.object === "7"));
+  assert.ok(projected.attributes.some(at => at.predicate === "relational-value:root"
+    && at.subject === projected.source.occurrence && at.object === projected.root));
+  assert.ok(projected.cells.every(at => knowledgeReading(at) === "potential"
+    && at.for[0].kind === "signgraph.relational-value-structural-derivation/v1"
+    && at.for[0].resource === source.resource && at.for[0].revision === source.revision
+    && at.for[0].payload === projected.payload),
+  "the evidence is a deterministic structural projection of one identified record, not a citizen grant");
+  const geometry = flowNetworkOfCells(projected.edges);
+  assert.equal(geometry.edges.length, projected.edges.length,
+    "select only the directed structural edges, not node lexical labels as shortcuts");
+  assert.ok(!projected.edges.some(edge => edge.object === "7" || edge.object === "Citizen"));
+  assert.notEqual(projected.source.occurrence, projected.root,
+    "source occurrence and its internal root are different typed referents");
+
+  const anotherSource = relationalValuePredications(registry, {
+    resource: "urn:561:records:another-register", revision: source.revision,
+  });
+  assert.equal(anotherSource.payload, projected.payload);
+  assert.equal(cellAddress(anotherSource.edges[0]), cellAddress(projected.edges[0]),
+    "the same structural predication has one cell coordinate across sources");
+  assert.notDeepEqual(anotherSource.edges[0].for, projected.edges[0].for,
+    "independently supplied source witnesses must remain different");
+  assert.notEqual(anotherSource.source.occurrence, projected.source.occurrence);
+  const newer = relationalValuePredications(registry, { ...source, revision: "record-cut-2" });
+  assert.notEqual(newer.source.occurrence, projected.source.occurrence,
+    "a repeated value at a later record cut is another sourced occurrence");
+  assert.equal(newer.payload, projected.payload);
+  assert.throws(() => relationalValuePredications(registry), /source resource and revision/u);
+  assert.throws(() => relationalValuePredications(registry, { resource: "only" }),
+    /source resource and revision/u);
+});
+
+test("opaque hostile-looking JSON field names remain data on encode, decode and SignCell projection", () => {
+  const input = JSON.parse('{"__proto__":{"citizen":false},"constructor":"opaque","toString":null}');
+  assert.equal(Object.hasOwn(input, "__proto__"), true);
+  const encoded = encodeRelationalValue(input);
+  const returned = decodeRelationalValue(encoded.type, encoded.term);
+  assert.deepEqual(returned, input);
+  assert.equal(Object.getPrototypeOf(returned), Object.prototype);
+  assert.equal(Object.hasOwn(returned, "__proto__"), true,
+    "a JSON field must not be treated as the JavaScript prototype setter");
+  assert.equal(returned.__proto__.citizen, false);
+  assert.equal({}.citizen, undefined, "no prototype pollution");
+  const projected = relationalValuePredications(input, {
+    resource: "urn:561:registers:opaque-names", revision: "1",
+  });
+  assert.ok(projected.edges.some(at => at.predicate === "field:__proto__"));
+  assert.ok(projected.edges.some(at => at.predicate === "field:constructor"));
+  assert.ok(projected.edges.some(at => at.predicate === "field:toString"));
+  assert.ok(projected.nodes.length > 3);
+  const nominal = JSON.parse('{"e\\u0301":1,"é":2}');
+  assert.throws(() => encodeRelationalValue(nominal),
+    /field names collide after NFC normalization/u,
+    "distinct original source keys cannot be silently merged by Unicode normalization");
 });
