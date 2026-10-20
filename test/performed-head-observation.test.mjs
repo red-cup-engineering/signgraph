@@ -245,3 +245,25 @@ test("SignGraph finite Semioverse is an exact projection of SignCell's original 
   assert.equal(shadow.semioverse.claimEntries.length,
     originalClaims.sourceOrdinal.length ** 2);
 });
+
+
+test("portable JSON Semioverse readouts retain original occurrence indices without granting composition authority", () => {
+  const original = derivePerformedHeadShadow({ articulating: performedSource(), steps: 3 });
+  const transported = JSON.parse(JSON.stringify(original));
+  const p = transported.kinematic.points.findIndex(point =>
+    point.lowerEventIndex === 0 && point.upperEventIndex === 1);
+  const q = transported.kinematic.points.findIndex(point =>
+    point.lowerEventIndex === 1 && point.upperEventIndex === 2);
+  const claim = transported.semioverse.claimEntries.find(entry =>
+    entry.firstOccurrenceIndex === 0 && entry.secondOccurrenceIndex === 1);
+  assert.deepEqual(readPerformedSemioverseFiber(transported, p),
+    readPerformedSemioverseFiber(original, p));
+  assert.deepEqual(transportPerformedSemioverseClaim(transported,p,q,claim.claimIndex),
+    transportPerformedSemioverseClaim(original,p,q,claim.claimIndex));
+  const source = derivePerformedObservationRoutes({ articulating: performedSource(), steps: 3 });
+  const first = source.paths.find(x => x.first === 0 && x.last === 1);
+  const second = source.paths.find(x => x.first === 1 && x.last === 2);
+  assert.throws(() => composePerformedObservationRoutes(structuredClone(source), first, second),
+    /original generated observation routes/,
+    "a serialized readout cannot masquerade as the live original compositional authority");
+});
