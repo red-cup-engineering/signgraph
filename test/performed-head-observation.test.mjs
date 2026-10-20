@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { utterance, articulatingUtter, articulatingPair } from "@red-cup-engineering/signcell/utterance";
+import { utterance, articulatingUtter, articulatingPair, reattendArticulating } from "@red-cup-engineering/signcell/utterance";
+import { articulatedPredications } from "@red-cup-engineering/signcell/predication";
+import { address as cellAddress } from "@red-cup-engineering/signcell/cell";
 import {
   derivePerformedHeadShadow, derivePerformedObservationRoutes,
   composePerformedObservationRoutes, readPerformedSemioverseFiber,
@@ -218,4 +220,28 @@ test("an index cannot fabricate a kinematic locus or Semioverse source claim", (
   assert.throws(() => readPerformedSemioverseFiber(view, -1), /existing kinematic point/);
   assert.throws(() => transportPerformedSemioverseClaim(view, 0, 0, 10000),
     /genuine original claim occurrence/);
+});
+
+
+test("SignGraph finite Semioverse is an exact projection of SignCell's original full source pair composition", () => {
+  const original = performedSource();
+  let continued = original;
+  for (let i = 0; i < 3; i++)
+    continued = reattendArticulating(continued, { maxLayers: 16 }).presented;
+  const originalClaims = articulatedPredications(continued, { maxLayers: 16 });
+  const shadow = derivePerformedHeadShadow({ articulating: original, steps: 3 });
+  const corresponding = originalClaims.entries.map((entry, claimIndex) => ({
+    claimIndex,
+    firstOccurrenceIndex: entry.subjectOccurrence,
+    secondOccurrenceIndex: entry.objectOccurrence,
+    claimAddress: cellAddress(entry.cell),
+  }));
+  assert.deepEqual(shadow.semioverse.claimEntries.map(entry => ({
+    claimIndex: entry.claimIndex,
+    firstOccurrenceIndex: entry.firstOccurrenceIndex,
+    secondOccurrenceIndex: entry.secondOccurrenceIndex,
+    claimAddress: entry.claimAddress,
+  })), corresponding);
+  assert.equal(shadow.semioverse.claimEntries.length,
+    originalClaims.sourceOrdinal.length ** 2);
 });
