@@ -128,6 +128,24 @@ function boundedArticulating(input, workBudget) {
   return Object.freeze({source:input.articulating,maxLayers});
 }
 
+/**
+ * Both original head-observation consumers receive exactly the same performed
+ * Articulating source and host budget; neither may supply its own paths, graph,
+ * quotient or authority. This is the shared source admission, not a second
+ * formal semantics.
+ */
+function boundedHeadObservation(input, workBudget) {
+  if (!input || typeof input !== "object" || Array.isArray(input) ||
+      Object.keys(input).some(key => !["articulating", "steps"].includes(key)) ||
+      !Object.hasOwn(input, "articulating"))
+    throw new TypeError("source head quotient operation only admits Articulating plus bounded steps");
+  const { source } = boundedArticulating({ articulating: input.articulating, maxLayers: 16 }, workBudget);
+  const steps = input.steps ?? 1;
+  if (!Number.isSafeInteger(steps) || steps < 0 || steps > 6)
+    throw new RangeError("source-generated quotient permits zero to six bounded re-attendings");
+  return Object.freeze({ articulating: source, steps });
+}
+
 const shape = (complex, steps, volumeSteps) => Object.freeze({
   vertices: complex.vertices.length,
   edges: complex.edges.length,
@@ -258,13 +276,7 @@ export const operations = Object.freeze({
       }),
     }),
     execute(input, { workBudget } = {}){
-      if(!input||typeof input!=="object"||Array.isArray(input)||
-         Object.keys(input).some(k=>!["articulating","steps"].includes(k))||
-         !Object.hasOwn(input,"articulating"))
-        throw new TypeError("source head quotient operation only admits Articulating plus bounded steps");
-      const {source}=boundedArticulating({articulating:input.articulating,maxLayers:16}, workBudget);
-      return generateHeadObservationGluing({articulating:source,
-        ...(input.steps===undefined?{}:{steps:input.steps})});
+      return generateHeadObservationGluing(boundedHeadObservation(input, workBudget));
     },
   }),
   articulatingTower: Object.freeze({
