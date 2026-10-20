@@ -235,7 +235,9 @@ export function identifyRelationalValuePayload(source) {
  * Project the ALREADY CANONICAL relational-value SEN term into original
  * SignCell predications, without a second JSON graph/serialization format.
  *
- * The caller identifies an original source resource and its exact revision.
+ * The caller DECLARES a source resource and revision. This pure function can
+ * verify the encoded structure but cannot authenticate the caller, source,
+ * observation time, content custody, or permission to disclose its values.
  * The witnessed proposition is only "this source's encoded *structure* has
  * these nodes, types, lexemes and directed grounding links". It is NOT an
  * assertion that e.g. a field named "owner" confers ownership, a field named
@@ -249,7 +251,7 @@ export function identifyRelationalValuePayload(source) {
 export function relationalValuePredications(value, { resource, revision } = {}) {
   if (typeof resource !== "string" || resource.length === 0 ||
       typeof revision !== "string" || revision.length === 0)
-    fail("source resource and revision must identify one admitted record cut");
+    fail("source resource and revision must identify one declared record cut");
   const payload = identifyRelationalValuePayload(value);
   const [rootTerm, nodeTerms, edgeTerms] = fields(payload.claim.term, 3);
   const root = constantId(rootTerm);
