@@ -689,9 +689,11 @@ export function composePerformedObservationRoutes(result,left,right) {
  * Project NATIVE performed Articulating routes through their already observed
  * head Marks and calculate the exactly missing source path compositions.
  *
- * This is a finite Paracosm comparison made ONLY from the original SignCell
- * re-attention source. It does not independently select observer equalities,
- * a pre-Mark world, a quotient's proof, an actor, or an executable duty.
+ * This is a finite head-shadow comparison for richer Paracosm research,
+ * NOT the existing source-realizable kinematic-past Paracosm of
+ * Obsmetrologia.GeneratedWorlds. It is made ONLY from original SignCell
+ * re-attention and introduces no arbitrary observer equality, pre-Mark
+ * world, quotient proof, actor, or executable duty.
  *
  * Each generated source step advances a different Articulating history even
  * when its exposed utterance head is unchanged. An observer seeing only that
@@ -752,6 +754,30 @@ export function derivePerformedHeadShadow(raw) {
     causalHeight: finiteKinematic.causalHeight,
     scope: "derived finite causal-diamond endpoint sequencing, not a physical metric or all Kinematic Space",
   });
+  // Lean's LSpace(W) is an original performed occurrence inhabiting a
+  // kinematic locus only when the occurrence belongs to the upper act's
+  // performed prefix. Here original Articulating is a finite constructor
+  // chain, so the precise source-admitted occurrence fiber over (a,b) is
+  // prefix indices [0..b]. Equal head Marks never merge occurrences.
+  const sourceHeadIds = freeze([
+    ...performed.trace.map(head => semanticId(head)),
+    ...generated.edges.map(edge => edge.head),
+  ]);
+  if (sourceHeadIds.length !== eventIds.length)
+    throw new TypeError("original utterance occurrence count lost its performed Articulating source");
+  const lspace = freeze({
+    kind: "signgraph.performedLocalLSpaceIncidence.v1",
+    sourceEventIds: eventIds,
+    sourceHeadIds,
+    loci: freeze(kinematicPoints.map((point, pointIndex) => freeze({
+      pointIndex,
+      occurrences: freeze(eventIds.slice(0, point.upperEventIndex + 1)
+        .map((occurrenceId, occurrenceIndex) => freeze({
+          occurrenceIndex, occurrenceId, headId: sourceHeadIds[occurrenceIndex],
+        }))),
+    }))),
+    scope: "finite source-performed incidence only; no new words, semantic identity, evidence charge or knowledge permission",
+  });
   if (image.atomic.length !== generated.edges.length ||
       image.sourceVertexCount !== generated.nodes.length)
     throw new TypeError("observed head image lost a native performed source occurrence");
@@ -790,6 +816,7 @@ export function derivePerformedHeadShadow(raw) {
     originalSourceSteps: generated.edges,
     originalSourceRoutes: generated.paths,
     kinematic,
+    lspace,
     observedHeads: image.observedVertices,
     observedAtomicSteps: image.atomic,
     observedTwoStepComposites: freeze(composable),
