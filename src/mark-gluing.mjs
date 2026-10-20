@@ -10,6 +10,7 @@ import { utterance, isUtterance, formalBoundaryOfUtterance, markRoleIncidenceOfU
 import { semanticId }
   from "@red-cup-engineering/semiotic-content-address";
 import { cellular2Complex } from "./cohomology.mjs";
+import { createGraph, observedTwoStepPaths } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import * as chain from "@red-cup-engineering/signchain/bilattice";
 
 const KIND="signgraph.markGeneratedCellGluing.v1";
@@ -680,4 +681,89 @@ export function composePerformedObservationRoutes(result,left,right) {
   if(!composite)
     throw new TypeError("source did not generate that composite observation route");
   return composite;
+}
+
+
+/**
+ * Project NATIVE performed Articulating routes through their already observed
+ * head Marks and calculate the exactly missing source path compositions.
+ *
+ * This is a finite Paracosm comparison made ONLY from the original SignCell
+ * re-attention source. It does not independently select observer equalities,
+ * a pre-Mark world, a quotient's proof, an actor, or an executable duty.
+ *
+ * Each generated source step advances a different Articulating history even
+ * when its exposed utterance head is unchanged. An observer seeing only that
+ * head finds composable loops. Metrologic computes their complete two-edge
+ * image; the original route composer alone licenses each source composite.
+ * Thus one image composition can exist while its exact source edge pair does
+ * not compose. This is neither a fictitious original arrow nor authority to
+ * execute the observational path.
+ */
+export function derivePerformedHeadShadow(raw) {
+  const generated = derivePerformedObservationRoutes(raw);
+  // Head is read FROM the original Mark-rooted performed source, not from a
+  // supplied "observer interpretation". The performed continuation reuses it.
+  const performed = traceOfArticulating(raw.articulating, { maxLayers: 16 });
+  const originHead = semanticId(performed.trace.at(-1));
+  const imageAt = new Map(generated.nodes.map((node, index) => [
+    node, index === 0 ? originHead : generated.edges[index - 1].head,
+  ]));
+  if (generated.edges.some(edge => edge.head !== originHead))
+    throw new TypeError("re-attention observation did not retain its original Mark-rooted head");
+  const source = createGraph();
+  for (const id of generated.nodes) source.addNode(id);
+  for (const edge of generated.edges) {
+    source.addEdge({
+      from: edge.from, to: edge.to, kind: "source-performed-step",
+      data: { step: edge.step, address: edge.address },
+    });
+  }
+  const image = observedTwoStepPaths(source, node => imageAt.get(node));
+  if (image.atomic.length !== generated.edges.length ||
+      image.sourceVertexCount !== generated.nodes.length)
+    throw new TypeError("observed head image lost a native performed source occurrence");
+  const originalRoutes = new Map(generated.paths.map(route => [
+    route.first + ":" + route.last, route,
+  ]));
+  const composable = image.composites.map(pair => {
+    const [leftIndex, rightIndex] = pair.sourceEdgeIndices;
+    const left = originalRoutes.get(leftIndex + ":" + (leftIndex + 1));
+    const right = originalRoutes.get(rightIndex + ":" + (rightIndex + 1));
+    // A shadow pair may have equal observed endpoints while its original
+    // source transitions are disjoint. Never call source composition then.
+    const licensed = pair.sourceComposable
+      ? composePerformedObservationRoutes(generated, left, right)
+      : null;
+    const exactEndpointRoute = generated.paths.find(route =>
+      route.from === pair.sourceFrom && route.to === pair.sourceTo);
+    return freeze({
+      sourceStepAddresses: freeze([generated.edges[leftIndex].address,
+        generated.edges[rightIndex].address]),
+      sourceEndpoints: freeze([pair.sourceFrom, ...pair.sourceVia, pair.sourceTo]),
+      observedHead: pair.observedVia,
+      observedFrom: pair.observedFrom,
+      observedTo: pair.observedTo,
+      sourceComposable: pair.sourceComposable,
+      licensedSourceComposite: licensed?.address ?? null,
+      originalEndpointRouteExists: exactEndpointRoute?.address ?? null,
+      ghostObservationOnly: pair.observationOnly,
+    });
+  });
+  return freeze({
+    kind: "signgraph.performedHeadObservationShadow.v1",
+    originalSourceId: generated.originalSourceId,
+    continuedSourceId: generated.continuedSourceId,
+    originalSourceNodes: generated.nodes,
+    originalSourceSteps: generated.edges,
+    originalSourceRoutes: generated.paths,
+    observedHeads: image.observedVertices,
+    observedAtomicSteps: image.atomic,
+    observedTwoStepComposites: freeze(composable),
+    originalCompositions: image.liftedCount,
+    ghostCompositions: image.observationOnlyCount,
+    observationalQuotient: generated.observationalQuotient,
+    sourceAuthority: "only original generated Articulating routes compose in the source",
+    observationAuthority: "none: head coincidence cannot authorize or prove a source arrow",
+  });
 }
