@@ -17,7 +17,7 @@
  */
 import { address, cell, cellSetAddress, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, sidesOf } from "@red-cup-engineering/signcell/cell";
 import { cacheableTokenFrame, extent, generalizations, tokenFrame, top } from "@red-cup-engineering/signcell/token-frame";
-import { retainedCarrier } from "@red-cup-engineering/semiotic-content-address";
+import { retainedCarrier, semanticId } from "@red-cup-engineering/semiotic-content-address";
 
 const INHERITED = "signgraph.inherited-tellings";
 const frozen = (values) => Object.freeze([...values]);
@@ -228,9 +228,21 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   if (offset > entries.length)
     throw new RangeError("signgraph claim query: page outside admitted source readings");
   const window = Object.freeze(entries.slice(offset, offset + limit));
+  // A cut of original cells is NOT itself the identity of its interpreted
+  // token frame: the declared specialization predicate determines which
+  // source relations generate inheritance. Bind BOTH to the query snapshot,
+  // so an actor cannot resume a page from a differently interpreted frame
+  // merely because both presentations happened to contain the same cells.
+  // Use the shared semantic content address, not local JSON/hash conventions.
+  const sourceCells = cellSetAddress(source.cells);
+  const snapshot = semanticId({
+    kind: "signgraph.token-frame-reading/v1",
+    sourceCells,
+    specializationPredicate: source.predicate,
+  });
   return Object.freeze({
     kind: "signgraph.inherited-telling-query", version: 1,
-    snapshot: cellSetAddress(source.cells),
+    snapshot, sourceCells,
     selection: retainedCarrier(selection),
     total: entries.length, offset, limit,
     next: offset + window.length < entries.length ? offset + window.length : null,
