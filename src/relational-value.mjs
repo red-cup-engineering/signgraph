@@ -259,7 +259,9 @@ export function relationalValuePredications(value, { resource, revision } = {}) 
     kind: "signgraph.relational-value-structural-derivation/v1",
     resource, revision, payload: payload.token,
   });
-  const sourceOccurrence = semanticId(["signgraph.relational-value-source/v1", resource, revision]);
+  // Include the actual canonical payload. A caller can reuse a revision label with
+  // incompatible bytes; doing so must not merge two source occurrences.
+  const sourceOccurrence = semanticId(["signgraph.relational-value-source/v1", resource, revision, payload.token]);
   const evidenced = { for: [witness] };
   const nodes = [], annotations = [], grounding = [];
   for (const term of vectorItems(nodeTerms)) {
