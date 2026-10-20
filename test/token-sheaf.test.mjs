@@ -271,3 +271,25 @@ test("paged source claims retain immutable original testimony across wire edits"
     predicate: "says", object: { text: "after" },
   }).total, 1);
 });
+
+test("page snapshots bind the measured specialization interpretation, not only an equal cell cut", () => {
+  const cells = [
+    cell("child", SPECIALIZES, "parent", { for: ["observed-hierarchy"] }),
+    cell("parent", "can", "answer-token-query", { for: ["source-author"] }),
+  ];
+  const inheritedFrame = tokenFrame(cells, { predicate: SPECIALIZES });
+  const independentFrame = tokenFrame(cells, { predicate: "other-specialization" });
+  const selection = { token: "child", predicate: "can", object: "answer-token-query" };
+  const inheritedPage = queryInheritedTellings(inheritedFrame, selection);
+  const independentPage = queryInheritedTellings(independentFrame, selection);
+  assert.equal(inheritedPage.total, 1);
+  assert.equal(independentPage.total, 0,
+    "changing the source-generator predicate changes the lawful answer");
+  assert.equal(inheritedPage.sourceCells, independentPage.sourceCells,
+    "both interpretations retain the same original source cell identity");
+  assert.notEqual(inheritedPage.snapshot, independentPage.snapshot,
+    "a query client must not reuse a page under a different frame law");
+  assert.equal(inheritedPage.snapshot,
+    queryInheritedTellings(inheritedFrame, selection).snapshot);
+  assert.match(inheritedPage.snapshot, /^ni:\/\/\/sha-256;/u);
+});
