@@ -895,7 +895,7 @@ export function readPerformedSemioverseFiber(shadow, pointIndex) {
     pointIndex, point,
     entries: freeze(admitted),
     source: semi.continuedSourceId,
-    admission: "readout of source-paired utterances at a generated kinematic upper prefix",
+    scope: "projection of sourced utterance pairs at the kinematic upper prefix; a serialized shadow is not itself an authenticated source witness",
   });
 }
 
