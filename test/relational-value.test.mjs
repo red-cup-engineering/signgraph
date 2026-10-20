@@ -4,8 +4,9 @@ import { decodeSemantic, semanticBytes, semanticId } from "@red-cup-engineering/
 
 import { makeNiUri } from "@red-cup-engineering/uri-services-section/ni-uri";
 import { encodeCanonical } from "@red-cup-engineering/cbor-services-section";
+import { markResource, markBytes, bitAt, bitWindow } from "@red-cup-engineering/computer-data-engineering-services-section/digital-mark-space";
 import { flowNetworkOfCells } from "../src/cell-graph.mjs";
-import { address as cellAddress, knowledgeReading } from "@red-cup-engineering/signcell/cell";
+import { address as cellAddress, cell as predicationCell, knowledgeReading } from "@red-cup-engineering/signcell/cell";
 import { typedListItems, typedListTerm } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation/json-codec";
 import {
   admitRelationalValuePayload,
@@ -178,4 +179,55 @@ test("opaque hostile-looking JSON field names remain data on encode, decode and 
   assert.throws(() => encodeRelationalValue(nominal),
     /field names collide after NFC normalization/u,
     "distinct original source keys cannot be silently merged by Unicode normalization");
+});
+
+
+test("arbitrary source bytes retain bit coordinates and a separate explicitly decoded relational view", () => {
+  const rawA = new TextEncoder().encode('{"term":"Citizen","state":"candidate"}');
+  const rawB = new TextEncoder().encode('{ "state" : "candidate", "term" : "Citizen" }\n');
+  const a = markResource(rawA, { mediaType: "application/json", source: { registrar: "test", revision: "1" } });
+  const b = markResource(rawB, { mediaType: "application/json", source: { registrar: "test", revision: "2" } });
+  assert.notEqual(a.address, b.address, "exact original bytes retain two distinguishable source resources");
+  rawA.fill(0);
+  assert.equal(new TextDecoder().decode(markBytes(a)), '{"term":"Citizen","state":"candidate"}',
+    "source transport cannot mutate the original admitted resource");
+  const bits = bitWindow(a, { offset: 0, limit: 16 });
+  assert.equal(bits.kind, "lspace.mark-window");
+  assert.equal(bits.bits.length, 16);
+  assert.equal(bits.next, 16);
+  assert.deepEqual(bits.bits.map(at => at.cell), Array.from({ length: 16 }, (_, bit) => [
+    a.address, bit, bitAt(a, bit).value,
+  ]));
+  assert.deepEqual(bits.bits.slice(0, 8).map(at => at.value),
+    [0, 1, 1, 1, 1, 0, 1, 1], "first byte is the literal '{' with MSB-first coordinates");
+  const sourceBit = bits.bits[0];
+  const toldBit = predicationCell(sourceBit.address, sourceBit.bit, sourceBit.value, {
+    for: [{ kind: "test.raw-bit-source-measurement", bitId: sourceBit.id, source: a.address }],
+  });
+  assert.equal(toldBit.subject, a.address);
+  assert.equal(toldBit.predicate, 0);
+  assert.equal(toldBit.object, 0);
+  assert.equal(knowledgeReading(toldBit), "potential");
+  assert.notEqual(cellAddress(toldBit), sourceBit.id,
+    "Data's array-coordinate identity and SignCell's typed record-coordinate identity differ");
+
+  // JSON.parse is a selected application-level interpretation of already-admitted
+  // raw bytes here, NOT a default interpretation assigned by the byte substrate.
+  const decodedA = JSON.parse(new TextDecoder().decode(markBytes(a)));
+  const decodedB = JSON.parse(new TextDecoder().decode(markBytes(b)));
+  assert.deepEqual(decodedA, decodedB);
+  const pa = relationalValuePredications(decodedA, { resource: a.address, revision: "json-codec:1" });
+  const pb = relationalValuePredications(decodedB, { resource: b.address, revision: "json-codec:1" });
+  assert.equal(pa.payload, pb.payload,
+    "a selected JSON interpretation yields equal canonical structured values despite different source bytes");
+  assert.notEqual(pa.source.occurrence, pb.source.occurrence,
+    "two raw sources still supply independently distinguishable occurrences");
+  assert.equal(cellAddress(pa.edges[0]), cellAddress(pb.edges[0]),
+    "shared structural predication identity does not require one raw-byte address");
+  assert.notDeepEqual(pa.edges[0].for, pb.edges[0].for,
+    "a same-SPO coordinate does not erase independent underlying source representations");
+  assert.ok(!pa.cells.some(c => c.predicate === "authorized" || c.predicate === "skos:exactMatch"),
+    "structured decoding never fabricates rights or lexical equivalence");
+  assert.throws(() => bitAt({ ...a }, 0), /admitted/,
+    "an asserted source shape without the original held bytes is not an admitted bit source");
 });
