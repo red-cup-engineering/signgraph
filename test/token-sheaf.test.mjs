@@ -293,3 +293,16 @@ test("page snapshots bind the measured specialization interpretation, not only a
     queryInheritedTellings(inheritedFrame, selection).snapshot);
   assert.match(inheritedPage.snapshot, /^ni:\/\/\/sha-256;/u);
 });
+
+test("a deeply immutable transported frame may omit the canonical default predicate", () => {
+  const generated = tokenFrame([
+    cell("child", SPECIALIZES, "parent", { for: ["source"] }),
+    cell("parent", "knows", "term", { for: ["witness"] }),
+  ]);
+  const wire = Object.freeze({ kind: generated.kind, cells: generated.cells });
+  const original = queryInheritedTellings(generated, { token: "child", predicate: "knows" });
+  const restored = queryInheritedTellings(wire, { token: "child", predicate: "knows" });
+  assert.deepEqual(restored.entries, original.entries);
+  assert.equal(restored.snapshot, original.snapshot,
+    "omitting the declared default must not change the semantic page identity");
+});
