@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import { utterance, articulatingUtter, articulatingPair } from "@red-cup-engineering/signcell/utterance";
 import {
   derivePerformedHeadShadow, derivePerformedObservationRoutes,
-  composePerformedObservationRoutes,
+  composePerformedObservationRoutes, readPerformedSemioverseFiber,
+  transportPerformedSemioverseClaim,
 } from "../src/mark-gluing.mjs";
 import { executeOperation, operations } from "../src/operations.mjs";
 
@@ -143,4 +144,78 @@ test("the SAME performed Articulating generates kinematic diamond points by endp
   assert.equal(K.sequencing.some(edge =>
     edge.parent === index(1, 2) && edge.child === index(0, 4)), false);
   assert.equal(K.scope.includes("not a physical metric"), true);
+});
+
+
+test("finite Semioverse draws all ordered occurrence pairs from the existing SignCell generator", () => {
+  const view = derivePerformedHeadShadow({ articulating: performedSource(), steps: 3 });
+  const K = view.kinematic, L = view.lspace, S = view.semioverse;
+  assert.equal(K.sourceEventIds.length, 5);
+  assert.equal(S.claimEntries.length, 25);
+  assert.equal(S.loci.length, K.points.length);
+  assert.deepEqual(S.sourceEventIds, L.sourceEventIds);
+  assert.equal(S.continuedSourceId, view.continuedSourceId);
+  assert.deepEqual([...new Set(S.claimEntries.map(entry => entry.claimIndex))].length, 25);
+  const last = readPerformedSemioverseFiber(view, K.points.length - 1);
+  assert.equal(last.entries.length, 25);
+  assert.equal(last.point.upperEventIndex, 4);
+  const first = readPerformedSemioverseFiber(view, 0);
+  assert.equal(first.entries.length, 4);
+  assert.equal(first.point.upperEventIndex, 1);
+  assert.equal(S.loci[0].admittedClaimCount, first.entries.length);
+  const pair = S.claimEntries.find(entry =>
+    entry.firstOccurrenceIndex === 1 && entry.secondOccurrenceIndex === 2);
+  const repeated = S.claimEntries.find(entry =>
+    entry.firstOccurrenceIndex === 2 && entry.secondOccurrenceIndex === 1);
+  assert.notEqual(pair.claimIndex, repeated.claimIndex);
+  assert.equal(pair.firstOccurrenceId, L.sourceEventIds[1]);
+  assert.equal(pair.secondOccurrenceId, L.sourceEventIds[2]);
+  assert.equal(typeof pair.claimAddress, "string");
+});
+
+test("Semioverse source-paired claims lift forward only along original K(C) endpoint sequencing", () => {
+  const view = derivePerformedHeadShadow({ articulating: performedSource(), steps: 3 });
+  const p = view.kinematic.points.findIndex(point =>
+    point.lowerEventIndex === 0 && point.upperEventIndex === 1);
+  const q = view.kinematic.points.findIndex(point =>
+    point.lowerEventIndex === 1 && point.upperEventIndex === 2);
+  const claim = view.semioverse.claimEntries.find(entry =>
+    entry.firstOccurrenceIndex === 0 && entry.secondOccurrenceIndex === 1);
+  const moved = transportPerformedSemioverseClaim(view, p, q, claim.claimIndex);
+  assert.equal(moved.fromPointIndex, p);
+  assert.equal(moved.toPointIndex, q);
+  assert.equal(moved.claimIndex, claim.claimIndex);
+  assert.equal(moved.claimAddress, claim.claimAddress);
+  assert.equal(moved.firstOccurrenceId, claim.firstOccurrenceId);
+  assert.equal(moved.secondOccurrenceId, claim.secondOccurrenceId);
+  const identity = transportPerformedSemioverseClaim(view, p, p, claim.claimIndex);
+  assert.equal(identity.claimAddress, claim.claimAddress);
+  assert.throws(() => transportPerformedSemioverseClaim(view, q, p, claim.claimIndex),
+    /kinematic endpoint sequencing/);
+  const future = view.semioverse.claimEntries.find(entry =>
+    entry.firstOccurrenceIndex === 2 && entry.secondOccurrenceIndex === 2);
+  assert.throws(() => transportPerformedSemioverseClaim(view, p, q, future.claimIndex),
+    /cannot backdate/);
+});
+
+test("equal head presentations do not collapse repeated performed Semioverse occurrences", () => {
+  const view = derivePerformedHeadShadow({ articulating: performedSource(), steps: 3 });
+  const E = view.semioverse.claimEntries;
+  const first = E.find(x => x.firstOccurrenceIndex === 2 && x.secondOccurrenceIndex === 2);
+  const later = E.find(x => x.firstOccurrenceIndex === 3 && x.secondOccurrenceIndex === 3);
+  assert.equal(first.claimAddress, later.claimAddress,
+    "observationally identical claims share a presentation address");
+  assert.notEqual(first.firstOccurrenceId, later.firstOccurrenceId,
+    "the producing performances are distinct original causal occurrences");
+  assert.notEqual(first.claimIndex, later.claimIndex);
+  assert.equal(view.semioverse.scope.includes("not all FOAM evidence"), true);
+});
+
+test("an index cannot fabricate a kinematic locus or Semioverse source claim", () => {
+  const view = derivePerformedHeadShadow({ articulating: performedSource(), steps: 2 });
+  const n = view.kinematic.points.length;
+  assert.throws(() => readPerformedSemioverseFiber(view, n), /existing kinematic point/);
+  assert.throws(() => readPerformedSemioverseFiber(view, -1), /existing kinematic point/);
+  assert.throws(() => transportPerformedSemioverseClaim(view, 0, 0, 10000),
+    /genuine original claim occurrence/);
 });
