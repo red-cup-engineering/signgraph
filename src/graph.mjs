@@ -114,7 +114,7 @@ export function channelResourceIncidence(graph, {
     throw new TypeError("channel resource incidence requires declared contains/reports/resource/from/to relation roles");
   for (const [role, id] of Object.entries(relations))
     if (typeof id !== "string" || !id.trim())
-      throw new TypeError(\`channel resource incidence: relation \${role} must be a nonempty predicate\`);
+      throw new TypeError(`channel resource incidence: relation ${role} must be a nonempty predicate`);
   if (new Set(Object.values(relations)).size !== Object.values(relations).length)
     throw new TypeError("channel resource incidence: distinct roles require distinct predicates");
   if (![maxMessages, maxExchanges].every(n => Number.isSafeInteger(n) && n > 0 && n <= 4096))
@@ -122,7 +122,7 @@ export function channelResourceIncidence(graph, {
   const received = receiveGraph(graph);
   const declarations = new Map(received.relations.map(relation => [relation.id, relation]));
   for (const id of Object.values(relations))
-    if (!declarations.has(id)) throw new TypeError(\`channel resource incidence: undeclared predicate \${id}\`);
+    if (!declarations.has(id)) throw new TypeError(`channel resource incidence: undeclared predicate ${id}`);
   // An id-only or foreign reference must not turn a failed source query into
   // a plausible empty channel. Original SignCell member admission applies.
   querySignGraph(received, channel);
