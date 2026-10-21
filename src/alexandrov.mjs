@@ -128,3 +128,70 @@ export function projectSignGraphAlexandrov(source, options) {
     topologicalClosure, witnessedRoute,
   });
 }
+
+
+/**
+ * Compare two independent source-qualified revisions on EXACTLY the same
+ * addressed actor carrier. This is a mathematical comparison of two graph
+ * readings, NOT evidence that one happened later, revoked authority, or
+ * delivered any ActivityPub message.
+ *
+ * The identity map source -> target is continuous iff source reachability
+ * implies target reachability. If this fails, an originally witnessed route
+ * gives a concrete obstruction. If both directions hold the Alex topologies
+ * coincide, even if individual direct edge witnesses have changed.
+ *
+ * Counterexample routes retain original EAVT source addresses; no synthetic
+ * transitive "witness edge" is admitted.
+ */
+export function compareSignGraphAlexandrov(source, target, options) {
+  const left = projectSignGraphAlexandrov(source, options);
+  const right = projectSignGraphAlexandrov(target, options);
+  if (left.points.length !== right.points.length ||
+      left.points.some((point, i) =>
+        point.id !== right.points[i].id || point.type !== right.points[i].type))
+    invalid('identity comparison requires exactly the same source-admitted typed points; use an independently qualified map for changed actors');
+
+  let lostComparabilities = 0, gainedComparabilities = 0;
+  const lostExamples = [], gainedExamples = [];
+  const MAX_EXAMPLES = 8;
+  for (const from of left.points) for (const to of left.points) {
+    if (from.id === to.id) continue;
+    const prior = left.specializes(from, to);
+    const next = right.specializes(from, to);
+    if (prior && !next) {
+      lostComparabilities += 1;
+      if (lostExamples.length < MAX_EXAMPLES)
+        lostExamples.push(Object.freeze({
+          from, to, originalRoute: left.witnessedRoute(from, to),
+        }));
+    } else if (!prior && next) {
+      gainedComparabilities += 1;
+      if (gainedExamples.length < MAX_EXAMPLES)
+        gainedExamples.push(Object.freeze({
+          from, to, newRoute: right.witnessedRoute(from, to),
+        }));
+    }
+  }
+  const beforeEdges = new Set(left.directEdges.map(edge => edge.id));
+  const afterEdges = new Set(right.directEdges.map(edge => edge.id));
+  const lostDirectWitnesses = left.directEdges.filter(edge => !afterEdges.has(edge.id));
+  const gainedDirectWitnesses = right.directEdges.filter(edge => !beforeEdges.has(edge.id));
+  return Object.freeze({
+    kind: 'signgraph.alexandrov.identity-comparison.v1',
+    sourceGraph: left.graph,
+    targetGraph: right.graph,
+    nodeType: left.nodeType,
+    predicate: left.predicate,
+    comparedPoints: left.points.length,
+    sourceToTargetContinuous: lostComparabilities === 0,
+    targetToSourceContinuous: gainedComparabilities === 0,
+    identityHomeomorphism: lostComparabilities === 0 && gainedComparabilities === 0,
+    lostComparabilities,
+    gainedComparabilities,
+    lostExamples: Object.freeze(lostExamples),
+    gainedExamples: Object.freeze(gainedExamples),
+    lostDirectWitnesses: Object.freeze(lostDirectWitnesses),
+    gainedDirectWitnesses: Object.freeze(gainedDirectWitnesses),
+  });
+}
