@@ -147,7 +147,7 @@ const flowRoles = Object.freeze({
   from:"from", to:"to", quantity:"quantity", settlement:"claimed-receipt",
   inside:"inside",
 });
-function resourceChannelFixture({ ambiguous = false, conflictingQuantity = false, omitQuantity = false, omitMembership = false, nested = false, cyclic = false, divided = false } = {}) {
+function resourceChannelFixture({ ambiguous = false, conflictingQuantity = false, repeatedQuantityWitness = false, omitQuantity = false, omitMembership = false, nested = false, cyclic = false, divided = false } = {}) {
   const labels = ["channel","message-1","message-2","exchange-1","exchange-2",
     "water","energy","alice","bob","cell-a","cell-b","quantity-1","quantity-2",
     "receipt","witness-1","witness-2","other-channel","other-message","third","tissue-1","tissue-2"];
@@ -167,6 +167,7 @@ function resourceChannelFixture({ ambiguous = false, conflictingQuantity = false
     edge("exchange-1","from","alice","witness-2"),
     edge("exchange-1","to","bob"),
     edge("exchange-1","quantity","quantity-1"),
+    ...(repeatedQuantityWitness ? [edge("exchange-1","quantity","quantity-1","witness-2")] : []),
     edge("exchange-1","settlement","receipt"),
     edge("exchange-2","resource","energy"),
     edge("exchange-2","from","bob"),
@@ -261,6 +262,21 @@ test("contested quantities obstruct only their source exchange and retain all or
   assert.deepEqual(channelResourceIncidence(JSON.parse(JSON.stringify(graph)),{
     channel:at.channel,relations:flowRoles,
   }),reading,"wire roundtrip must preserve the separated evidence and obstruction");
+});
+
+test("parallel witnesses of one quantity identity do not fabricate a conflict or second transfer",()=>{
+  const {graph,at}=resourceChannelFixture({repeatedQuantityWitness:true});
+  const reading=channelResourceIncidence(graph,{channel:at.channel,relations:flowRoles});
+  assert.equal(reading.obstructions.length,0);
+  assert.equal(reading.transfers.length,2);
+  const water=reading.transfers.find(arc=>arc.exchange.id===at["exchange-1"].id);
+  assert.ok(water);
+  assert.equal(water.evidence.quantity.length,1,"same source quantity does not become two candidate amounts");
+  assert.equal(water.evidence.quantity[0].edges.length,2,
+    "distinct original witnesses of that one quantity must not be discarded");
+  assert.ok(water.evidence.quantity[0].edges.every(edge=>
+    graph.edges.some(original=>original.id===edge.id)));
+  assert.equal(water.reportedBy.length,2,"two reports still identify one source exchange");
 });
 
 test("channel-resource reading re-admits original graph and refuses forged or unlicensed coordinates", () => {
