@@ -40,7 +40,7 @@ behavior-factor = {
 }
 
 hierarchical-circuit = {
-  profile: "org.emsenn.rmn.hierarchical-circuit.v3",
+  profile: "org.emsenn.sen.hierarchical-circuit.v3",
   law: ni,
   ports: [* port],
   instances: [* instance],
@@ -51,7 +51,7 @@ hierarchical-circuit = {
 circuit-membrane = { account: caip10, authority: ni, custody: ni, territory: ni }
 assembly-placement = { address: [* tstr], membrane: circuit-membrane }
 circuit-assembly = {
-  profile: "org.emsenn.rmn.circuit-assembly.v1",
+  profile: "org.emsenn.sen.circuit-assembly.v1",
   circuit: ni,
   placements: [+ assembly-placement]
 }
