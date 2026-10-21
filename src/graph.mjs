@@ -377,7 +377,10 @@ export function channelTransportPossibilities(graph, {
     if (value.observedAt !== null && value.expiresAt !== null &&
         Date.parse(value.observedAt) > Date.parse(value.expiresAt))
       errors.push(failure(role,"inverted-validity"));
-    if (value.expiresAt !== null && observedAt === null)
+    // A dated source report, even without an explicit expiry, cannot be
+    // promoted to a presently eligible option without a qualified read time.
+    // This applies to source-reported capacity and optional source-reported cost.
+    if ((value.observedAt !== null || value.expiresAt !== null) && observedAt === null)
       errors.push(failure(role,"clock-unavailable"));
     if (observedAt !== null) {
       if (value.observedAt !== null && Date.parse(value.observedAt) > Date.parse(observedAt))
