@@ -13,9 +13,11 @@ The authoritative mathematical frontier for the native reading is
 The FEATHER-G wire shape is documented at the
 [reference implementation](https://github.com/benedekrozemberczki/FEATHER):
 `{"0": [[0, 1], [1, 2]], "1": [[0, 1]]}`. Both graph and vertex IDs are
-consecutive, starting at zero. The reference's NetworkX graph input loses
-self-loops, edge orientation and duplicate undirected edges, so the codec
-rejects ambiguous/unsupported inputs instead of silently coalescing them.
+consecutive, starting at zero. The reference's NetworkX graph input drops edge orientation and coalesces
+duplicate undirected edges; it can represent loops, but **this conservative
+undirected-simple codec** declines loop-containing graphs until a separate
+loop-preserving projection is specified. It refuses ambiguities rather than
+silently coalescing them.
 
 ## Import external FEATHER-G graphs as *structural SignGraph readings*
 
