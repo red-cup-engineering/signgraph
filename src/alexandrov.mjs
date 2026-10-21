@@ -85,6 +85,31 @@ export function projectSignGraphAlexandrov(source, options) {
     const subset = new Set(members.map(pointId));
     return [...subset].every(id => [...futureIds.get(id)].every(other => subset.has(other)));
   };
+  const readSubset = members => {
+    if (!Array.isArray(members)) invalid('members must be an array of typed references');
+    return new Set(members.map(pointId));
+  };
+  const asPoints = members => frozen([...members].map(id => byId.get(id)).sort(sortIds));
+  // Up S = union of the principal upper neighborhoods at each source point.
+  // This is an OPEN HULL (not topological closure; closure is the DOWN hull).
+  const upperHull = members => {
+    const selected = readSubset(members), union = new Set();
+    for (const id of selected) for (const later of futureIds.get(id)) union.add(later);
+    return asPoints(union);
+  };
+  // Box T = {x | every reachable y is in T}: the largest open subset of T.
+  // Up S subset T iff S subset Box T (directed Post/Box adjunction).
+  const futureNecessary = members => {
+    const selected = readSubset(members);
+    return asPoints(new Set(points.filter(point =>
+      [...futureIds.get(point.id)].every(id => selected.has(id))).map(point => point.id)));
+  };
+  // Topological closure of S, unlike upperHull, is the causal DOWN-set.
+  const topologicalClosure = members => {
+    const selected = readSubset(members);
+    return asPoints(new Set(points.filter(point =>
+      [...futureIds.get(point.id)].some(id => selected.has(id))).map(point => point.id)));
+  };
   const witnessedRoute = (from, to) => {
     const x = byId.get(pointId(from)), y = byId.get(pointId(to));
     // Original route readmission and edge witnesses, not an inferred signed
@@ -99,6 +124,7 @@ export function projectSignGraphAlexandrov(source, options) {
     nodeType, predicate,
     points, directEdges, basis, components,
     t0: components.every(component => component.length === 1),
-    principalOpen, specializes, isOpen, witnessedRoute,
+    principalOpen, specializes, isOpen, upperHull, futureNecessary,
+    topologicalClosure, witnessedRoute,
   });
 }
