@@ -460,11 +460,16 @@ const optionRoles = Object.freeze({offers:"offers",resource:"resource",from:"fro
 const atTime = "2026-10-21T15:00:00.000Z";
 function transportFixture({opposed=false,revoked=false,sharedCapMissing=false,
   sharedCapInvalidUnit=false,sharedCapZero=false,sharedCapExpired=false,
-  sharedCapFuture=false,dualCapacity=false,foreignResource=false,
-  noUses=false,costZero=false,noCompartments=false,ambiguousCompartments=false}={}) {
+  sharedCapFuture=false,sharedCapNoExpiry=false,sharedCapUndated=false,
+  dualCapacity=false,foreignResource=false,noUses=false,costZero=false,
+  priceDated=false,noCompartments=false,ambiguousCompartments=false}={}) {
   const shared = {atoms:sharedCapZero?"0":"5",unit:sharedCapInvalidUnit?"":"liters",
-    observedAt:sharedCapFuture?"2026-10-22T00:00:00.000Z":"2026-10-20T00:00:00.000Z",
-    expiresAt:sharedCapExpired?"2026-10-20T12:00:00.000Z":"2026-10-22T00:00:00.000Z"};
+    ...(!sharedCapUndated ? {
+      observedAt:sharedCapFuture?"2026-10-22T00:00:00.000Z":"2026-10-20T00:00:00.000Z",
+    } : {}),
+    ...(!sharedCapNoExpiry && !sharedCapUndated ? {
+      expiresAt:sharedCapExpired?"2026-10-20T12:00:00.000Z":"2026-10-22T00:00:00.000Z",
+    } : {})};
   const items = {
     channel:["channel","channel:source"],a:["option","unused:option:a"],b:["option","unused:option:b"],
     shared:["pool","shared:bottleneck"],poolA:["pool","branch:a"],poolB:["pool","branch:b"],
@@ -473,7 +478,8 @@ function transportFixture({opposed=false,revoked=false,sharedCapMissing=false,
     cellA:["compartment","cell:A"],cellB:["compartment","cell:B"],cellC:["compartment","cell:C"],
     capShared:["quantity",shared],capAlternative:["quantity",{atoms:"9",unit:"liters"}],
     capA:["quantity",{atoms:"5",unit:"liters"}],capB:["quantity",{atoms:"5",unit:"liters"}],
-    price:["quantity",{atoms:costZero?"0":"1",unit:"credits"}],
+    price:["quantity",{atoms:costZero?"0":"1",unit:"credits",
+      ...(priceDated ? {observedAt:"2026-10-20T00:00:00.000Z"} : {})}],
     adversary:["adverse","counter-testimony"],revocation:["adverse","withdrawal testimony"],
     message:["message","reported-message:1"],exchange:["exchange","reported-exchange:1"],
     witnessA:["witness","source:one"],witnessB:["witness","source:two"],
@@ -602,6 +608,32 @@ test("expired, future or unclocked source claims cannot impersonate presently ad
   assert.equal(clockUnknown.possibilities.length,0);
   assert.ok(clockUnknown.obstructions.every(o=>o.failures.some(x=>x.kind==="clock-unavailable")));
   assert.throws(()=>readOptions(f,{observedAt:"2026-10-21T15:00:00-05:00"}),/UTC instant/);
+});
+
+test("dated capacity and dated cost without expiry refuse clockless evaluation",()=>{
+  // Previous provider accepted an October 20 reported capacity as presently
+  // eligible with observedAt:null merely because no expiresAt was declared.
+  const capacity = transportFixture({sharedCapNoExpiry:true});
+  const noClock = readOptions(capacity,{observedAt:null});
+  assert.equal(noClock.possibilities.length,0);
+  assert.equal(noClock.obstructions.length,2);
+  assert.ok(noClock.obstructions.every(o=>o.failures.some(f=>
+    f.role==="capacity" && f.kind==="clock-unavailable")));
+  const withClock = readOptions(capacity);
+  assert.equal(withClock.possibilities.length,2);
+  assert.equal(withClock.capacitySources.find(s=>s.source.id===capacity.at.shared.id)
+    .capacity.expiresAt,null,"a missing expiry remains missing, not fabricated");
+
+  // Make all capacity claims timeless to isolate an otherwise unused dated
+  // cost: the same source-clock law must apply without inferring payment.
+  const cost = transportFixture({sharedCapUndated:true,priceDated:true});
+  const unqualifiedCost = readOptions(cost,{observedAt:null});
+  assert.equal(unqualifiedCost.possibilities.length,1,
+    "only the route with the dated cost must refuse");
+  assert.equal(unqualifiedCost.obstructions.length,1);
+  assert.ok(unqualifiedCost.obstructions[0].failures.some(f=>
+    f.role==="cost" && f.kind==="clock-unavailable"));
+  assert.equal(readOptions(cost).possibilities.length,2);
 });
 
 test("shared-bottleneck experiment rejects 15 false independent-route admissions across 49 demand pairs",()=>{
