@@ -100,7 +100,18 @@ reference baselines are SQLite **3.54.1** (2026-10-16) and CouchDB
 **3.5.3** (2026-10-12), selected from those products' primary sources.
 
 SignGraph owns source-qualified predication/query geometry and the identity
-of original relation routes. The existing
+of original relation routes. Its actual downstream flat-file database substrate
+already exists: the original
+[SEAVT store](https://github.com/red-cup-engineering/semiotic-eavt-services-section/blob/main/content/text/documents/specifications/store.md)
+holds NI-addressed immutable JSONL records, named heads, day logs and causal
+links with existing `put/get/has/walk/extend/heads/pull` operations. Its
+source-owned design requires **formula-derivable locations rather than
+load-bearing hot/cold indexes**, and currently supports strict individual
+head durability, not general SQL multi-record transactions; its causal-head
+peer exchange is distinct from CouchDB HTTP/MVCC replication. The actual
+cross-owner receiving Work is [SEAVT #17](https://github.com/red-cup-engineering/semiotic-eavt-services-section/issues/17).
+
+The existing
 [proof-path-structuration-service](https://github.com/red-cup-engineering/proof-path-structuration-service)
 derives canonical relative POSIX paths from original generator witnesses, and
 [proof-pathing-services-section](https://github.com/red-cup-engineering/proof-pathing-services-section)
