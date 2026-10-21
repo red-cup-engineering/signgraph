@@ -147,10 +147,10 @@ const flowRoles = Object.freeze({
   from:"from", to:"to", quantity:"quantity", settlement:"claimed-receipt",
   inside:"inside",
 });
-function resourceChannelFixture({ ambiguous = false, omitQuantity = false, omitMembership = false } = {}) {
+function resourceChannelFixture({ ambiguous = false, omitQuantity = false, omitMembership = false, nested = false, cyclic = false, divided = false } = {}) {
   const labels = ["channel","message-1","message-2","exchange-1","exchange-2",
     "water","energy","alice","bob","cell-a","cell-b","quantity-1","quantity-2",
-    "receipt","witness-1","witness-2","other-channel","other-message","third"];
+    "receipt","witness-1","witness-2","other-channel","other-message","third","tissue-1","tissue-2"];
   const cells = labels.map(text => accepted(createTypedMark(t,text)));
   const at = Object.fromEntries(labels.map((key,i) => [key,referenceOf(cells[i])]));
   const edge = (from,predicate,to,witness="witness-1") => ({
@@ -175,6 +175,11 @@ function resourceChannelFixture({ ambiguous = false, omitQuantity = false, omitM
     ...(!omitMembership ? [
       edge("alice","inside","cell-a"),edge("bob","inside","cell-b"),
     ] : []),
+    ...(nested ? [
+      edge("cell-a","inside","tissue-1"),edge("cell-b","inside","tissue-1"),
+    ] : []),
+    ...(cyclic ? [edge("tissue-1","inside","cell-a")] : []),
+    ...(divided ? [edge("cell-a","inside","tissue-2")] : []),
     edge("other-channel","contains","other-message"),
     ...(ambiguous ? [edge("exchange-2","from","third")] : []),
   ];
@@ -272,6 +277,53 @@ test("channel-resource reading re-admits original graph and refuses forged or un
     relations:flowRoles}),/channel type/);
 });
 
+
+
+test("multicellular lineage preserves witnessed local crossings and common outer compartments", () => {
+  const {graph,at}=resourceChannelFixture({nested:true});
+  const result=channelResourceIncidence(graph,{
+    channel:at.channel,relations:flowRoles,maxContainmentDepth:2,
+  });
+  assert.equal(result.obstructions.length,0);
+  assert.equal(result.transfers.length,2);
+  const water=result.transfers.find(x=>x.resource.id===at.water.id);
+  assert.equal(water.compartmentLevels[0].depth,1);
+  assert.equal(water.compartmentLevels[0].crosses,true);
+  assert.equal(water.compartmentLevels[1].crosses,false);
+  assert.equal(water.compartmentLevels[1].from.id,at["tissue-1"].id);
+  assert.equal(water.compartmentLevels[1].to.id,at["tissue-1"].id);
+  assert.equal(water.sourceLineage.levels.length,2);
+  assert.equal(water.sourceLineage.levels[1].edges.length,1);
+  assert.equal(water.sourceLineage.stop,"depth-limit");
+  assert.equal(water.standing,"witnessed-graph-incidence-only");
+  assert.ok(water.compartmentLevels[1].sourceEvidence.every(edge=>graph.edges.some(original=>original.id===edge.id)));
+});
+
+test("uncertain ancestors, plural parentage and cycles are not fabricated geometry",()=>{
+  const simple=resourceChannelFixture();
+  const open=channelResourceIncidence(simple.graph,{
+    channel:simple.at.channel,relations:flowRoles,maxContainmentDepth:2,
+  });
+  assert.equal(open.obstructions.length,0);
+  assert.ok(open.transfers.every(x=>x.compartmentLevels[1].crosses===null));
+  assert.ok(open.transfers.every(x=>x.sourceLineage.stop==="unwitnessed-parent"));
+  const divided=resourceChannelFixture({nested:true,divided:true});
+  const multiple=channelResourceIncidence(divided.graph,{
+    channel:divided.at.channel,relations:flowRoles,maxContainmentDepth:2,
+  });
+  assert.equal(multiple.transfers.length,0);
+  assert.ok(multiple.obstructions.every(x=>x.failures.some(f=>f.role==="originLineage"||f.role==="destinationLineage")));
+  assert.ok(multiple.obstructions.every(x=>x.failures.some(f=>f.kind==="ambiguous")));
+  const cycle=resourceChannelFixture({nested:true,cyclic:true});
+  const blocked=channelResourceIncidence(cycle.graph,{
+    channel:cycle.at.channel,relations:flowRoles,maxContainmentDepth:3,
+  });
+  assert.equal(blocked.transfers.length,0);
+  assert.ok(blocked.obstructions.every(x=>x.failures.some(f=>f.kind==="cycle")));
+  assert.throws(()=>channelResourceIncidence(cycle.graph,{
+    channel:cycle.at.channel,relations:flowRoles,maxContainmentDepth:9,
+  }),/containment depth/);
+});
 
 test("typed Resource Things specialize channels, messages, exchanges and stock without role confusion", () => {
   // This fixture uses the ORIGINAL SignCell type system, not a new Graph/Craft
