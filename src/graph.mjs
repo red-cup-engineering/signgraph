@@ -287,3 +287,171 @@ export function channelResourceIncidence(graph, {
     settlement:"not-authenticated",
   });
 }
+
+/**
+ * Offered, potentially UNUSED transport topology, distinct from performed
+ * Message -> Exchange incidence.  A source-owned Channel offers an Option;
+ * the Option witnesses resource, endpoints and one-or-more capacity sources;
+ * each capacity source independently witnesses a resource and an exact
+ * Quantity mark. Several Options may use the SAME capacity source. The
+ * consumer must aggregate demands by that original source identity, not
+ * treat every route as independently endowed with that capacity.
+ *
+ * This is a read-only graph projection, never organizational competence,
+ * an available/reserved balance, an Act, a settlement, or a route optimizer.
+ * Negative testimony is retained, not voted away. No new graph or ledger.
+ */
+export function channelTransportPossibilities(graph, {
+  channel, relations, quantityType, observedAt = null,
+  maxOptions = 256, maxSources = 1024, maxEdges = 16384,
+} = {}) {
+  const mandatory = ["offers", "resource", "from", "to", "uses", "capacityResource", "capacity"];
+  const optional = ["cost", "opposes", "revokes"];
+  if (!relations || typeof relations !== "object" || Array.isArray(relations) ||
+      mandatory.some(role => !Object.hasOwn(relations, role)) ||
+      Object.keys(relations).some(role => ![...mandatory, ...optional].includes(role)) ||
+      Object.values(relations).some(id => typeof id !== "string" || !id.trim()) ||
+      new Set(Object.values(relations)).size !== Object.values(relations).length)
+    throw new TypeError("transport possibilities require distinct, declared offer/resource/endpoint/capacity roles");
+  if (typeof quantityType !== "string" || !quantityType.trim())
+    throw new TypeError("transport possibilities require a declared original Quantity type");
+  if (![maxOptions, maxSources, maxEdges].every(value =>
+      Number.isSafeInteger(value) && value > 0 && value <= 131072))
+    throw new RangeError("transport possibilities require finite positive bounds");
+  if (maxOptions > 4096 || maxSources > 4096)
+    throw new RangeError("transport possibilities allow at most 4096 options or sources");
+  const timestamp = (value) => typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u.test(value) &&
+    Number.isFinite(Date.parse(value)) &&
+    new Date(value).toISOString().slice(0,19) === value.slice(0,19);
+  if (observedAt !== null && !timestamp(observedAt))
+    throw new TypeError("transport possibilities observedAt must be a real UTC instant or null");
+
+  const received = receiveGraph(graph);
+  const declarations = new Map(received.relations.map(r => [r.id,r]));
+  for (const relation of Object.values(relations))
+    if (!declarations.has(relation))
+      throw new TypeError(`transport possibilities: undeclared relation ${relation}`);
+  querySignGraph(received, channel); // original SignCell typed membership, not id membership
+  if (!declarations.get(relations.offers).subjectTypes.includes(channel.type))
+    throw new TypeError("transport possibilities: channel is not an offered-route source type");
+  const marks = new Map(received.cells.map(mark => [mark.id, mark]));
+  const refKey = ref => JSON.stringify([ref.id, ref.type]);
+  let observedEdges = 0;
+  const targets = (from, role) => {
+    if (!relations[role]) return Object.freeze([]);
+    const edges = querySignGraph(received, from, {predicate:relations[role]});
+    observedEdges += edges.length;
+    if (observedEdges > maxEdges)
+      throw new RangeError("transport possibilities: witnessed-edge bound exceeded");
+    const grouped = new Map();
+    for (const entry of edges) {
+      const key = refKey(entry.edge.object);
+      if (!grouped.has(key)) grouped.set(key, {target:entry.edge.object, edges:[]});
+      grouped.get(key).edges.push(entry);
+    }
+    return Object.freeze([...grouped.values()]
+      .sort((a,b) => a.target.id < b.target.id ? -1 : a.target.id > b.target.id ? 1 : 0)
+      .map(item => Object.freeze({target:item.target,edges:Object.freeze(item.edges)})));
+  };
+  const failure = (role, kind, count = null) => Object.freeze({role,kind,count});
+  const expectOne = (links, role, errors) => {
+    if (links.length !== 1) errors.push(failure(role, links.length ? "ambiguous" : "missing", links.length));
+    return links[0]?.target ?? null;
+  };
+  const quantityOf = (link, role, errors) => {
+    if (!link) return null;
+    const mark = marks.get(link.target.id);
+    const content = mark?.content;
+    if (mark?.type !== quantityType || !content || typeof content !== "object" || Array.isArray(content) ||
+      typeof content.atoms !== "string" || !/^(0|[1-9][0-9]{0,79})$/u.test(content.atoms) ||
+      typeof content.unit !== "string" || !content.unit.trim() ||
+      (content.observedAt !== undefined && !timestamp(content.observedAt)) ||
+      (content.expiresAt !== undefined && !timestamp(content.expiresAt)) ||
+      Object.keys(content).some(k => !["atoms", "unit", "observedAt", "expiresAt"].includes(k))) {
+      errors.push(failure(role, "unqualified-exact-quantity"));
+      return null;
+    }
+    const value = Object.freeze({atoms:content.atoms,unit:content.unit,
+      observedAt:content.observedAt ?? null,expiresAt:content.expiresAt ?? null});
+    if (value.observedAt !== null && value.expiresAt !== null &&
+        Date.parse(value.observedAt) > Date.parse(value.expiresAt))
+      errors.push(failure(role,"inverted-validity"));
+    if (value.expiresAt !== null && observedAt === null)
+      errors.push(failure(role,"clock-unavailable"));
+    if (observedAt !== null) {
+      if (value.observedAt !== null && Date.parse(value.observedAt) > Date.parse(observedAt))
+        errors.push(failure(role,"not-yet-observed"));
+      if (value.expiresAt !== null && Date.parse(value.expiresAt) <= Date.parse(observedAt))
+        errors.push(failure(role,"expired"));
+    }
+    // Zero is a witnessed zero, not absence. It cannot support positive demand.
+    if (role === "capacity" && value.atoms === "0")
+      errors.push(failure(role,"reported-zero-capacity"));
+    return value;
+  };
+
+  // One source reading is shared by all options, never cloned into per-route
+  // ownership. A disconnected or contradictory source remains an obstruction.
+  const sourceCache = new Map();
+  const sourceOf = reference => {
+    const key = refKey(reference);
+    if (sourceCache.has(key)) return sourceCache.get(key);
+    if (sourceCache.size >= maxSources)
+      throw new RangeError("transport possibilities: capacity-source bound exceeded");
+    const evidence = Object.freeze({
+      resource:targets(reference,"capacityResource"),
+      capacity:targets(reference,"capacity"),
+    });
+    const errors = [];
+    const resource = expectOne(evidence.resource,"capacityResource",errors);
+    const quantity = expectOne(evidence.capacity,"capacity",errors);
+    const capacity = quantityOf(evidence.capacity[0],"capacity",errors);
+    const reading = Object.freeze({source:reference,resource,quantity,capacity,
+      evidence,failures:Object.freeze(errors),
+      standing:"source-reported-unreserved-capacity"});
+    sourceCache.set(key,reading);
+    return reading;
+  };
+
+  const offered = targets(channel,"offers");
+  if (offered.length > maxOptions)
+    throw new RangeError("transport possibilities: option bound exceeded");
+  const possibilities = [], obstructions = [];
+  for (const entry of offered) {
+    const option = entry.target;
+    const evidence = Object.freeze({offers:entry.edges,
+      resource:targets(option,"resource"),from:targets(option,"from"),to:targets(option,"to"),
+      uses:targets(option,"uses"),cost:targets(option,"cost"),
+      opposes:targets(option,"opposes"),revokes:targets(option,"revokes")});
+    const errors = [];
+    const resource = expectOne(evidence.resource,"resource",errors);
+    const from = expectOne(evidence.from,"from",errors);
+    const to = expectOne(evidence.to,"to",errors);
+    if (evidence.uses.length === 0) errors.push(failure("uses","missing",0));
+    if (evidence.cost.length > 1) errors.push(failure("cost","ambiguous",evidence.cost.length));
+    const cost = quantityOf(evidence.cost[0],"cost",errors);
+    if (evidence.opposes.length) errors.push(failure("opposes","contrary-testimony",evidence.opposes.length));
+    if (evidence.revokes.length) errors.push(failure("revokes","revoked-testimony",evidence.revokes.length));
+    const sources = Object.freeze(evidence.uses.map(link => sourceOf(link.target)));
+    if (resource !== null) for (const source of sources) {
+      if (source.resource !== null && refKey(source.resource) !== refKey(resource))
+        errors.push(failure("uses","resource-mismatch"));
+      for (const failureEntry of source.failures)
+        errors.push(Object.freeze({...failureEntry, source:source.source}));
+    }
+    const reading = Object.freeze({option,channel,resource,from,to,cost,
+      capacitySources:sources,evidence,
+      standing:"source-offered-only-not-authorized",
+      effects:"not-performed",reservation:"not-checked"});
+    if (errors.length) obstructions.push(Object.freeze({
+      ...reading,failures:Object.freeze(errors),standing:"obstructed-offer"}));
+    else possibilities.push(reading);
+  }
+  return Object.freeze({kind:"signgraph.channelTransportPossibilities.v1",
+    graph:received.id,channel,observedAt,
+    possibilities:Object.freeze(possibilities),obstructions:Object.freeze(obstructions),
+    capacitySources:Object.freeze([...sourceCache.values()]),
+    sourceTruth:"source-assertions-not-independently-adjudicated",
+    competence:"not-established",reservation:"not-checked",effects:"not-performed"});
+}
