@@ -106,13 +106,46 @@
       "Original Lean source-to-predication admission and transverse-contact generation are open; present computational readouts are conditional, not mathematical proof.",
       "The proof-pathing section has workspace-only/private dependencies and bounded file-leg behavior. An installed exact-release composed store with verified on-disk transaction semantics is not yet independently received.",
       "Validate this typed requirement against the original source-owner schema and formally receive the Work through authorized office contracts.",
-      "Select immutable comparator binaries, test fixtures, customer workload, threat model, resource budget and independent fault-injection runner; store evidence for each peer and separate meet and beat result."
+      "Select immutable comparator binaries, test fixtures, customer workload, threat model, resource budget and independent fault-injection runner; store evidence for each peer and separate meet and beat result.",
+      "Use the actual existing SEAVT source-owned store and custody engine and account for its documented missing multi-record transactions, stale-writer fencing and CouchDB HTTP replica interoperation.",
+      "For arbitrary predicates without a query-derived selective coordinate or other admitted summary, worst-case complete query may require examining all independent candidate records; specify precisely which proof-path addressed queries can avoid this and test their cost."
     ],
     "hard-refusals": [
       "No file existence, new source path, unit test or declared requirement alone establishes SQLite/CouchDB parity or superiority.",
       "No primitive vertices, inferred contact witnesses, Mark-only identity, unearned paths, unauthorized access or inferred route coherence.",
-      "No ad hoc replacements for upstream canonical NI/CBOR/SEN, POSIX proof-path, SQL/JSON/HTTP or network protocols."
+      "No ad hoc replacements for upstream canonical NI/CBOR/SEN, POSIX proof-path, SQL/JSON/HTTP or network protocols.",
+      "Do not implement materialized hot/cold inverse-index registries or a second store as a way around the Leader's formula-addressable flat-file requirement; investigate exact query-derived location, and account for the cost of queries that cannot derive their own addresses.",
+      "Do not treat SEAVT single-head atomic publication plus record put as a multi-record serializable SQLite transaction or its existing head/causes pull as CouchDB HTTP revision replication."
     ],
-    "admission": "Authored source-owned additional Engineering requirement; not a signed or live-enterprise admission, installed flat-file DB, parity qualification or customer acceptance."
+    "admission": "Authored source-owned additional Engineering requirement; not a signed or live-enterprise admission, installed flat-file DB, parity qualification or customer acceptance.",
+    "actual-existing-substrate": {
+      "owner": "@red-cup-engineering/semiotic-eavt-services-section/store",
+      "source": "https://github.com/red-cup-engineering/semiotic-eavt-services-section/blob/main/content/text/documents/specifications/store.md",
+      "API": [
+        "put",
+        "get",
+        "has",
+        "each",
+        "walk",
+        "append",
+        "readLog",
+        "readHead",
+        "writeHead",
+        "extend",
+        "heads",
+        "pull"
+      ],
+      "built-facts": "Original immutable content-addressed JSONL bucket records, guarded named heads, chronological typed logs, bounded causes walks and bounded head/record peer exchange. Opt-in strict durable record/head publication and File owner atomic single-head writer exist, with explicitly qualified limitations.",
+      "path-model": "Existing NI-bucket address formula, not yet an earned full proof-path coordinate for each original SignGraph source-position relation.",
+      "physical-index-rule": "No load-bearing hot or cold secondary indexes; use structural proof-address derivations and bounded source-time/causal readings, preserving native original flat-file layout and accounting for any scans.",
+      "transaction-boundary": "Individual guarded head publication is atomic but put+writeHead/extend is not a combined SQL transaction; crash-orphan record and uncertain post-rename result need source-owned recovery. The expiring lock is not a fence against a paused writer.",
+      "peer-exchange-boundary": "SEAVT pull exchanges causal frontiers and records by heads; this is not CouchDB wire-protocol replication, HTTP/JSON API parity or general MVCC isolation."
+    },
+    "actual-owner-execution-work": {
+      "SEAVT": "https://github.com/red-cup-engineering/semiotic-eavt-services-section/issues/17",
+      "PPA-file-leg": "https://github.com/red-cup-engineering/proof-pathing-services-section/issues/2",
+      "Science": "https://github.com/lenticule-science/obsmetrologia/issues/79"
+    },
+    "database-query-obligation": "Match baseline SQL, full-text and Mango result sets and practical latency, but do not assume a database physical index must be copied. Demonstrate a derived proof-path selection formula or bounded explicitly admitted source scan, with honest complexity/coverage measurements."
   }
 }
