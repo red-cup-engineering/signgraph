@@ -3,7 +3,7 @@ import test from "node:test";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
 import { defineType } from "@red-cup-engineering/signcell/type-system";
 import { createSignGraph } from "../src/semantic-graph.mjs";
-import { projectSignGraphTopology, findSignGraphRoute } from "../src/graph.mjs";
+import { projectSignGraphTopology, findSignGraphRoute, channelResourceIncidence } from "../src/graph.mjs";
 
 const accepted = (r) => { assert.equal(r.ok, true, JSON.stringify(r)); return r.value; };
 const t = accepted(defineType({
@@ -139,4 +139,128 @@ test("typed route boundaries refuse forged cuts, untyped targets and malformed s
     assert.throws(() => findSignGraphRoute(graph, refs.a, refs.b, options), TypeError);
   const forged = wire(graph); forged.edges[0].id = "ni:forged";
   assert.throws(() => findSignGraphRoute(forged, refs.a, refs.b), TypeError);
+});
+
+
+const flowRoles = Object.freeze({
+  contains:"carries", reports:"reports", resource:"resource",
+  from:"from", to:"to", quantity:"quantity", settlement:"claimed-receipt",
+  inside:"inside",
+});
+function resourceChannelFixture({ ambiguous = false, omitQuantity = false, omitMembership = false } = {}) {
+  const labels = ["channel","message-1","message-2","exchange-1","exchange-2",
+    "water","energy","alice","bob","cell-a","cell-b","quantity-1","quantity-2",
+    "receipt","witness-1","witness-2","other-channel","other-message","third"];
+  const cells = labels.map(text => accepted(createTypedMark(t,text)));
+  const at = Object.fromEntries(labels.map((key,i) => [key,referenceOf(cells[i])]));
+  const edge = (from,predicate,to,witness="witness-1") => ({
+    subject:at[from],predicate:flowRoles[predicate],object:at[to],witness:at[witness],
+  });
+  const edges = [
+    edge("channel","contains","message-1"),
+    edge("channel","contains","message-2"),
+    edge("message-1","reports","exchange-1"),
+    edge("message-1","reports","exchange-2"),
+    edge("message-2","reports","exchange-1","witness-2"),
+    edge("exchange-1","resource","water"),
+    edge("exchange-1","from","alice"),
+    edge("exchange-1","from","alice","witness-2"),
+    edge("exchange-1","to","bob"),
+    edge("exchange-1","quantity","quantity-1"),
+    edge("exchange-1","settlement","receipt"),
+    edge("exchange-2","resource","energy"),
+    edge("exchange-2","from","bob"),
+    edge("exchange-2","to","alice"),
+    ...(!omitQuantity ? [edge("exchange-2","quantity","quantity-2")] : []),
+    ...(!omitMembership ? [
+      edge("alice","inside","cell-a"),edge("bob","inside","cell-b"),
+    ] : []),
+    edge("other-channel","contains","other-message"),
+    ...(ambiguous ? [edge("exchange-2","from","third")] : []),
+  ];
+  const relation = id => ({ id,subjectTypes:[t.id],objectTypes:[t.id],witnessTypes:[t.id] });
+  const graph = accepted(createSignGraph({
+    cells, relations:Object.values(flowRoles).map(relation), edges,
+  }));
+  return {graph,at};
+}
+
+test("witnessed channels keep reports distinct but count each source exchange only once", () => {
+  const {graph,at}=resourceChannelFixture();
+  const reading=channelResourceIncidence(graph,{channel:at.channel,relations:flowRoles});
+  assert.equal(reading.kind,"signgraph.channelResourceIncidence.v1");
+  assert.equal(reading.graph,graph.id);
+  assert.equal(reading.messages.length,2);
+  assert.equal(reading.transfers.length,2,"one original exchange reported twice is still one transfer incidence");
+  assert.deepEqual(reading.obstructions,[]);
+  const water=reading.transfers.find(x=>x.resource.id===at.water.id);
+  assert.ok(water);
+  assert.equal(water.reportedBy.length,2,"distinct channel messages are not erased");
+  assert.deepEqual(new Set(water.reportedBy.map(x=>x.message.id)),
+    new Set([at["message-1"].id,at["message-2"].id]));
+  assert.equal(water.evidence.from[0].edges.length,2,"parallel witnesses of one source are retained");
+  assert.ok(water.evidence.from[0].edges.every(e=>graph.edges.some(original=>original.id===e.id)),
+    "every observation is one original EAVT-addressed edge");
+  assert.equal(water.from.id,at.alice.id);
+  assert.equal(water.to.id,at.bob.id);
+  assert.equal(water.sourceCell.id,at["cell-a"].id);
+  assert.equal(water.targetCell.id,at["cell-b"].id);
+  assert.equal(water.crossesCellBoundary,true);
+  assert.equal(water.quantity.id,at["quantity-1"].id);
+  assert.equal(water.settlementClaims.length,1);
+  assert.equal(reading.effect,"not-executed");
+  assert.equal(reading.settlement,"not-authenticated");
+  assert.equal(reading.messageOrder,"not-derived");
+  assert.equal(Object.isFrozen(water),true);
+  const other=channelResourceIncidence(graph,{channel:at["other-channel"],relations:flowRoles});
+  assert.equal(other.messages.length,1);
+  assert.deepEqual(other.transfers,[]);
+  assert.deepEqual(other.obstructions,[]);
+});
+
+test("channel-resource incidence reports ambiguous endpoints instead of inventing source-target pairings", () => {
+  const {graph,at}=resourceChannelFixture({ambiguous:true,omitQuantity:true});
+  const original=JSON.stringify(graph);
+  const reading=channelResourceIncidence(graph,{channel:at.channel,relations:flowRoles});
+  assert.equal(reading.transfers.length,1);
+  assert.equal(reading.obstructions.length,1);
+  const issue=reading.obstructions[0];
+  assert.equal(issue.exchange.id,at["exchange-2"].id);
+  assert.deepEqual(issue.failures.map(f=>[f.role,f.kind,f.count]),[["from","ambiguous",2]]);
+  assert.equal(issue.evidence.from.length,2);
+  assert.equal(issue.evidence.quantity.length,0,"missing observation must remain unknown, not a zero");
+  assert.equal(JSON.stringify(graph),original,"projection does not modify source");
+  const broken=resourceChannelFixture({omitMembership:true});
+  const missing=channelResourceIncidence(broken.graph,{channel:broken.at.channel,relations:flowRoles});
+  assert.deepEqual(missing.transfers,[]);
+  assert.equal(missing.obstructions.length,2);
+  assert.ok(missing.obstructions.every(x=>x.failures.some(f=>f.kind==="missing"&&f.role.endsWith("Cell"))));
+});
+
+test("channel-resource reading re-admits original graph and refuses forged or unlicensed coordinates", () => {
+  const {graph,at}=resourceChannelFixture();
+  const copy=JSON.parse(JSON.stringify(graph));
+  const original=channelResourceIncidence(graph,{channel:at.channel,relations:flowRoles});
+  assert.deepEqual(channelResourceIncidence(copy,{channel:at.channel,relations:flowRoles}),original);
+  copy.edges[0].id="ni:forged";
+  assert.throws(()=>channelResourceIncidence(copy,{channel:at.channel,relations:flowRoles}),TypeError);
+  for(const member of [{id:at.channel.id},{id:"ni:unadmitted",type:t.id}])
+    assert.throws(()=>channelResourceIncidence(graph,{channel:member,relations:flowRoles}),TypeError);
+  assert.throws(()=>channelResourceIncidence(graph,{channel:at.channel,
+    relations:{...flowRoles,contains:"not-declared"}}),/undeclared/);
+  assert.throws(()=>channelResourceIncidence(graph,{channel:at.channel,
+    relations:{...flowRoles,contains:"reports"}}),/distinct roles/);
+  assert.throws(()=>channelResourceIncidence(graph,{channel:at.channel,
+    relations:flowRoles,maxMessages:1}),/message budget/);
+  assert.throws(()=>channelResourceIncidence(graph,{channel:at.channel,
+    relations:flowRoles,maxExchanges:1}),/exchange budget/);
+  assert.throws(()=>channelResourceIncidence(graph,{channel:at.channel,
+    relations:{...flowRoles,inject:"untrusted"}}),/relation roles/);
+  // No type-based inference of eligibility from words such as "channel".
+  const wrongRelation=accepted(createSignGraph({
+    cells:graph.cells,relations:[{id:"carries",subjectTypes:["not-a-channel-type"],
+      objectTypes:[t.id],witnessTypes:[t.id]}],edges:[],
+  }));
+  assert.throws(()=>channelResourceIncidence(wrongRelation,{channel:at.channel,
+    relations:{contains:"carries",reports:"carries",resource:"carries",from:"carries",to:"carries"}}),/distinct roles/);
 });
