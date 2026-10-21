@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
-import { defineType, isSubtypeOf, typeIdentity } from "@red-cup-engineering/signcell/type-system";
+import { defineType, isSubtypeOf } from "@red-cup-engineering/signcell/type-system";
 import { createSignGraph } from "../src/semantic-graph.mjs";
 import { projectSignGraphTopology, findSignGraphRoute, channelResourceIncidence } from "../src/graph.mjs";
 
@@ -317,7 +317,7 @@ test("typed Resource Things specialize channels, messages, exchanges and stock w
     ["inside",actorType,compartmentType],
   ];
   const relation = ([id,domain,codomain]) => ({
-    id,subjectTypes:[typeIdentity(domain)],objectTypes:[typeIdentity(codomain)],
+    id,subjectTypes:[domain.id],objectTypes:[codomain.id],
     witnessTypes:[at.witness.type],
   });
   const relations = specs.map(relation);
