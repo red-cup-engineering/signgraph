@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
-import { defineType } from "@red-cup-engineering/signcell/type-system";
+import { defineType, isSubtypeOf, typeIdentity } from "@red-cup-engineering/signcell/type-system";
 import { createSignGraph } from "../src/semantic-graph.mjs";
 import { projectSignGraphTopology, findSignGraphRoute, channelResourceIncidence } from "../src/graph.mjs";
 
@@ -282,6 +282,7 @@ test("typed Resource Things specialize channels, messages, exchanges and stock w
     schema: {}, parents,
   }));
   const thing = mk("Thing"), resource = mk("Resource", [thing]);
+  assert.equal(isSubtypeOf(resource,thing),true);
   const channelType = mk("Channel", [resource]);
   const messageType = mk("Message", [resource]);
   const exchangeType = mk("Exchange", [resource]);
@@ -290,6 +291,9 @@ test("typed Resource Things specialize channels, messages, exchanges and stock w
   const compartmentType = mk("Compartment", [thing]);
   const quantityType = mk("Quantity", [thing]);
   const witnessType = mk("Witness", [thing]);
+  assert.equal(isSubtypeOf(messageType,thing),true);
+  assert.equal(isSubtypeOf(exchangeType,resource),true);
+  assert.equal(isSubtypeOf(compartmentType,resource),false);
   const marks = {
     channel: accepted(createTypedMark(channelType,"c:1")),
     message: accepted(createTypedMark(messageType,"m:1")),
@@ -313,8 +317,7 @@ test("typed Resource Things specialize channels, messages, exchanges and stock w
     ["inside",actorType,compartmentType],
   ];
   const relation = ([id,domain,codomain]) => ({
-    id,subjectTypes:[accepted(createTypedMark(domain,"type-marker")).type],
-    objectTypes:[accepted(createTypedMark(codomain,"type-marker")).type],
+    id,subjectTypes:[typeIdentity(domain)],objectTypes:[typeIdentity(codomain)],
     witnessTypes:[at.witness.type],
   });
   const relations = specs.map(relation);
