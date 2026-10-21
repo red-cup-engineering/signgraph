@@ -90,6 +90,43 @@ obligations of [Obsmetrologia issue #79](https://github.com/lenticule-science/ob
 The present pure implementation is a **conditional view over caller-qualified
 source acts**, not a theorem or authenticated source importer.
 
+## Keratin Graphs: hole-aware sheaf/fiber graphing
+
+The `./keratin-graph` export is a **real finite computation and Graphviz
+workbench** over the EXISTING original source-positioned `./feather-graph`
+reading. It preserves directed source predication occurrences, gives each
+performed position an explicitly supplied finite state stalk, and assigns
+source-identified directed compatibility tables to every relation. It
+calculates exact global section counts under a finite work budget, identifies
+minimal incompatible contact cores, retains append-only source-labeled lock
+events as monotone information exclusion, and compares caller-declared
+observer scopes with globally liftable reports.
+
+Original filled 2-cells and candidate unfilled boundary walks are **different
+input families**. The existing exact `cellular2Complex` engine computes the
+actual supplied complex and counterfactual single/aggregate filling probes;
+no candidate hole is silently inserted as a face. A graph cycle, a candidate
+unfilled boundary, a global-section obstruction, and a causally inaccessible
+interior are *not equivalent*. A separate `keratinLinearSheaf` reading
+delegates vector-stalk restrictions and exact rational H0/H1 to the original
+`cellularSheaf` engine. Graph-sheaf H1 is not asserted to equal filled-surface
+H1.
+
+`keratinGraphToDot` renders directed source arrows separately from dotted
+hole/filled-face **annotations**, retaining source record IDs and exact
+analysis status. Graphviz is a standard visualization projection, never
+source authorization. Run `npm run demo:keratin`, `npm run test:keratin`
+and `node examples/keratin-hole-workbench.mjs --dot | dot -Tsvg > hole.svg`.
+See [the Keratin Graph manual](./keratin-graph.md) and
+[original engineering Work #30](https://github.com/red-cup-engineering/signgraph/issues/30).
+
+The science-derived `Articulating.Beneath` admission bridge and causal
+`ShroudIndexedKeratin` transport remain
+[Obsmetrologia #79](https://github.com/lenticule-science/obsmetrologia/issues/79).
+A caller's labels for source, hole or observer are **not** proofs; the
+package export is not a deployed service. It also does not replace the
+separate FEATHER-G numerical embedding codec PR.
+
 ## Flat-file graph stores: additive SQLite and CouchDB obligations
 
 The Leader has additionally named **SQLite** and **Apache CouchDB** as
