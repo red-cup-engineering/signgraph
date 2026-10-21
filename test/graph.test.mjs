@@ -3,7 +3,7 @@ import test from "node:test";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
 import { defineType, isSubtypeOf } from "@red-cup-engineering/signcell/type-system";
 import { createSignGraph } from "../src/semantic-graph.mjs";
-import { projectSignGraphTopology, findSignGraphRoute, channelResourceIncidence } from "../src/graph.mjs";
+import { projectSignGraphTopology, findSignGraphRoute, channelResourceIncidence, channelTransportPossibilities } from "../src/graph.mjs";
 
 const accepted = (r) => { assert.equal(r.ok, true, JSON.stringify(r)); return r.value; };
 const t = accepted(defineType({
@@ -445,4 +445,201 @@ test("typed Resource Things specialize channels, messages, exchanges and stock w
     channel:at.stock,
     relations:{contains:"contains",reports:"reports",resource:"resource",from:"from",to:"to"},
   }),/channel type/);
+});
+
+
+// Original SignGraph #26: unused channel routes and shared capacity sources.
+// No amount in this fixture is a real reservation, transfer or authorization.
+const optionKinds = Object.fromEntries(["channel","option","pool","resource","endpoint",
+  "quantity","adverse","message","exchange","witness"].map(name => [name,
+  accepted(defineType({id:`test.transport.${name}.v1`,name:`Transport ${name}`,
+    description:`Source-specific ${name} mark`,schema:{},parents:[]}))]));
+const optionRoles = Object.freeze({offers:"offers",resource:"resource",from:"from",to:"to",
+  uses:"uses",capacityResource:"capacityResource",capacity:"capacity",
+  cost:"cost",opposes:"opposes",revokes:"revokes"});
+const atTime = "2026-10-21T15:00:00.000Z";
+function transportFixture({opposed=false,revoked=false,sharedCapMissing=false,
+  sharedCapInvalidUnit=false,sharedCapZero=false,sharedCapExpired=false,
+  sharedCapFuture=false,dualCapacity=false,foreignResource=false,
+  noUses=false,costZero=false}={}) {
+  const shared = {atoms:sharedCapZero?"0":"5",unit:sharedCapInvalidUnit?"":"liters",
+    observedAt:sharedCapFuture?"2026-10-22T00:00:00.000Z":"2026-10-20T00:00:00.000Z",
+    expiresAt:sharedCapExpired?"2026-10-20T12:00:00.000Z":"2026-10-22T00:00:00.000Z"};
+  const items = {
+    channel:["channel","channel:source"],a:["option","unused:option:a"],b:["option","unused:option:b"],
+    shared:["pool","shared:bottleneck"],poolA:["pool","branch:a"],poolB:["pool","branch:b"],
+    water:["resource","resource:water"],energy:["resource","resource:energy"],
+    alice:["endpoint","actor:alice"],bob:["endpoint","actor:bob"],
+    capShared:["quantity",shared],capAlternative:["quantity",{atoms:"9",unit:"liters"}],
+    capA:["quantity",{atoms:"5",unit:"liters"}],capB:["quantity",{atoms:"5",unit:"liters"}],
+    price:["quantity",{atoms:costZero?"0":"1",unit:"credits"}],
+    adversary:["adverse","counter-testimony"],revocation:["adverse","withdrawal testimony"],
+    message:["message","reported-message:1"],exchange:["exchange","reported-exchange:1"],
+    witnessA:["witness","source:one"],witnessB:["witness","source:two"],
+  };
+  const cells=Object.fromEntries(Object.entries(items).map(([key,[type,value]])=>
+    [key,accepted(createTypedMark(optionKinds[type],value))]));
+  const at=Object.fromEntries(Object.entries(cells).map(([key,value])=>[key,referenceOf(value)]));
+  const predicates = {
+    offers:[["channel"],["option"]], resource:[["option","exchange"],["resource"]],
+    from:[["option","exchange"],["endpoint"]], to:[["option","exchange"],["endpoint"]],
+    uses:[["option"],["pool"]],capacityResource:[["pool"],["resource"]],
+    capacity:[["pool"],["quantity"]],cost:[["option"],["quantity"]],
+    opposes:[["option"],["adverse"]],revokes:[["option"],["adverse"]],
+    contains:[["channel"],["message"]],reports:[["message"],["exchange"]],
+    quantity:[["exchange"],["quantity"]],
+  };
+  const relations=Object.entries(predicates).map(([id,[s,o]])=>({id,
+    subjectTypes:s.map(name=>optionKinds[name].id),objectTypes:o.map(name=>optionKinds[name].id),
+    witnessTypes:[optionKinds.witness.id]}));
+  const link=(s,p,o,w="witnessA")=>({subject:at[s],predicate:p,object:at[o],witness:at[w]});
+  const edges=[
+    link("channel","offers","a"),link("channel","offers","a","witnessB"),
+    link("channel","offers","b"),
+    link("a","resource","water"),link("a","from","alice"),link("a","to","bob"),
+    link("b","resource","water"),link("b","from","bob"),link("b","to","alice"),
+    ...(!noUses?[link("a","uses","shared"),link("a","uses","poolA"),
+      link("b","uses","shared"),link("b","uses","poolB")]:[]),
+    link("shared","capacityResource",foreignResource?"energy":"water"),
+    ...(!sharedCapMissing?[link("shared","capacity","capShared")]:[]),
+    ...(dualCapacity?[link("shared","capacity","capAlternative")]:[]),
+    link("poolA","capacityResource","water"),link("poolA","capacity","capA"),
+    link("poolB","capacityResource","water"),link("poolB","capacity","capB"),
+    link("a","cost","price"),
+    ...(opposed?[link("b","opposes","adversary")]:[]),
+    ...(revoked?[link("b","revokes","revocation")]:[]),
+    // One actually reported Exchange, entirely separate from two offers.
+    link("channel","contains","message"),link("message","reports","exchange"),
+    link("exchange","resource","water"),link("exchange","from","alice"),
+    link("exchange","to","bob"),link("exchange","quantity","capA"),
+  ];
+  return {graph:accepted(createSignGraph({cells:Object.values(cells),relations,edges})),at};
+}
+const readOptions=(fixture,extra={})=>channelTransportPossibilities(fixture.graph,{
+  channel:fixture.at.channel,relations:optionRoles,quantityType:optionKinds.quantity.id,
+  observedAt:atTime,...extra});
+
+test("source-witnessed unused offers preserve both alternatives and one shared capacity identity",()=>{
+  const fixture=transportFixture();
+  const reading=readOptions(fixture);
+  assert.equal(reading.kind,"signgraph.channelTransportPossibilities.v1");
+  assert.equal(reading.possibilities.length,2);
+  assert.deepEqual(reading.obstructions,[]);
+  assert.equal(reading.capacitySources.length,3,"the same shared source is not cloned per route");
+  const [a,b]=reading.possibilities;
+  assert.equal(a.evidence.offers.length,2,"two report witnesses do not double the offer");
+  const sharedA=a.capacitySources.find(x=>x.source.id===fixture.at.shared.id);
+  const sharedB=b.capacitySources.find(x=>x.source.id===fixture.at.shared.id);
+  assert.equal(sharedA,sharedB,"both routes must use the identical source-backed bottleneck reading");
+  assert.deepEqual(sharedA.capacity,{atoms:"5",unit:"liters",
+    observedAt:"2026-10-20T00:00:00.000Z",expiresAt:"2026-10-22T00:00:00.000Z"});
+  assert.equal(sharedA.evidence.capacity[0].edges[0].id,
+    fixture.graph.edges.find(x=>x.edge.subject.id===fixture.at.shared.id&&x.edge.predicate==="capacity").id);
+  assert.equal(a.standing,"source-offered-only-not-authorized");
+  assert.equal(reading.competence,"not-established");
+  assert.equal(reading.effects,"not-performed");
+  const historical=channelResourceIncidence(fixture.graph,{channel:fixture.at.channel,
+    relations:{contains:"contains",reports:"reports",resource:"resource",from:"from",to:"to",quantity:"quantity"}});
+  assert.equal(historical.transfers.length,1,"only the actual original Exchange is counted historically");
+  assert.equal(reading.possibilities.length,2,"an unused option remains discoverable");
+  assert.deepEqual(readOptions({graph:JSON.parse(JSON.stringify(fixture.graph)),at:fixture.at}),reading,
+    "wire round trip keeps original source identities and exact quantity strings");
+});
+
+test("contrary and revoked testimony obstruct individual candidates and retain source evidence",()=>{
+  for (const key of ["opposed","revoked"]) {
+    const f=transportFixture({[key]:true});
+    const r=readOptions(f);
+    assert.equal(r.possibilities.length,1);
+    assert.equal(r.obstructions.length,1);
+    assert.equal(r.obstructions[0].option.id,f.at.b.id);
+    const role=key==="opposed"?"opposes":"revokes";
+    assert.ok(r.obstructions[0].failures.some(x=>x.role===role));
+    assert.ok(r.obstructions[0].evidence[role].every(x=>x.edges.every(e=>
+      f.graph.edges.some(original=>original.id===e.id))));
+    assert.equal(r.obstructions[0].reservation,"not-checked");
+  }
+});
+
+test("missing, ambiguous or malformed capacity cannot silently become zero or authorization",()=>{
+  for (const [modifier,kind] of [
+    ["sharedCapMissing","missing"],["sharedCapInvalidUnit","unqualified-exact-quantity"],
+    ["dualCapacity","ambiguous"],["foreignResource","resource-mismatch"],
+    ["noUses","missing"],["sharedCapZero","reported-zero-capacity"],
+  ]) {
+    const f=transportFixture({[modifier]:true});
+    const r=readOptions(f);
+    assert.equal(r.possibilities.length,0,modifier);
+    assert.equal(r.obstructions.length,2,modifier);
+    assert.ok(r.obstructions.every(o=>o.failures.some(e=>e.kind===kind)),modifier);
+    assert.equal(r.effects,"not-performed");
+  }
+  const f=transportFixture({costZero:true});
+  const r=readOptions(f);
+  assert.equal(r.possibilities.length,2,"zero exact cost is valid, unlike zero capacity");
+  assert.equal(r.possibilities[0].cost.atoms,"0");
+});
+
+test("expired, future or unclocked source claims cannot impersonate presently admissible routes",()=>{
+  for (const [modifier,kind] of [["sharedCapExpired","expired"],["sharedCapFuture","not-yet-observed"]]) {
+    const f=transportFixture({[modifier]:true});
+    const r=readOptions(f);
+    assert.equal(r.possibilities.length,0,modifier);
+    assert.ok(r.obstructions.every(o=>o.failures.some(x=>x.kind===kind)),modifier);
+  }
+  const f=transportFixture();
+  const clockUnknown=readOptions(f,{observedAt:null});
+  assert.equal(clockUnknown.possibilities.length,0);
+  assert.ok(clockUnknown.obstructions.every(o=>o.failures.some(x=>x.kind==="clock-unavailable")));
+  assert.throws(()=>readOptions(f,{observedAt:"2026-10-21T15:00:00-05:00"}),/UTC instant/);
+});
+
+test("shared-bottleneck experiment rejects 15 false independent-route admissions across 49 demand pairs",()=>{
+  const f=transportFixture(), r=readOptions(f), options=r.possibilities;
+  assert.equal(options.length,2);
+  const sourceDemandAdmits=(demands)=>{
+    const total=new Map();
+    for(let k=0;k<demands.length;k++) {
+      for(const source of options[k].capacitySources){
+        const key=source.source.id;
+        const previous=total.get(key)?.amount??0n;
+        total.set(key,{amount:previous+BigInt(demands[k]),capacity:BigInt(source.capacity.atoms),
+          resource:source.resource.id,unit:source.capacity.unit});
+      }
+    }
+    return [...total.values()].every(x=>x.amount<=x.capacity);
+  };
+  let falseAdmissions=0, naiveAdmits=0, correctAdmits=0;
+  for(let x=0;x<=6;x++)for(let y=0;y<=6;y++){
+    const requests=[x,y];
+    const naive=requests.every((d,i)=>options[i].capacitySources.every(
+      s=>BigInt(d)<=BigInt(s.capacity.atoms)));
+    const correct=sourceDemandAdmits(requests);
+    if(naive)naiveAdmits++;
+    if(correct)correctAdmits++;
+    if(naive&&!correct)falseAdmissions++;
+    assert.ok(!correct||naive,"aggregate admission can never exceed local feasibility");
+  }
+  assert.equal(naiveAdmits,36);
+  assert.equal(correctAdmits,21);
+  assert.equal(falseAdmissions,15);
+  assert.equal(sourceDemandAdmits([4,4]),false);
+  assert.equal(sourceDemandAdmits([3,2]),true);
+  // This test's aggregation is an oracle, not a SignGraph reservation API.
+});
+
+test("source-refusal, relation spoofing, and finite budget protect the graph boundary",()=>{
+  const f=transportFixture();
+  const corrupt=JSON.parse(JSON.stringify(f.graph));corrupt.edges[0].id="ni:forged";
+  assert.throws(()=>readOptions({graph:corrupt,at:f.at}),TypeError);
+  assert.throws(()=>readOptions({graph:f.graph,at:{...f.at,channel:f.at.shared}}),/channel is not/);
+  assert.throws(()=>readOptions(f,{relations:{...optionRoles,grants:"grants"}}),/roles/);
+  assert.throws(()=>readOptions(f,{relations:{...optionRoles,uses:"offers"}}),/roles/);
+  assert.throws(()=>readOptions(f,{maxOptions:1}),/option bound/);
+  assert.throws(()=>readOptions(f,{maxSources:2}),/capacity-source bound/);
+  assert.throws(()=>readOptions(f,{maxEdges:3}),/witnessed-edge bound/);
+  assert.equal(readOptions(f,{quantityType:"undocumented type"}).possibilities.length,0);
+  // A misdeclared Quantity type cannot establish exact measured capacity.
+  assert.equal(channelTransportPossibilities(f.graph,{channel:f.at.channel,
+    relations:optionRoles,quantityType:optionKinds.endpoint.id,observedAt:atTime}).possibilities.length,0);
 });
