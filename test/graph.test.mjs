@@ -147,7 +147,7 @@ const flowRoles = Object.freeze({
   from:"from", to:"to", quantity:"quantity", settlement:"claimed-receipt",
   inside:"inside",
 });
-function resourceChannelFixture({ ambiguous = false, omitQuantity = false, omitMembership = false, nested = false, cyclic = false, divided = false } = {}) {
+function resourceChannelFixture({ ambiguous = false, conflictingQuantity = false, omitQuantity = false, omitMembership = false, nested = false, cyclic = false, divided = false } = {}) {
   const labels = ["channel","message-1","message-2","exchange-1","exchange-2",
     "water","energy","alice","bob","cell-a","cell-b","quantity-1","quantity-2",
     "receipt","witness-1","witness-2","other-channel","other-message","third","tissue-1","tissue-2"];
@@ -172,6 +172,7 @@ function resourceChannelFixture({ ambiguous = false, omitQuantity = false, omitM
     edge("exchange-2","from","bob"),
     edge("exchange-2","to","alice"),
     ...(!omitQuantity ? [edge("exchange-2","quantity","quantity-2")] : []),
+    ...(conflictingQuantity ? [edge("exchange-2","quantity","quantity-1","witness-2")] : []),
     ...(!omitMembership ? [
       edge("alice","inside","cell-a"),edge("bob","inside","cell-b"),
     ] : []),
@@ -240,6 +241,26 @@ test("channel-resource incidence reports ambiguous endpoints instead of inventin
   assert.deepEqual(missing.transfers,[]);
   assert.equal(missing.obstructions.length,2);
   assert.ok(missing.obstructions.every(x=>x.failures.some(f=>f.kind==="missing"&&f.role.endsWith("Cell"))));
+});
+
+test("contested quantities obstruct only their source exchange and retain all original witnesses", () => {
+  const {graph,at} = resourceChannelFixture({conflictingQuantity:true});
+  const reading = channelResourceIncidence(graph,{channel:at.channel,relations:flowRoles});
+  assert.equal(reading.transfers.length,1,"a contested quantity must not invalidate an unrelated source exchange");
+  assert.equal(reading.transfers[0].exchange.id,at["exchange-1"].id);
+  assert.equal(reading.transfers[0].reportedBy.length,2,"independent messages about one valid exchange remain independent evidence");
+  assert.equal(reading.obstructions.length,1);
+  const blocked=reading.obstructions[0];
+  assert.equal(blocked.exchange.id,at["exchange-2"].id);
+  assert.deepEqual(blocked.failures.map(f=>[f.role,f.kind,f.count]),[["quantity","ambiguous",2]]);
+  assert.deepEqual(new Set(blocked.evidence.quantity.map(x=>x.target.id)),
+    new Set([at["quantity-1"].id,at["quantity-2"].id]));
+  assert.ok(blocked.evidence.quantity.every(x=>
+    x.edges.length===1 && graph.edges.some(source=>source.id===x.edges[0].id)));
+  assert.equal(blocked.reportedBy.length,1);
+  assert.deepEqual(channelResourceIncidence(JSON.parse(JSON.stringify(graph)),{
+    channel:at.channel,relations:flowRoles,
+  }),reading,"wire roundtrip must preserve the separated evidence and obstruction");
 });
 
 test("channel-resource reading re-admits original graph and refuses forged or unlicensed coordinates", () => {
