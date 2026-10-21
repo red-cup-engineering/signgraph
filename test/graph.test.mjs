@@ -450,18 +450,18 @@ test("typed Resource Things specialize channels, messages, exchanges and stock w
 
 // Original SignGraph #26: unused channel routes and shared capacity sources.
 // No amount in this fixture is a real reservation, transfer or authorization.
-const optionKinds = Object.fromEntries(["channel","option","pool","resource","endpoint",
+const optionKinds = Object.fromEntries(["channel","option","pool","resource","endpoint","compartment",
   "quantity","adverse","message","exchange","witness"].map(name => [name,
   accepted(defineType({id:`test.transport.${name}.v1`,name:`Transport ${name}`,
     description:`Source-specific ${name} mark`,schema:{},parents:[]}))]));
 const optionRoles = Object.freeze({offers:"offers",resource:"resource",from:"from",to:"to",
-  uses:"uses",capacityResource:"capacityResource",capacity:"capacity",
+  uses:"uses",capacityResource:"capacityResource",capacity:"capacity",inside:"inside",
   cost:"cost",opposes:"opposes",revokes:"revokes"});
 const atTime = "2026-10-21T15:00:00.000Z";
 function transportFixture({opposed=false,revoked=false,sharedCapMissing=false,
   sharedCapInvalidUnit=false,sharedCapZero=false,sharedCapExpired=false,
   sharedCapFuture=false,dualCapacity=false,foreignResource=false,
-  noUses=false,costZero=false}={}) {
+  noUses=false,costZero=false,noCompartments=false,ambiguousCompartments=false}={}) {
   const shared = {atoms:sharedCapZero?"0":"5",unit:sharedCapInvalidUnit?"":"liters",
     observedAt:sharedCapFuture?"2026-10-22T00:00:00.000Z":"2026-10-20T00:00:00.000Z",
     expiresAt:sharedCapExpired?"2026-10-20T12:00:00.000Z":"2026-10-22T00:00:00.000Z"};
@@ -470,6 +470,7 @@ function transportFixture({opposed=false,revoked=false,sharedCapMissing=false,
     shared:["pool","shared:bottleneck"],poolA:["pool","branch:a"],poolB:["pool","branch:b"],
     water:["resource","resource:water"],energy:["resource","resource:energy"],
     alice:["endpoint","actor:alice"],bob:["endpoint","actor:bob"],
+    cellA:["compartment","cell:A"],cellB:["compartment","cell:B"],cellC:["compartment","cell:C"],
     capShared:["quantity",shared],capAlternative:["quantity",{atoms:"9",unit:"liters"}],
     capA:["quantity",{atoms:"5",unit:"liters"}],capB:["quantity",{atoms:"5",unit:"liters"}],
     price:["quantity",{atoms:costZero?"0":"1",unit:"credits"}],
@@ -485,6 +486,7 @@ function transportFixture({opposed=false,revoked=false,sharedCapMissing=false,
     from:[["option","exchange"],["endpoint"]], to:[["option","exchange"],["endpoint"]],
     uses:[["option"],["pool"]],capacityResource:[["pool"],["resource"]],
     capacity:[["pool"],["quantity"]],cost:[["option"],["quantity"]],
+    inside:[["endpoint"],["compartment"]],
     opposes:[["option"],["adverse"]],revokes:[["option"],["adverse"]],
     contains:[["channel"],["message"]],reports:[["message"],["exchange"]],
     quantity:[["exchange"],["quantity"]],
@@ -498,6 +500,8 @@ function transportFixture({opposed=false,revoked=false,sharedCapMissing=false,
     link("channel","offers","b"),
     link("a","resource","water"),link("a","from","alice"),link("a","to","bob"),
     link("b","resource","water"),link("b","from","bob"),link("b","to","alice"),
+    ...(!noCompartments?[link("alice","inside","cellA"),link("bob","inside","cellB")]:[]),
+    ...(ambiguousCompartments?[link("alice","inside","cellC")]:[]),
     ...(!noUses?[link("a","uses","shared"),link("a","uses","poolA"),
       link("b","uses","shared"),link("b","uses","poolB")]:[]),
     link("shared","capacityResource",foreignResource?"energy":"water"),
@@ -536,6 +540,11 @@ test("source-witnessed unused offers preserve both alternatives and one shared c
   assert.equal(sharedA.evidence.capacity[0].edges[0].id,
     fixture.graph.edges.find(x=>x.edge.subject.id===fixture.at.shared.id&&x.edge.predicate==="capacity").id);
   assert.equal(a.standing,"source-offered-only-not-authorized");
+  assert.equal(a.sourceCell.id,fixture.at.cellA.id);
+  assert.equal(a.targetCell.id,fixture.at.cellB.id);
+  assert.equal(b.sourceCell.id,fixture.at.cellB.id);
+  assert.equal(b.targetCell.id,fixture.at.cellA.id);
+  assert.equal(a.crossesCellBoundary,true);
   assert.equal(reading.competence,"not-established");
   assert.equal(reading.effects,"not-performed");
   const historical=channelResourceIncidence(fixture.graph,{channel:fixture.at.channel,
@@ -566,6 +575,7 @@ test("missing, ambiguous or malformed capacity cannot silently become zero or au
     ["sharedCapMissing","missing"],["sharedCapInvalidUnit","unqualified-exact-quantity"],
     ["dualCapacity","ambiguous"],["foreignResource","resource-mismatch"],
     ["noUses","missing"],["sharedCapZero","reported-zero-capacity"],
+    ["noCompartments","missing"],["ambiguousCompartments","ambiguous"],
   ]) {
     const f=transportFixture({[modifier]:true});
     const r=readOptions(f);
