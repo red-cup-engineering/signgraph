@@ -12,6 +12,7 @@
     "./package.json": "./package.json",
     "./cell-graph": "./src/cell-graph.mjs",
     "./feather-graph": "./src/feather-graph.mjs",
+    "./feather-g-codec": "./src/feather-g-codec.mjs",
     "./mesh": "./src/mesh.mjs",
     "./chu-term": "./src/chu-term.mjs",
     "./graph": "./src/graph.mjs",
@@ -71,6 +72,8 @@
     "signgraph-holonomy": "scripts/holonomy.mjs"
   },
   "receivingTests": [
-    "test/graph.test.mjs"
+    "test/graph.test.mjs",
+    "test/feather-g-codec.test.mjs",
+    "test/feather-g-native-signgraph.test.mjs"
   ]
 }
