@@ -366,6 +366,7 @@ export function channelTransportPossibilities(graph, {
     if (mark?.type !== quantityType || !content || typeof content !== "object" || Array.isArray(content) ||
       typeof content.atoms !== "string" || !/^(0|[1-9][0-9]{0,79})$/u.test(content.atoms) ||
       typeof content.unit !== "string" || !content.unit.trim() ||
+      content.unit !== content.unit.normalize("NFC") ||
       (content.observedAt !== undefined && !timestamp(content.observedAt)) ||
       (content.expiresAt !== undefined && !timestamp(content.expiresAt)) ||
       Object.keys(content).some(k => !["atoms", "unit", "observedAt", "expiresAt"].includes(k))) {
