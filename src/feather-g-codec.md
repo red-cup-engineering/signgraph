@@ -1,0 +1,89 @@
+# FEATHER-G ↔ SignGraph: structural codecs, not source equivalence
+
+The project has two **unrelated** uses of “feather”: the source-positioned
+[SignGraph feather reading](./feather-graph.mjs), linked to Obsmetrologia's
+keratinous-sheaf, kinematic and witnessed-predication research; and **FEATHER-G**
+(Rozemberczki and Sarkar, CIKM 2020), a graph-level numerical descriptor based on
+random-walk-weighted characteristic functions. The latter takes undirected graphs (including disconnected graphs without
+explicitly isolated vertices). It is **not** a keratinous sheaf, source-derived predication,
+source of truth, or an invertible graph encoding.
+
+The authoritative mathematical frontier for the native reading is
+[Obsmetrologia #79](https://github.com/lenticule-science/obsmetrologia/issues/79).
+The FEATHER-G wire shape is documented at the
+[reference implementation](https://github.com/benedekrozemberczki/FEATHER):
+`{"0": [[0, 1], [1, 2]], "1": [[0, 1]]}`. Both graph and vertex IDs are
+consecutive, starting at zero. The reference's NetworkX graph input loses
+self-loops, edge orientation and duplicate undirected edges, so the codec
+rejects ambiguous/unsupported inputs instead of silently coalescing them.
+
+## Import external FEATHER-G graphs as *structural SignGraph readings*
+
+```js
+import { decodeFeatherGGraphCollection } from '@red-cup-engineering/signgraph/feather-g-codec';
+const external = decodeFeatherGGraphCollection('{"0":[[0,1],[1,2]]}');
+// external.graphs[0].vertices = [0,1,2]
+// external.graphs[0].incidences has two unordered, undirected pairs.
+// This is NOT a source-admitted SignGraph or native feather graph.
+```
+
+Import validates graph IDs, zero-based dense node IDs,
+non-self-loop incidence, duplicate undirected edges, and bounded workload.
+The projection does not forge SignCells, source-record IDs, directions,
+FOUR evidence or Articulating ancestry. To become a native SignGraph,
+original typed source positions, relation declarations and witnesses must be
+supplied and **readmitted by their own source owner**.
+
+## Export admitted SignGraphs or conditional feather sources
+
+```js
+import { encodeFeatherGGraphCollection } from '@red-cup-engineering/signgraph/feather-g-codec';
+// A source SignGraph must have been created using createSignGraph.
+const bundle = encodeFeatherGGraphCollection([{graph: admittedSignGraph}],
+  {projection: 'undirected-simple'});
+const graphsJson = JSON.stringify(bundle.graphs); // FEATHER-G --graphs-input
+const sidecar = bundle.receipts; // retain away from the graph input file
+```
+
+An alternative input is `{source: originalPredicationOccurrences, selectors:
+{axialPredicate, transversePredicate}}`. This delegates source-position and
+fork reading to the existing `featherGraphOfPredications`, with its original
+conditional status unchanged. The separate source sidecar stores original
+vertex-role keys and grouped directed predicate occurrences, including
+SignGraph EAVT edge addresses and typed witness IDs where available.
+
+The **explicit** `projection: 'undirected-simple'` selection is mandatory.
+It intentionally drops directions, predicates, parallel-witness distinctions
+and source authority **from the FEATHER-G graph JSON**. They remain only as
+sidecar *claims*; a serialized sidecar is not portable admission evidence.
+The SignGraph export is **endpoint-induced**: all cells not serving as edge
+endpoints (including original witness-only cells) are listed as
+`excludedSourceCells` in the sidecar rather than disguised as isolated
+FEATHER-G vertices. No such excluded cell is treated as a new source graph
+vertex. Loops and oversized jobs are refused; disconnected endpoint graphs are
+allowed. A simple projection can be round-tripped structurally, not
+semantically.
+
+## Read FEATHER-G embedding CSV as noninvertible descriptors
+
+```js
+import { decodeFeatherGEmbeddingCsv } from '@red-cup-engineering/signgraph/feather-g-codec';
+// The upstream writer uses id,x_0,x_1,... and may serialize IDs as 0.0, 1.0.
+const descriptors = decodeFeatherGEmbeddingCsv(csvText, bundle, {
+  order: 5, evalPoints: 25, thetaMax: 2.5, pooling: 'mean',
+});
+```
+
+The configured width is `2 × order × evalPoints`; CSV rows must align
+one-to-one with graph IDs. The model settings are **declared by the caller**;
+they are not inferable from the CSV, nor verified as the parameters a remote
+FEATHER-G runner used. FEATHER-G's own reference implementation computes
+log-degree features internally, performs random-walk characteristic-function
+pooling and exports descriptors; **this codec does not fit or execute a
+FEATHER-G model**. Its returned descriptor arrays are analytical readouts, not
+new graph edges, global sheaf sections, witnessed predicates or evidence that
+an embedding's reverse map exists.
+
+Run `node --test test/feather-g-codec.test.mjs` from the SignGraph source root.
+This is source-only interoperability until package publishing and an actual
+consumer's FEATHER-G execution/receiving are independently evidenced.
