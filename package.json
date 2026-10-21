@@ -11,6 +11,7 @@
   "exports": {
     "./package.json": "./package.json",
     "./cell-graph": "./src/cell-graph.mjs",
+    "./feather-graph": "./src/feather-graph.mjs",
     "./mesh": "./src/mesh.mjs",
     "./chu-term": "./src/chu-term.mjs",
     "./graph": "./src/graph.mjs",

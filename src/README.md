@@ -49,6 +49,72 @@ not in a second benchmark registry. A green graph test proves one native
 graph behavior; it does not prove LangGraph parity or a running customer
 service.
 
+## Feather graphs: posit graphs as charged feather readings
+
+The original [Obsmetrologia feather-graph assay](https://github.com/lenticule-science/obsmetrologia/blob/main/docs/research/2026-10-16-relationlessness-spiral-pisot-prior-work-assay.md#relation-only-feather-graphs-candidate-derived-forks-and-first-negative-controls)
+starts with **performed directed predication roles**, not a chosen vertex set.
+The `./feather-graph` export implements one finite source-position **reading**
+of those original predications, retaining each source occurrence and the
+distinct `{ performed, side: token|claim }` positions even when their optional
+Mark displays coincide. The sites in the result are induced by those original
+positions.
+
+`featherGraphOfPredications(originalOccurrences, { axialPredicate,
+transversePredicate })` derives incomparable, source-reported sibling
+continuations and finds their **separately supplied** transverse predications.
+It returns explicit original occurrence-id sequences for each direct and
+two-step route, leaving the comparison `unmeasured`: path composition does
+not authorize a new source predication or assert that the two routes commute.
+A branch without a reported cross-contact remains a branch-only candidate.
+Fully saturated ordinal comparisons whose descendants are comparable do not
+count as immediate source forks. Cyclic ancestry, duplicate occurrence IDs,
+conflicting displays for one performed position and excessive finite branching
+are refused.
+
+`positGraphOfFeather(feather, posits)` retains **the same original feather
+graph** and attaches independent source-reported for/against testimony to the
+original predication occurrences. It retains multiple opposed tellings rather
+than silently replacing one with the other. This is the finite-engineering
+reading of the Leader's assertion that *posit graphs are feather graphs*:
+Positing adds evidence/charge, not a competing primitive vertex-and-edge
+carrier. The original SignChain FOUR adjudication and original authority to
+admit that testimony remain with their existing owners. Even a JSON copy of
+the readout cannot acquire in-process derivation authority.
+
+**Scientific frontier:** the original Articulating `Beneath` relation is a
+proposition about performances, not yet a proved object-language
+`SourceDirectedCell`. Source-record IDs and caller-declared predicate
+selectors alone cannot close that gap. New source-warranted transverse-contact
+production, cone-observer lift and route comparison remain the mathematical
+obligations of [Obsmetrologia issue #79](https://github.com/lenticule-science/obsmetrologia/issues/79).
+The present pure implementation is a **conditional view over caller-qualified
+source acts**, not a theorem or authenticated source importer.
+
+## Flat-file graph stores: additive SQLite and CouchDB obligations
+
+The Leader has additionally named **SQLite** and **Apache CouchDB** as
+meet-then-beat targets. The additive [original owner requirement](../data/records/requirements-records/signgraph-meets-then-beats-sqlite-and-couchdb.json)
+preserves LangGraph and Oxigraph and records separate matched queries,
+transactions/crash-recovery and offline-replication workloads. The dated
+reference baselines are SQLite **3.54.1** (2026-10-16) and CouchDB
+**3.5.3** (2026-10-12), selected from those products' primary sources.
+
+SignGraph owns source-qualified predication/query geometry and the identity
+of original relation routes. The existing
+[proof-path-structuration-service](https://github.com/red-cup-engineering/proof-path-structuration-service)
+derives canonical relative POSIX paths from original generator witnesses, and
+[proof-pathing-services-section](https://github.com/red-cup-engineering/proof-pathing-services-section)
+owns the filesystem admission leg and coordinate settlement. Correct
+**durable transactions, crash consistency, indexes, MVCC, backups, HTTP
+interfaces and replication** must be realized through their competent
+File/Systems/Networking owners and tested in the installed composite. An
+NI address or earned path provides neither a write transaction nor a
+replication protocol on its own. The proof-pathing parent currently declares
+workspace-only dependencies and cross-reading qualification remains open;
+this package intentionally adds no shadow storage engine or unpublished
+dependency. Both market comparisons remain unqualified until independent
+receiving establishes parity and then a measured improvement.
+
 ## What lives here
 
 - `semantic-graph` — one closed, NI-addressed graph over SignCell's typed
