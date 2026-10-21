@@ -428,3 +428,19 @@ SignCell continues to own typed source identity and SignChain owns the actual
 tellings. The SignGraph source edition 0.5.0 selects exact SignCell 0.10.0,
 whose concept address ordering is defined by the same canonical byte comparator.
 This needs genuine package/lock selection before a running consumer can claim it.
+
+## Typed Channel → Message → Resource Exchange incidence
+
+**Original receiving:** [SignGraph #24](https://github.com/red-cup-engineering/signgraph/issues/24), [SignCraft #11](https://github.com/red-cup-engineering/signcraft/issues/11), and the Leader's 2026-10-21 algebra→logic→language→geometry→dynamics direction. Reuse the **same** `./graph` export and existing `semantic-graph` source reader. `channelResourceIncidence(graph, {channel,relations,maxMessages?,maxExchanges?})` reads a **closed, original SignCell/EAVT-witnessed SignGraph**, not an arbitrary collection of links or an ActivityPub inbox parser.
+
+Caller-supplied role names `contains`, `reports`, `resource`, `from`, `to` **must** be distinct, already-declared predicates. Optional `quantity`, `settlement` and `inside` also require declarations; no relation/Thing type is inferred from words such as "channel", "Resource" or "payment". Directed source claims carry the edges: channel→message, message→exchange, exchange→resource/from/to/quantity/settlement-claim, and endpoints→compartments. The projection:
+
+- Retains **original** typed node references, EAVT edge IDs and *all parallel witnesses*. Two different Messages reporting the **same original Exchange** do not fabricate two transfers.
+- Produces one source-addressed oriented **candidate incidence** per structurally unambiguous exchange. Compartment changes report a first-level cell boundary; nested cellular/sheaf structure is an unreceived further derivation.
+- Reports missing or conflicting source/destination/resource/compartment and multi-quantity inputs as **obstructions**, rather than constructing a fictitious source-target combination or a synthetic zero. An optional **missing** quantity remains `null`; SignCraft must refuse a numeric analysis until measurement is separately qualified.
+- Does **not** infer ordering from an unordered graph, resolve SignChain FOUR testimony, calculate monetary/material quantities, authenticate a settlement claim, perform ActivityPub++ delivery, mutate a cell's stock or grant any actor authority. The return explicitly marks those effects unperformed.
+- Refuses wrong types, unknown relations and source-forged graphs through existing SignCell admission, plus finite budgets (default 256 messages and 1024 exchanges). The receiver tests positive exchange sharing, independent resources, parallel witnesses, ambiguous/missing roles, foreign marks, stale carriers and serialization.
+
+This is **graph geometry downstream of source language**, not a new algebra, typed vocabulary, host or fundamental mathematical genesis. Upstream SignCell [Thing→Resource source PR #13](https://github.com/red-cup-engineering/signcell/pull/13) and [relational-value PR #20](https://github.com/red-cup-engineering/signgraph/pull/20), existing SignGraph [cellular sheaf PR #17](https://github.com/red-cup-engineering/signgraph/pull/17), and native Obsmetrologia [kinetic source #24](https://github.com/lenticule-science/obsmetrologia/issues/24) remain distinct open dependencies. Compare ActivityStreams 2.0 and PROV-O with source-received mappings where relevant, not by relabeling a graph: <https://www.w3.org/TR/activitystreams-core/> and <https://www.w3.org/TR/prov-primer/>.
+
+**Receiving:** source tests are in the original `test/graph.test.mjs`; run them with actual exact installed upstream packages. The published/current SignCraft `signgraph@0.5.0` does not yet contain this method; do not claim this source alone installed, transported, billed, or conserved any resource.
