@@ -1,0 +1,104 @@
+/**
+ * Alexandrov reading of one EXPLICIT homogeneous, witnessed SignGraph relation.
+ *
+ * This is a readout of source-admitted edges, not another graph registry.
+ * Reachability is a preorder; its up-sets form the Alexandrov opens.
+ * Cyclic points are topologically indistinguishable, but original identities,
+ * witnesses, and capabilities remain different. A route is not authority.
+ *
+ * Application bindings (e.g. ActivityPub Actor delivery, delegation or
+ * observation) must provide a separately qualified typed relation. This
+ * module cannot infer those facts from Follow, inbox receipt or names.
+ */
+import {
+  reachable, stronglyConnectedComponents, subgraph,
+} from '@red-cup-engineering/metrologic/models/graphs/directed-multigraph';
+import { projectSignGraphTopology, findSignGraphRoute } from './graph.mjs';
+import { glueSignGraphs } from './semantic-graph.mjs';
+
+const MAX_POINTS = 256;
+const frozen = values => Object.freeze(values);
+const sortIds = (left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
+const invalid = message => { throw new TypeError('SignGraph Alexandrov: ' + message); };
+
+/**
+ * Read the upper Alexandrov topology on the reflexive-transitive closure of
+ * an ALREADY declared, homogeneous relation between typed SignCell points.
+ *
+ * nodeType is a SignCell type id; predicate is a declared relation id.
+ * Both source and target type domains must consist of EXACTLY that type:
+ * this prevents closure paths from silently traversing non-actor records.
+ *
+ * basis is the list of minimal open neighborhoods. No powerset of opens
+ * is enumerated. components is a T0 quotient READING, never a license to
+ * identify, merge, appoint, authorize, or deliver to different Actors.
+ */
+export function projectSignGraphAlexandrov(source, options) {
+  if (!options || typeof options !== 'object' || Array.isArray(options) ||
+      Object.keys(options).some(key => !['nodeType', 'predicate'].includes(key)) ||
+      typeof options.nodeType !== 'string' || options.nodeType.length === 0 ||
+      typeof options.predicate !== 'string' || options.predicate.length === 0)
+    invalid('options require exactly nodeType and predicate strings');
+
+  const checked = glueSignGraphs(source);
+  if (!checked.ok) {
+    const error = new TypeError('SignGraph Alexandrov source refused: ' + checked.refusal.message);
+    error.code = checked.refusal.code;
+    throw error;
+  }
+  const admitted = checked.value.graph;
+  const { nodeType, predicate } = options;
+  const relation = admitted.relations.find(item => item.id === predicate);
+  if (!relation || relation.subjectTypes.length !== 1 ||
+      relation.objectTypes.length !== 1 ||
+      relation.subjectTypes[0] !== nodeType || relation.objectTypes[0] !== nodeType)
+    invalid('predicate must be originally declared with exactly nodeType on both ends');
+
+  const points = frozen(admitted.cells.filter(cell => cell.type === nodeType)
+    .map(cell => frozen({ id: cell.id, type: cell.type })).sort(sortIds));
+  if (points.length > MAX_POINTS)
+    throw new RangeError('SignGraph Alexandrov: ' + points.length +
+      ' points exceed bounded ' + MAX_POINTS + ' point reading');
+
+  const byId = new Map(points.map(ref => [ref.id, ref]));
+  const graph = subgraph(projectSignGraphTopology(admitted), new Set(byId.keys()));
+  const futureIds = new Map(points.map(ref => [ref.id,
+    new Set([ref.id, ...reachable(graph, ref.id, { kind: predicate })])]));
+  const basis = frozen(points.map(point => frozen({
+    point,
+    open: frozen([...futureIds.get(point.id)].map(id => byId.get(id)).sort(sortIds)),
+  })));
+  const components = frozen(stronglyConnectedComponents(graph, { kind: predicate })
+    .map(ids => frozen(ids.map(id => byId.get(id)).sort(sortIds)))
+    .sort((a, b) => sortIds(a[0], b[0])));
+
+  function pointId(ref) {
+    if (!ref || typeof ref !== 'object' || Array.isArray(ref) ||
+        typeof ref.id !== 'string' || ref.type !== nodeType || !byId.has(ref.id))
+      invalid('point must be an existing source-admitted typed reference');
+    return ref.id;
+  }
+  const principalOpen = point => basis.find(item => item.point.id === pointId(point)).open;
+  const specializes = (x, y) => futureIds.get(pointId(x)).has(pointId(y));
+  const isOpen = members => {
+    if (!Array.isArray(members)) invalid('candidate open must be an array of typed references');
+    const subset = new Set(members.map(pointId));
+    return [...subset].every(id => [...futureIds.get(id)].every(other => subset.has(other)));
+  };
+  const witnessedRoute = (from, to) => {
+    const x = byId.get(pointId(from)), y = byId.get(pointId(to));
+    // Original route readmission and edge witnesses, not an inferred signed
+    // transitive edge. Only the selected homogeneous relation can occur.
+    return findSignGraphRoute(admitted, x, y, { predicate });
+  };
+
+  const directEdges = frozen(admitted.edges.filter(entry => entry.edge.predicate === predicate));
+  return frozen({
+    kind: 'signgraph.alexandrov.witnessed-reachability.v1',
+    graph: admitted.id,
+    nodeType, predicate,
+    points, directEdges, basis, components,
+    t0: components.every(component => component.length === 1),
+    principalOpen, specializes, isOpen, witnessedRoute,
+  });
+}
