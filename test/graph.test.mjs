@@ -258,9 +258,12 @@ test("channel-resource reading re-admits original graph and refuses forged or un
     relations:{...flowRoles,inject:"untrusted"}}),/relation roles/);
   // No type-based inference of eligibility from words such as "channel".
   const wrongRelation=accepted(createSignGraph({
-    cells:graph.cells,relations:[{id:"carries",subjectTypes:["not-a-channel-type"],
-      objectTypes:[t.id],witnessTypes:[t.id]}],edges:[],
+    cells:graph.cells,
+    relations:Object.values(flowRoles).map(id=>({id,
+      subjectTypes:id==="carries"?["not-a-channel-type"]:[t.id],
+      objectTypes:[t.id],witnessTypes:[t.id],
+    })),edges:[],
   }));
   assert.throws(()=>channelResourceIncidence(wrongRelation,{channel:at.channel,
-    relations:{contains:"carries",reports:"carries",resource:"carries",from:"carries",to:"carries"}}),/distinct roles/);
+    relations:flowRoles}),/channel type/);
 });
