@@ -4,7 +4,7 @@ import { featherGraphOfPredications, positGraphOfFeather } from '../src/feather-
 
 const pos = (performed, display = 'same', side = 'token') => ({performed, side, display});
 const edge = (id, from, predicate, to, fromMark = 'same', toMark = 'same') => ({
-  occurrence: id, sourceRecord: \`source:\${id}\`,
+  occurrence: id, sourceRecord: `source:${id}`,
   cell: {subject: pos(from, fromMark), predicate, object: pos(to, toMark)},
 });
 const selectors = {axialPredicate: 'continued-by', transversePredicate: 'contacts'};
@@ -42,7 +42,7 @@ test('branch-only candidate has no invented transverse witness or equal route', 
 test('complete increasing relation, even with competing routes, is NOT a feather fork', () => {
   const all = [];
   for (let i=0;i<5;i++) for (let j=i+1;j<5;j++)
-    all.push(edge(\`\${i}>\${j}\`, \`act:\${i}\`, 'continued-by', \`act:\${j}\`));
+    all.push(edge(`${i}>${j}`, `act:${i}`, 'continued-by', `act:${j}`));
   const g = featherGraphOfPredications(all, selectors);
   assert.equal(g.predications.length, 10);
   assert.deepEqual(g.forks, [], 'comparable children are not siblings');
@@ -116,6 +116,6 @@ test('literal __proto__ and delimiter-bearing source IDs do not collide in role 
 });
 
 test('finite readout refuses uncontrolled combinatorial fork explosion',()=>{
-  const entries=Array.from({length:130},(_,i)=>edge(\`r>\${i}\`,'root','continued-by',\`leaf:\${i}\`));
+  const entries=Array.from({length:130},(_,i)=>edge(`r>${i}`,'root','continued-by',`leaf:${i}`));
   assert.throws(()=>featherGraphOfPredications(entries,selectors),/8192 finite fork-pair/);
 });
