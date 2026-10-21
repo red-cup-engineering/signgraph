@@ -459,11 +459,12 @@ const optionRoles = Object.freeze({offers:"offers",resource:"resource",from:"fro
   cost:"cost",opposes:"opposes",revokes:"revokes"});
 const atTime = "2026-10-21T15:00:00.000Z";
 function transportFixture({opposed=false,revoked=false,sharedCapMissing=false,
-  sharedCapInvalidUnit=false,sharedCapZero=false,sharedCapExpired=false,
+  sharedCapInvalidUnit=false,sharedCapNonNfcUnit=false,sharedCapZero=false,sharedCapExpired=false,
   sharedCapFuture=false,sharedCapNoExpiry=false,sharedCapUndated=false,
   dualCapacity=false,foreignResource=false,noUses=false,costZero=false,
-  priceDated=false,noCompartments=false,ambiguousCompartments=false}={}) {
-  const shared = {atoms:sharedCapZero?"0":"5",unit:sharedCapInvalidUnit?"":"liters",
+  priceDated=false,priceNonNfcUnit=false,noCompartments=false,ambiguousCompartments=false}={}) {
+  const shared = {atoms:sharedCapZero?"0":"5",
+    unit:sharedCapInvalidUnit?"":sharedCapNonNfcUnit?"litre\\u0301s":"liters",
     ...(!sharedCapUndated ? {
       observedAt:sharedCapFuture?"2026-10-22T00:00:00.000Z":"2026-10-20T00:00:00.000Z",
     } : {}),
@@ -478,7 +479,7 @@ function transportFixture({opposed=false,revoked=false,sharedCapMissing=false,
     cellA:["compartment","cell:A"],cellB:["compartment","cell:B"],cellC:["compartment","cell:C"],
     capShared:["quantity",shared],capAlternative:["quantity",{atoms:"9",unit:"liters"}],
     capA:["quantity",{atoms:"5",unit:"liters"}],capB:["quantity",{atoms:"5",unit:"liters"}],
-    price:["quantity",{atoms:costZero?"0":"1",unit:"credits",
+    price:["quantity",{atoms:costZero?"0":"1",unit:priceNonNfcUnit?"cre\\u0301dits":"credits",
       ...(priceDated ? {observedAt:"2026-10-20T00:00:00.000Z"} : {})}],
     adversary:["adverse","counter-testimony"],revocation:["adverse","withdrawal testimony"],
     message:["message","reported-message:1"],exchange:["exchange","reported-exchange:1"],
@@ -579,6 +580,7 @@ test("contrary and revoked testimony obstruct individual candidates and retain s
 test("missing, ambiguous or malformed capacity cannot silently become zero or authorization",()=>{
   for (const [modifier,kind] of [
     ["sharedCapMissing","missing"],["sharedCapInvalidUnit","unqualified-exact-quantity"],
+    ["sharedCapNonNfcUnit","unqualified-exact-quantity"],
     ["dualCapacity","ambiguous"],["foreignResource","resource-mismatch"],
     ["noUses","missing"],["sharedCapZero","reported-zero-capacity"],
     ["noCompartments","missing"],["ambiguousCompartments","ambiguous"],
@@ -594,6 +596,26 @@ test("missing, ambiguous or malformed capacity cannot silently become zero or au
   const r=readOptions(f);
   assert.equal(r.possibilities.length,2,"zero exact cost is valid, unlike zero capacity");
   assert.equal(r.possibilities[0].cost.atoms,"0");
+});
+
+test("source units must be NFC before conditional transport feasibility",()=>{
+  const decomposition = transportFixture({sharedCapNonNfcUnit:true});
+  const source = readOptions(decomposition);
+  assert.equal(source.possibilities.length,0);
+  assert.equal(source.obstructions.length,2);
+  assert.ok(source.obstructions.every(option => option.failures.some(problem =>
+    problem.role==="capacity" && problem.kind==="unqualified-exact-quantity")));
+  assert.equal(source.effects,"not-performed");
+
+  const costFixture = transportFixture({priceNonNfcUnit:true});
+  const cost = readOptions(costFixture);
+  assert.equal(cost.possibilities.length,1,
+    "a noncanonical cost blocks only the affected option, not an unrelated offered route");
+  assert.equal(cost.obstructions.length,1);
+  assert.ok(cost.obstructions[0].failures.some(problem =>
+    problem.role==="cost" && problem.kind==="unqualified-exact-quantity"));
+  assert.equal(readOptions(transportFixture()).possibilities.length,2,
+    "ordinary canonical units remain source-eligible without inventing conversion");
 });
 
 test("expired, future or unclocked source claims cannot impersonate presently admissible routes",()=>{
