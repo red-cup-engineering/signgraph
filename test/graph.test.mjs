@@ -255,6 +255,10 @@ test("channel-resource reading re-admits original graph and refuses forged or un
   assert.throws(()=>channelResourceIncidence(graph,{channel:at.channel,
     relations:flowRoles,maxExchanges:1}),/exchange budget/);
   assert.throws(()=>channelResourceIncidence(graph,{channel:at.channel,
+    relations:flowRoles,maxEdges:1}),/witnessed-edge budget/);
+  assert.throws(()=>channelResourceIncidence(graph,{channel:at.channel,
+    relations:flowRoles,maxEdges:131073}),/witnessed-edge budget/);
+  assert.throws(()=>channelResourceIncidence(graph,{channel:at.channel,
     relations:{...flowRoles,inject:"untrusted"}}),/relation roles/);
   // No type-based inference of eligibility from words such as "channel".
   const wrongRelation=accepted(createSignGraph({
