@@ -104,7 +104,7 @@ export function findSignGraphRoute(graph, sourceReference, targetReference, opti
  * a one-level spatial reading, not a fabricated hierarchy or sheaf.
  */
 export function channelResourceIncidence(graph, {
-  channel, relations, maxMessages = 256, maxExchanges = 1024,
+  channel, relations, maxMessages = 256, maxExchanges = 1024, maxEdges = 16384,
 } = {}) {
   const required = ["contains", "reports", "resource", "from", "to"];
   const allowed = [...required, "quantity", "settlement", "inside"];
@@ -119,6 +119,8 @@ export function channelResourceIncidence(graph, {
     throw new TypeError("channel resource incidence: distinct roles require distinct predicates");
   if (![maxMessages, maxExchanges].every(n => Number.isSafeInteger(n) && n > 0 && n <= 4096))
     throw new RangeError("channel resource incidence: resource budgets must be integers from 1 to 4096");
+  if (!Number.isSafeInteger(maxEdges) || maxEdges < 1 || maxEdges > 131072)
+    throw new RangeError("channel resource incidence: witnessed-edge budget must be 1 through 131072");
   const received = receiveGraph(graph);
   const declarations = new Map(received.relations.map(relation => [relation.id, relation]));
   for (const id of Object.values(relations))
@@ -132,9 +134,12 @@ export function channelResourceIncidence(graph, {
   const compare = (a,b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
   // Group evidence by the ORIGINAL typed target reference; different witnesses
   // still identify different original EAVT relation statements.
+  let observedEdges = 0;
   const targetGroups = (subject, role) => {
     const grouped = new Map();
     const entries = querySignGraph(received, subject, { predicate: relations[role] });
+    observedEdges += entries.length;
+    if (observedEdges > maxEdges) throw new RangeError("channel resource incidence: witnessed-edge budget exceeded");
     for (const entry of entries) {
       const target = entry.edge.object;
       const key = JSON.stringify([target.id, target.type]);
