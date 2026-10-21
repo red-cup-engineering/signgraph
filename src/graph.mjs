@@ -305,7 +305,7 @@ export function channelTransportPossibilities(graph, {
   channel, relations, quantityType, observedAt = null,
   maxOptions = 256, maxSources = 1024, maxEdges = 16384,
 } = {}) {
-  const mandatory = ["offers", "resource", "from", "to", "uses", "capacityResource", "capacity"];
+  const mandatory = ["offers", "resource", "from", "to", "inside", "uses", "capacityResource", "capacity"];
   const optional = ["cost", "opposes", "revokes"];
   if (!relations || typeof relations !== "object" || Array.isArray(relations) ||
       mandatory.some(role => !Object.hasOwn(relations, role)) ||
@@ -420,14 +420,18 @@ export function channelTransportPossibilities(graph, {
   const possibilities = [], obstructions = [];
   for (const entry of offered) {
     const option = entry.target;
-    const evidence = Object.freeze({offers:entry.edges,
+    const evidence = {offers:entry.edges,
       resource:targets(option,"resource"),from:targets(option,"from"),to:targets(option,"to"),
       uses:targets(option,"uses"),cost:targets(option,"cost"),
-      opposes:targets(option,"opposes"),revokes:targets(option,"revokes")});
+      opposes:targets(option,"opposes"),revokes:targets(option,"revokes")};
     const errors = [];
     const resource = expectOne(evidence.resource,"resource",errors);
     const from = expectOne(evidence.from,"from",errors);
     const to = expectOne(evidence.to,"to",errors);
+    evidence.sourceCompartments = from ? targets(from,"inside") : Object.freeze([]);
+    evidence.targetCompartments = to ? targets(to,"inside") : Object.freeze([]);
+    const sourceCell = expectOne(evidence.sourceCompartments,"sourceCell",errors);
+    const targetCell = expectOne(evidence.targetCompartments,"targetCell",errors);
     if (evidence.uses.length === 0) errors.push(failure("uses","missing",0));
     if (evidence.cost.length > 1) errors.push(failure("cost","ambiguous",evidence.cost.length));
     const cost = quantityOf(evidence.cost[0],"cost",errors);
@@ -440,8 +444,9 @@ export function channelTransportPossibilities(graph, {
       for (const failureEntry of source.failures)
         errors.push(Object.freeze({...failureEntry, source:source.source}));
     }
-    const reading = Object.freeze({option,channel,resource,from,to,cost,
-      capacitySources:sources,evidence,
+    const reading = Object.freeze({option,channel,resource,from,to,sourceCell,targetCell,
+      crossesCellBoundary:sourceCell && targetCell ? sourceCell.id !== targetCell.id : null,
+      cost,capacitySources:sources,evidence:Object.freeze(evidence),
       standing:"source-offered-only-not-authorized",
       effects:"not-performed",reservation:"not-checked"});
     if (errors.length) obstructions.push(Object.freeze({
