@@ -104,7 +104,7 @@ export function findSignGraphRoute(graph, sourceReference, targetReference, opti
  * a one-level spatial reading, not a fabricated hierarchy or sheaf.
  */
 export function channelResourceIncidence(graph, {
-  channel, relations, maxMessages = 256, maxExchanges = 1024, maxEdges = 16384,
+  channel, relations, maxMessages = 256, maxExchanges = 1024, maxEdges = 16384, maxContainmentDepth = 1,
 } = {}) {
   const required = ["contains", "reports", "resource", "from", "to"];
   const allowed = [...required, "quantity", "settlement", "inside"];
@@ -121,6 +121,9 @@ export function channelResourceIncidence(graph, {
     throw new RangeError("channel resource incidence: resource budgets must be integers from 1 to 4096");
   if (!Number.isSafeInteger(maxEdges) || maxEdges < 1 || maxEdges > 131072)
     throw new RangeError("channel resource incidence: witnessed-edge budget must be 1 through 131072");
+  if (!Number.isSafeInteger(maxContainmentDepth) || maxContainmentDepth < 1 || maxContainmentDepth > 8 ||
+      (maxContainmentDepth > 1 && !relations.inside))
+    throw new RangeError("channel resource incidence: containment depth must be 1 through 8 with an inside role");
   const received = receiveGraph(graph);
   const declarations = new Map(received.relations.map(relation => [relation.id, relation]));
   for (const id of Object.values(relations))
@@ -190,19 +193,67 @@ export function channelResourceIncidence(graph, {
     if (evidence.quantity?.length > 1)
       failures.push(Object.freeze({role:"quantity", count:evidence.quantity.length,kind:"ambiguous"}));
     let sourceCell = null, targetCell = null;
+    let sourceLineage = null, targetLineage = null;
+    const compartmentLevels = [];
     if (relations.inside && evidence.from.length === 1 && evidence.to.length === 1) {
-      const origins = targetGroups(evidence.from[0].target, "inside");
-      const destinations = targetGroups(evidence.to[0].target, "inside");
-      evidence.originCell = origins;
-      evidence.destinationCell = destinations;
-      if (origins.length !== 1)
-        failures.push(Object.freeze({role:"originCell", count:origins.length,
-          kind: origins.length ? "ambiguous" : "missing"}));
-      if (destinations.length !== 1)
-        failures.push(Object.freeze({role:"destinationCell", count:destinations.length,
-          kind: destinations.length ? "ambiguous" : "missing"}));
-      if (origins.length === 1) sourceCell = origins[0].target;
-      if (destinations.length === 1) targetCell = destinations[0].target;
+      // Each step is an ORIGINAL witnessed edge. Missing further parents are
+      // unknown, not proof that a cell is a top-level root. An ambiguous/cyclic
+      // path is an obstruction when its requested depth is reached.
+      const lineage = (origin, firstRole, laterRole) => {
+        let current = origin;
+        const visited = new Set([origin.id]);
+        const levels = [];
+        let stop = "depth-limit";
+        for (let depth = 0; depth < maxContainmentDepth; depth++) {
+          const parents = targetGroups(current, "inside");
+          if (depth === 0) evidence[firstRole] = parents;
+          if (parents.length === 0) {
+            stop = "unwitnessed-parent";
+            if (depth === 0)
+              failures.push(Object.freeze({role:firstRole,count:0,kind:"missing"}));
+            break;
+          }
+          if (parents.length !== 1) {
+            stop = "ambiguous-parent";
+            failures.push(Object.freeze({
+              role:depth === 0 ? firstRole : laterRole,
+              count:parents.length,kind:"ambiguous",
+            }));
+            break;
+          }
+          const parent = parents[0].target;
+          if (visited.has(parent.id)) {
+            stop = "cyclic-containment";
+            failures.push(Object.freeze({role:laterRole,kind:"cycle",at:parent}));
+            break;
+          }
+          levels.push(Object.freeze({
+            parent, from:current, edges:parents[0].edges,
+          }));
+          visited.add(parent.id);
+          current = parent;
+        }
+        return Object.freeze({levels:Object.freeze(levels),stop});
+      };
+      sourceLineage = lineage(evidence.from[0].target, "originCell", "originLineage");
+      targetLineage = lineage(evidence.to[0].target, "destinationCell", "destinationLineage");
+      sourceCell = sourceLineage.levels[0]?.parent ?? null;
+      targetCell = targetLineage.levels[0]?.parent ?? null;
+      evidence.sourceLineage = sourceLineage;
+      evidence.targetLineage = targetLineage;
+      for (let depth = 1; depth <= maxContainmentDepth; depth++) {
+        const origin = sourceLineage.levels[depth - 1] ?? null;
+        const destination = targetLineage.levels[depth - 1] ?? null;
+        compartmentLevels.push(Object.freeze({
+          depth,
+          from:origin?.parent ?? null,
+          to:destination?.parent ?? null,
+          sourceEvidence:origin?.edges ?? Object.freeze([]),
+          targetEvidence:destination?.edges ?? Object.freeze([]),
+          crosses:origin && destination ? origin.parent.id !== destination.parent.id : null,
+          standing:origin && destination ? "source-witnessed-pair" : "unknown",
+        }));
+      }
     }
     const disclosedEvidence = Object.freeze(evidence);
     const reports = Object.freeze(item.reportedBy);
@@ -217,7 +268,8 @@ export function channelResourceIncidence(graph, {
       from:evidence.from[0].target, to:evidence.to[0].target,
       quantity:evidence.quantity?.[0]?.target ?? null,
       settlementClaims:evidence.settlement ?? Object.freeze([]),
-      sourceCell, targetCell,
+      sourceCell, targetCell, sourceLineage, targetLineage,
+      compartmentLevels:Object.freeze(compartmentLevels),
       crossesCellBoundary:relations.inside ?
         sourceCell.id !== targetCell.id : null,
       evidence:disclosedEvidence,
