@@ -33,3 +33,36 @@ test('directed Post/Box adjunction, upper hull and topological closure are disti
    [refs[1].id,refs[2].id].sort());
  assert.deepEqual(view.topologicalClosure([refs[0]]).map(p=>p.id),[refs[0].id]);
 });
+
+test('identity continuity compares two source-addressed topologies, not presumed time or authority',()=>{
+ const original=source;
+ const edge=(i,j)=>({subject:refs[i],predicate:'forward',object:refs[j],witness:referenceOf(wt)});
+ const declaration={id:'forward',subjectTypes:[t.id],objectTypes:[t.id],witnessTypes:[w.id]};
+ const alternate=ok(createSignGraph({cells:[...a,wt],relations:[declaration],edges:[edge(0,2),edge(1,2)]}));
+ const added=ok(createSignGraph({cells:[...a,wt],relations:[declaration],edges:[
+  edge(0,1),edge(1,2),edge(0,2)]}));
+ const lost=compareSignGraphAlexandrov(original,alternate,{nodeType:t.id,predicate:'forward'});
+ assert.equal(lost.sourceToTargetContinuous,false);
+ assert.equal(lost.targetToSourceContinuous,true);
+ assert.equal(lost.identityHomeomorphism,false);
+ assert.equal(lost.lostComparabilities,1);
+ assert.equal(lost.gainedComparabilities,0);
+ assert.equal(lost.lostExamples[0].originalRoute.reachable,true);
+ assert.equal(lost.lostExamples[0].originalRoute.hops.length,1);
+ const sameOrder=compareSignGraphAlexandrov(original,added,{nodeType:t.id,predicate:'forward'});
+ assert.equal(sameOrder.identityHomeomorphism,true);
+ assert.equal(sameOrder.lostComparabilities,0);
+ assert.equal(sameOrder.gainedComparabilities,0);
+ assert.equal(sameOrder.gainedDirectWitnesses.length,1,
+   'same topology can have different original witnessed direct edges');
+ const reverse=compareSignGraphAlexandrov(alternate,original,{nodeType:t.id,predicate:'forward'});
+ assert.equal(reverse.sourceToTargetContinuous,true);
+ assert.equal(reverse.targetToSourceContinuous,false);
+});
+test('different actor carrier refuses identity transport; never identify a foreign Actor by a label',()=>{
+ const fewer=ok(createSignGraph({cells:[a[0],a[1],wt],
+ relations:[{id:'forward',subjectTypes:[t.id],objectTypes:[t.id],witnessTypes:[w.id]}],
+ edges:[{subject:refs[0],predicate:'forward',object:refs[1],witness:referenceOf(wt)}]}));
+ assert.throws(()=>compareSignGraphAlexandrov(source,fewer,{nodeType:t.id,predicate:'forward'}),
+   /same source-admitted typed points/);
+});
