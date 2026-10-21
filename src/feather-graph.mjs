@@ -24,7 +24,7 @@ const MAX_FORK_PAIRS = 8192;
 // A transported readout never acquires the in-process derivation witness by copying its JSON.
 const generatedReadouts = new WeakSet();
 
-function fail(message) { throw new TypeError(\`feather graph: \${message}\`); }
+function fail(message) { throw new TypeError(`feather graph: ${message}`); }
 function positionOf(value) {
   if (!isRecord(value) || !named(value.performed) || !['token', 'claim'].includes(value.side))
     fail('each endpoint must be a source-position role {performed,side}');
@@ -48,7 +48,7 @@ function positionOf(value) {
  */
 export function featherGraphOfPredications(source, { axialPredicate, transversePredicate } = {}) {
   if (!Array.isArray(source) || source.length === 0 || source.length > MAX_PREDICATIONS)
-    fail(\`requires 1-\${MAX_PREDICATIONS} original predication occurrences\`);
+    fail(`requires 1-${MAX_PREDICATIONS} original predication occurrences`);
   if (!named(axialPredicate) || !named(transversePredicate) || axialPredicate === transversePredicate)
     fail('distinct axialPredicate and transversePredicate selectors are required');
   const ids = new Set(), positions = new Map(), predications = [];
@@ -123,7 +123,7 @@ export function featherGraphOfPredications(source, { axialPredicate, transverseP
       const first = outgoing[i], second = outgoing[j];
       if (first.object === second.object || descendants(first.object).has(second.object) ||
           descendants(second.object).has(first.object)) continue;
-      if (++pairs > MAX_FORK_PAIRS) fail(\`more than \${MAX_FORK_PAIRS} finite fork-pair candidates\`);
+      if (++pairs > MAX_FORK_PAIRS) fail(`more than ${MAX_FORK_PAIRS} finite fork-pair candidates`);
       const leftToRight = contacts.get(JSON.stringify([first.object, second.object])) ?? [];
       const rightToLeft = contacts.get(JSON.stringify([second.object, first.object])) ?? [];
       const witnessedContacts = [...leftToRight, ...rightToLeft];
