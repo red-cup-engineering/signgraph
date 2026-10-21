@@ -40,7 +40,7 @@ function validateEdgeList(raw, label) {
     if (!Array.isArray(edge) || edge.length !== 2 || !integer(edge[0]) || !integer(edge[1]))
       fail(`${label}: each edge needs two nonnegative safe integer endpoints`);
     const [a, b] = edge[0] < edge[1] ? edge : [edge[1], edge[0]];
-    if (a === b) fail(`${label}: self-loops are outside the simple FEATHER-G input contract`);
+    if (a === b) fail(`${label}: self-loops are unsupported by this undirected-simple SignGraph projection`);
     if (b >= MAX_VERTICES) fail(`${label}: vertex index exceeds bounded work budget`);
     const key = JSON.stringify([a, b]);
     if (seen.has(key)) fail(`${label}: duplicate undirected edge (FEATHER-G would silently coalesce it)`);
@@ -152,7 +152,7 @@ export function encodeFeatherGGraphCollection(inputs, {projection} = {}) {
     for (const rel of original.relations) {
       const a = vertexIndex.get(rel.from), b = vertexIndex.get(rel.to);
       if (a === undefined || b === undefined) fail(`graph ${index}: foreign endpoint in source`);
-      if (a === b) fail(`graph ${index}: self-loop cannot be projected without a false FEATHER-G topology`);
+      if (a === b) fail(`graph ${index}: self-loop requires a separate loop-preserving projection; this codec refuses it`);
       const pair = a < b ? [a,b] : [b,a];
       const key = JSON.stringify(pair);
       if (!originalByPair.has(key)) originalByPair.set(key, {pair, original: []});
