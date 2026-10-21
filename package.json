@@ -15,6 +15,7 @@
     "./mesh": "./src/mesh.mjs",
     "./chu-term": "./src/chu-term.mjs",
     "./graph": "./src/graph.mjs",
+    "./alexandrov": "./src/alexandrov.mjs",
     "./pam": "./src/pam.mjs",
     "./relation-adapters": "./src/relation-adapters.mjs",
     "./relational-value": "./src/relational-value.mjs",
