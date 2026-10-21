@@ -271,3 +271,86 @@ test("channel-resource reading re-admits original graph and refuses forged or un
   assert.throws(()=>channelResourceIncidence(wrongRelation,{channel:at.channel,
     relations:flowRoles}),/channel type/);
 });
+
+
+test("typed Resource Things specialize channels, messages, exchanges and stock without role confusion", () => {
+  // This fixture uses the ORIGINAL SignCell type system, not a new Graph/Craft
+  // role ontology. Semantic role declarations supply the actual graph types.
+  const mk = (id, parents = []) => accepted(defineType({
+    id: "test.flow." + id + "@1", name: "Flow " + id,
+    description: "Source-qualified distinct " + id + " data kind",
+    schema: {}, parents,
+  }));
+  const thing = mk("Thing"), resource = mk("Resource", [thing]);
+  const channelType = mk("Channel", [resource]);
+  const messageType = mk("Message", [resource]);
+  const exchangeType = mk("Exchange", [resource]);
+  const stockType = mk("Stock", [resource]);
+  const actorType = mk("Actor", [resource]);
+  const compartmentType = mk("Compartment", [thing]);
+  const quantityType = mk("Quantity", [thing]);
+  const witnessType = mk("Witness", [thing]);
+  const marks = {
+    channel: accepted(createTypedMark(channelType,"c:1")),
+    message: accepted(createTypedMark(messageType,"m:1")),
+    exchange: accepted(createTypedMark(exchangeType,"x:1")),
+    stock: accepted(createTypedMark(stockType,"r:water")),
+    source: accepted(createTypedMark(actorType,"a:source")),
+    target: accepted(createTypedMark(actorType,"a:target")),
+    insideA: accepted(createTypedMark(compartmentType,"cell:A")),
+    insideB: accepted(createTypedMark(compartmentType,"cell:B")),
+    amount: accepted(createTypedMark(quantityType,{atoms:"7",unit:"u:water"})),
+    witness: accepted(createTypedMark(witnessType,"w:1")),
+  };
+  const at = Object.fromEntries(Object.entries(marks).map(([key,mark])=>[key,referenceOf(mark)]));
+  const specs = [
+    ["contains",channelType,messageType],
+    ["reports",messageType,exchangeType],
+    ["resource",exchangeType,stockType],
+    ["from",exchangeType,actorType],
+    ["to",exchangeType,actorType],
+    ["quantity",exchangeType,quantityType],
+    ["inside",actorType,compartmentType],
+  ];
+  const relation = ([id,domain,codomain]) => ({
+    id,subjectTypes:[accepted(createTypedMark(domain,"type-marker")).type],
+    objectTypes:[accepted(createTypedMark(codomain,"type-marker")).type],
+    witnessTypes:[at.witness.type],
+  });
+  const relations = specs.map(relation);
+  const link = (s,p,o) => ({subject:at[s],predicate:p,object:at[o],witness:at.witness});
+  const edges = [
+    link("channel","contains","message"),
+    link("message","reports","exchange"),
+    link("exchange","resource","stock"),
+    link("exchange","from","source"),
+    link("exchange","to","target"),
+    link("exchange","quantity","amount"),
+    link("source","inside","insideA"),
+    link("target","inside","insideB"),
+  ];
+  const created = createSignGraph({cells:Object.values(marks),relations,edges});
+  assert.equal(created.ok,true,JSON.stringify(created.refusal));
+  const read = channelResourceIncidence(created.value,{
+    channel:at.channel,
+    relations:{contains:"contains",reports:"reports",resource:"resource",from:"from",
+      to:"to",quantity:"quantity",inside:"inside"},
+  });
+  assert.equal(read.messages.length,1);
+  assert.equal(read.transfers.length,1);
+  assert.equal(read.transfers[0].resource.type,at.stock.type);
+  assert.equal(read.transfers[0].quantity.type,at.amount.type);
+  assert.equal(read.transfers[0].crossesCellBoundary,true);
+  assert.equal(read.obstructions.length,0);
+
+  const wrongSource = createSignGraph({
+    cells:Object.values(marks),relations,
+    edges:[link("stock","contains","message")],
+  });
+  assert.equal(wrongSource.ok,false,"a Resource Stock cannot masquerade as the declared Channel");
+  assert.equal(wrongSource.refusal.code,"type-mismatch");
+  assert.throws(()=>channelResourceIncidence(created.value,{
+    channel:at.stock,
+    relations:{contains:"contains",reports:"reports",resource:"resource",from:"from",to:"to"},
+  }),/channel type/);
+});
