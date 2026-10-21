@@ -267,3 +267,39 @@ test("portable JSON Semioverse readouts retain original occurrence indices witho
     /original generated observation routes/,
     "a serialized readout cannot masquerade as the live original compositional authority");
 });
+
+
+test("source-generated re-attention chain obeys finite fiber law without licensing ghost moves", () => {
+  // Metrologic's independent degree/fiber oracle is conditional mathematics.
+  // Here SignGraph must first generate every edge and equal head from the
+  // SAME original performed Articulating, then refuse source authority for
+  // every image-only composition. Source-native runner still needs the exact
+  // upstream package to be published and installed.
+  for (let n = 0; n <= 6; n++) {
+    const view = derivePerformedHeadShadow({ articulating: performedSource(), steps: n });
+    const edges = view.originalSourceSteps;
+    const image = view.observedTwoStepComposites;
+    assert.equal(edges.length, n);
+    assert.equal(image.length, n ** 2, `observed C at n=${n}`);
+    assert.equal(view.originalCompositions, Math.max(0, n - 1), `source L at n=${n}`);
+    assert.equal(view.ghostCompositions, n * n - Math.max(0, n - 1), `ghost G at n=${n}`);
+    const exact = [];
+    const observed = [];
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        const pair = image[i * n + j];
+        const composable = i + 1 === j;
+        observed.push(pair.sourceStepAddresses);
+        assert.equal(pair.sourceComposable, composable);
+        assert.equal(pair.ghostObservationOnly, !composable);
+        assert.equal(pair.licensedSourceComposite !== null, composable,
+          `image pair ${i},${j} at n=${n} has no invented source permission`);
+        if (composable) exact.push([edges[i].address, edges[j].address]);
+      }
+    }
+    assert.deepEqual(observed, edges.flatMap(left => edges.map(right =>
+      [left.address, right.address])));
+    assert.deepEqual(image.filter(pair => pair.sourceComposable)
+      .map(pair => pair.sourceStepAddresses), exact);
+  }
+});
