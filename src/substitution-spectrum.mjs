@@ -17,6 +17,9 @@
  * cohomological rank, nor any non-finite closure regime.
  */
 import { isMark } from "@red-cup-engineering/signcell/mark";
+import {
+  admitCell, cellSet, measured, presence, recordOf
+} from "@red-cup-engineering/signcell/cell";
 import { isUtterance, traceOfArticulating } from "@red-cup-engineering/signcell/utterance";
 import { semanticId } from "@red-cup-engineering/semiotic-content-address";
 import { charPoly, fromInts, toInt } from "@red-cup-engineering/exact-number-data-service/exact-number";
@@ -262,3 +265,98 @@ export function selectSourceMarkReactions(input) {
   }
   throw new Error("finite source-reaction iteration exceeded its own depth bound");
 }
+
+
+/**
+ * FOUR-valued receiving of a SOURCE-GENERATED reaction product.
+ *
+ * `selectSourceMarkReactions` already creates ALL least-depth source-authorized
+ * Mark-reaction paths, including distinct paths to the same final word.
+ * Matching a requested word is only a syntactic search result, not accepted
+ * service, an independently witnessed reaction, or physical computation.
+ *
+ * Each receiver's report is an original SignCell addressed to ONE exact
+ * pathAddress and its wordAddress, under an explicitly declared predicate.
+ * These are only evidence reports; the caller must qualify provenance,
+ * actual rights, physical transduction and observer independence separately.
+ *
+ * Never infer a positive output from an absent, contradicted, or unmeasured
+ * report. Do not memoize by final Mark word: two path addresses may differ
+ * even when their final word readouts coincide.
+ *
+ * The original Articulating, Mark rules and bounded selector remain the only
+ * generator. Neither reports nor the receiver predicate introduce rewrite
+ * rules. This is a non-Boolean readout ON a finite Turing-simulable engine;
+ * it is not a hypercomputer, a physical chemistry, or a new Actor authority.
+ */
+export function receiveSourceMarkReactions(input) {
+  const allowed=new Set([
+    "articulating","seed","target","maxReactions","maxCandidates","maxWordLength",
+    "receipts","acceptancePredicate"
+  ]);
+  if(!input||Object.getPrototypeOf(input)!==Object.prototype||
+      Object.keys(input).some(key=>!allowed.has(key)))
+    throw new TypeError("source reaction receiving requires only native reaction inputs and receipt evidence");
+  const predicate=input.acceptancePredicate;
+  if(typeof predicate!=="string"||!predicate.trim()||predicate.length>256)
+    throw new TypeError("source reaction receiving requires a declared nonempty acceptance predicate");
+  const submitted=input.receipts??[];
+  if(!Array.isArray(submitted)||submitted.length>1024)
+    throw new RangeError("source reaction receiving requires 0..1024 SignCell reports");
+
+  // Recompute the actual original finite source generation. No caller-supplied
+  // 'selected' result can smuggle in synthetic paths or a borrowed proof.
+  const selection=selectSourceMarkReactions({
+    articulating:input.articulating,seed:input.seed,target:input.target,
+    maxReactions:input.maxReactions,maxCandidates:input.maxCandidates,
+    maxWordLength:input.maxWordLength
+  });
+  const eligible=new Map(selection.selected.map(path=>[path.pathAddress,path]));
+  const byPath=new Map(selection.selected.map(path=>[path.pathAddress,[]]));
+  for(const report of submitted) {
+    const original=admitCell(report);
+    if(!measured(original))
+      throw new TypeError("source reaction report must be measured from its evidence, not a contradictory written value");
+    const matched=eligible.get(original.subject);
+    if(!matched||original.predicate!==predicate||original.object!==matched.wordAddress)
+      throw new TypeError("source reaction report is foreign, non-selected or bound to the wrong path/readout");
+    byPath.get(original.subject).push(original);
+  }
+
+  const evaluations=freeze(selection.selected.map(path=>{
+    const observations=freeze(byPath.get(path.pathAddress));
+    const merged=cellSet(observations);
+    // All received reports share exactly one original (path,predicate,word)
+    // triple; cellSet uses the original Cell knowledge join of witness sides.
+    if(merged.length>1)
+      throw new TypeError("source reaction reports must be one addressed observation coordinate");
+    const evidence=merged[0]??null;
+    const reading=evidence===null?"absurd":presence(evidence);
+    const tally=evidence===null?freeze({pos:0,neg:0}):recordOf(evidence);
+    const status=reading==="potential"?"supported":
+       reading==="active"?"opposed":
+       reading==="stable"?"contested":"unobserved";
+    return freeze({
+      pathAddress:path.pathAddress,
+      wordAddress:path.wordAddress,
+      sourceSteps:path.steps,
+      status,reading,
+      evidence,observations,record:tally,
+      // Counts are number of distinct witness representations after the
+      // SignCell merge, NOT authenticated independent Actors or payments.
+      scope:"source-reported evidence only; no independent ACK, signed identity or physical proof"
+    });
+  }));
+  const statuses=evaluations.map(e=>e.status);
+  const status=selection.status!=="selected"?"search-obstructed":
+    statuses.includes("supported")?"has-reported-support":
+    statuses.includes("contested")?"contested":
+    statuses.length>0&&statuses.every(s=>s==="opposed")?"opposed":"unobserved";
+  return freeze({
+    kind:"signgraph.sourceMarkReactionReceiving/v1",
+    status,acceptancePredicate:predicate,
+    selection,evaluations,
+    scope:"Articulating-derived finite non-Boolean receiving; target match and unopposed report never imply physical reaction, usable work, authenticated observer, abiogenesis or super-Turing power"
+  });
+}
+
