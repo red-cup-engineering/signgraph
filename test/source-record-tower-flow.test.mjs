@@ -43,7 +43,7 @@ test("original SignGraph accepts source-ordered record towers without erasing pa
   assert.deepEqual(graph.entries[0].tower.retainedSurplus, record(1, 0));
   assert.deepEqual(graph.entries[0].cell.against, ["w3"]);
   assert.equal(graph.entries[0].sourceAddress, graph.entries[1].sourceAddress,
-    "same triple address does not identify two independent source presentations");
+    "same triple address does not collapse two supplied positions or certify independent performances");
   assert.notEqual(graph.entries[0].sourceAddress, graph.entries[2].sourceAddress,
     "reversed predication remains distinct");
   assert.deepEqual(graph.flow.edges.map(x => [x.from, x.to]),
