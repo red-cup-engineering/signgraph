@@ -20,6 +20,7 @@ test("three reusable operations share one structural admission, with machine-rea
     "signgraph.holonomy.burgers",
     "signgraph.holonomy.geometry",
     "signgraph.holonomy.affine",
+    "signgraph.j26.puncture",
     "signgraph.mark-incidence.observed-head-gluing",
     "signgraph.mark-incidence.articulating-tower",
   ]);
@@ -302,4 +303,93 @@ test("installed CLI returns the 3D Stokes and homology receipts in JSONL", () =>
   assert.equal(burgers.receipt.dimension, 3);
   assert.equal(burgers.receipt.volumeConservation.holds, true);
   assert.deepEqual(burgers.receipt.volumeResidues[0].burgers, [0, 0, 0]);
+});
+
+
+test("source-qualified J26 holes are a real original bounded operation with addressed Burgers", () => {
+  const target = { removedFaces: ["leftTop", "leftBottom"], retention: "face-support" };
+  const receipt = executeOperation("signgraph.j26.puncture", target);
+  assert.equal(receipt.kind, "signgraph.j26.puncture-receipt.v1");
+  assert.equal(receipt.source, "Obsmetrologia.AperiodicOrder.J26.faceVertices");
+  assert.deepEqual(receipt.topology.betti, { h0: 1, h1: 1, h2: 0 });
+  assert.equal(receipt.edges.length, 14);
+  assert.equal(receipt.faces.length, 6);
+  assert.deepEqual(receipt.droppedEdges, []);
+  assert.deepEqual(receipt.retainedFaces, [
+    "leftSide0", "leftSide1", "rightTop", "rightBottom", "rightSide0", "rightSide1",
+  ]);
+  assert.equal(operations.j26Puncture.inputSchema.additionalProperties, false);
+  assert.deepEqual(operations.j26Puncture.inputSchema.required, ["removedFaces", "retention"]);
+  assert.ok(Object.isFrozen(receipt) && Object.isFrozen(receipt.edges));
+  const field = receipt.edges.map(edge => {
+    const ends = new Set([edge.from, edge.to]);
+    const direction = from => edge.from === from ? 1 : -1;
+    const perturb = ends.has("q0") && ends.has("a") ? direction("q0")
+      : ends.has("q3") && ends.has("b") ? direction("q3") : 0;
+    return { edge: edge.id, vector: [0, 0, perturb] };
+  });
+  // Ordering is supplied by original source edge ID, NOT an invented
+  // edge-field index. Reversing input receipt order leaves the math intact.
+  const out = executeOperation("signgraph.j26.puncture", {
+    ...target, edgeField: field.reverse(),
+  });
+  assert.deepEqual(out.topology.betti, receipt.topology.betti);
+  assert.equal(out.burgers.classification, "global-holonomy");
+  assert.equal(out.burgers.localFlat, true);
+  assert.equal(out.burgers.exact, false);
+  assert.equal(out.burgers.nontrivialGlobalClass, true);
+  assert.equal(out.burgers.faceResidues.length, 6);
+  assert.ok(out.burgers.faceResidues.every(face => face.flat));
+
+  const allZero = receipt.edges.map(edge => ({ edge: edge.id, vector: [0, 0, 0] }));
+  assert.equal(executeOperation("signgraph.j26.puncture", {
+    ...target, edgeField: allZero,
+  }).burgers.classification, "exact");
+});
+
+test("J26 original operation refuses anonymous, incomplete and unauthorized source fields", () => {
+  const target = { removedFaces: ["leftTop", "leftSide1"], retention: "face-support" };
+  const receipt = executeOperation("signgraph.j26.puncture", target);
+  assert.deepEqual(receipt.topology.betti, { h0: 1, h1: 0, h2: 0 });
+  assert.equal(receipt.edges.length, 13);
+  const zeros = receipt.edges.map(edge => ({ edge: edge.id, vector: [0, 0, 0] }));
+  for (const input of [
+    { ...target, typo: true },
+    { ...target, vertices: [] },
+    { ...target, edgeField: zeros.slice(1) },
+    { ...target, edgeField: [...zeros.slice(1), zeros[1]] },
+    { ...target, edgeField: [{ ...zeros[0], edge: "invented-edge" }, ...zeros.slice(1)] },
+    { ...target, edgeField: [{ ...zeros[0], vector: [0.5, 0, 0] }, ...zeros.slice(1)] },
+    { removedFaces: ["leftTop"], retention: "inferred" },
+    { removedFaces: ["leftTop"], retention: "skeleton", fakeRight: true },
+  ]) assert.throws(() => executeOperation("signgraph.j26.puncture", input),
+    TypeError);
+  assert.throws(() => executeOperation("signgraph.j26.puncture", target,
+    { workBudget: { vertices: 7 } }), /finite-complex work budget/);
+  assert.throws(() => executeOperation("signgraph.j26.puncture",
+    { ...target, edgeField: [...zeros, { edge: "overage", vector: [0, 0, 0] }] }),
+    /exactly one identified entry/);
+  assert.throws(() => executeOperation("signgraph.j26.puncture",
+    { ...target, overflow: "x".repeat(66000) }), /only removedFaces/);
+});
+
+test("existing SignGraph holonomy JSONL CLI receives J26 source punctures directly", () => {
+  const line = JSON.stringify({
+    operation: "signgraph.j26.puncture",
+    input: { removedFaces: ["leftTop", "leftSide1"], retention: "face-support" },
+  });
+  const child = spawnSync(process.execPath, [bin], {
+    input: line + "\n", encoding: "utf8", timeout: 10000,
+  });
+  assert.equal(child.status, 0, child.stderr);
+  assert.equal(child.stderr, "");
+  const lines = child.stdout.trim().split("\n");
+  assert.equal(lines.length, 1);
+  const result = JSON.parse(lines[0]);
+  assert.equal(result.ok, true);
+  assert.equal(result.operation, "signgraph.j26.puncture");
+  assert.equal(result.receipt.kind, "signgraph.j26.puncture-receipt.v1");
+  assert.deepEqual(result.receipt.topology.betti, { h0: 1, h1: 0, h2: 0 });
+  assert.equal(result.receipt.edges.length, 13);
+  assert.equal(result.receipt.faces.length, 6);
 });
