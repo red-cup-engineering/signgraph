@@ -373,23 +373,35 @@ test("J26 original operation refuses anonymous, incomplete and unauthorized sour
     { ...target, overflow: "x".repeat(66000) }), /only removedFaces/);
 });
 
-test("existing SignGraph holonomy JSONL CLI receives J26 source punctures directly", () => {
-  const line = JSON.stringify({
-    operation: "signgraph.j26.puncture",
-    input: { removedFaces: ["leftTop", "leftSide1"], retention: "face-support" },
+test("existing SignGraph holonomy JSONL CLI receives J26 topology AND addressed global holonomy", () => {
+  const adjacent = { removedFaces: ["leftTop", "leftSide1"], retention: "face-support" };
+  const separated = { removedFaces: ["leftTop", "leftBottom"], retention: "face-support" };
+  const source = executeOperation("signgraph.j26.puncture", separated);
+  const edgeField = source.edges.map(edge => {
+    const endpoints = new Set([edge.from, edge.to]);
+    const z = endpoints.has("q0") && endpoints.has("a") ? (edge.from === "q0" ? 1 : -1)
+      : endpoints.has("q3") && endpoints.has("b") ? (edge.from === "q3" ? 1 : -1) : 0;
+    return { edge: edge.id, vector: [0, 0, z] };
   });
+  const linesIn = [
+    { operation: "signgraph.j26.puncture", input: adjacent },
+    { operation: "signgraph.j26.puncture", input: { ...separated, edgeField } },
+  ].map(JSON.stringify).join("\n") + "\n";
   const child = spawnSync(process.execPath, [bin], {
-    input: line + "\n", encoding: "utf8", timeout: 10000,
+    input: linesIn, encoding: "utf8", timeout: 10000,
   });
   assert.equal(child.status, 0, child.stderr);
   assert.equal(child.stderr, "");
-  const lines = child.stdout.trim().split("\n");
-  assert.equal(lines.length, 1);
-  const result = JSON.parse(lines[0]);
-  assert.equal(result.ok, true);
-  assert.equal(result.operation, "signgraph.j26.puncture");
-  assert.equal(result.receipt.kind, "signgraph.j26.puncture-receipt.v1");
-  assert.deepEqual(result.receipt.topology.betti, { h0: 1, h1: 0, h2: 0 });
-  assert.equal(result.receipt.edges.length, 13);
-  assert.equal(result.receipt.faces.length, 6);
+  const lines = child.stdout.trim().split("\n").map(JSON.parse);
+  assert.equal(lines.length, 2);
+  assert.deepEqual(lines.map(line => line.ok), [true, true]);
+  const [topology, holonomy] = lines.map(line => line.receipt);
+  assert.equal(topology.kind, "signgraph.j26.puncture-receipt.v1");
+  assert.deepEqual(topology.topology.betti, { h0: 1, h1: 0, h2: 0 });
+  assert.equal(topology.edges.length, 13);
+  assert.equal(topology.faces.length, 6);
+  assert.deepEqual(holonomy.topology.betti, { h0: 1, h1: 1, h2: 0 });
+  assert.equal(holonomy.burgers.classification, "global-holonomy");
+  assert.equal(holonomy.burgers.localFlat, true);
+  assert.equal(holonomy.burgers.exact, false);
 });
