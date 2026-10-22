@@ -15,6 +15,7 @@ import {
 } from "./cohomology.mjs";
 import { geometricReceiving, metricSquareOfVector } from "./embedding.mjs";
 import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing } from "./mark-gluing.mjs";
+import { j26PunctureView } from "./j26-surface.mjs";
 
 export const LIMITS = Object.freeze({
   inputBytes: 65536,
@@ -244,6 +245,78 @@ export const operations = Object.freeze({
         topology: topologicalSummary(complex, steps, volumeSteps),
         ...affineHolonomyOfComplex(complex, input.edgeMotions),
       });
+    },
+  }),
+  j26Puncture: Object.freeze({
+    id: "signgraph.j26.puncture",
+    description: "Read the original Metrologic/Obsmetrologia J26 under explicit face-removal semantics; optional source-edge-addressed integral Burgers observations.",
+    inputSchema: Object.freeze({
+      type: "object", additionalProperties: false,
+      required: Object.freeze(["removedFaces", "retention"]),
+      properties: Object.freeze({
+        removedFaces: { type: "array", items: { type: "string" } },
+        retention: { type: "string", enum: ["skeleton", "face-support"] },
+        edgeField: { type: "array", items: {
+          type: "object", required: ["edge", "vector"], additionalProperties: false,
+          properties: { edge: { type: "string" }, vector: { type: "array" } },
+        } },
+      }),
+    }),
+    execute(input, { workBudget } = {}) {
+      if (!input || typeof input !== "object" || Array.isArray(input) ||
+          Object.keys(input).some(key => !["removedFaces", "retention", "edgeField"].includes(key)) ||
+          !Object.hasOwn(input, "removedFaces") || !Object.hasOwn(input, "retention"))
+        throw new TypeError("J26 puncture operation admits only removedFaces, retention and optional edgeField");
+      const budget = budgetOf(workBudget);
+      if (new TextEncoder().encode(JSON.stringify(input)).length > budget.inputBytes)
+        throw new RangeError("J26 puncture operation exceeds the source input byte budget");
+      const view = j26PunctureView(input);
+      const faceSteps = view.complex.faces.reduce((sum, face) => sum + face.boundary.length, 0);
+      if (view.complex.vertices.length > budget.vertices ||
+          view.complex.edges.length > budget.edges ||
+          view.complex.faces.length > budget.faces || faceSteps > budget.faceSteps)
+        throw new RangeError("J26 puncture operation exceeds the finite-complex work budget");
+      // Return exact typed source geometry to pair a subsequent edge observation
+      // with the SAME pinned package/edge-order edition. This source name is
+      // neither a legal authorization nor a GR spacetime metric.
+      const edges = Object.freeze(view.complex.edges.map(({ id, from, to }) =>
+        Object.freeze({ id, from, to })));
+      const faces = Object.freeze(view.complex.faces.map(face =>
+        Object.freeze({
+          id: face.id,
+          boundary: Object.freeze(face.boundary.map(step =>
+            Object.freeze({ edge: step.edge, direction: step.direction }))),
+        })));
+      const receipt = {
+        kind: "signgraph.j26.puncture-receipt.v1",
+        source: view.source,
+        retention: view.retention,
+        removedFaces: view.removedFaces,
+        retainedFaces: view.retainedFaces,
+        droppedEdges: view.droppedEdges,
+        droppedVertices: view.droppedVertices,
+        vertices: view.complex.vertices,
+        edges,
+        faces,
+        topology: topologicalSummary(view.complex, faceSteps, 0),
+      };
+      if (input.edgeField !== undefined) {
+        if (!Array.isArray(input.edgeField) || input.edgeField.length !== edges.length)
+          throw new TypeError("J26 puncture edgeField needs exactly one identified entry per retained source edge");
+        const byId = new Map();
+        const allowed = new Set(edges.map(edge => edge.id));
+        for (const entry of input.edgeField) {
+          if (!entry || typeof entry !== "object" || Array.isArray(entry) ||
+              Object.keys(entry).some(key => key !== "edge" && key !== "vector") ||
+              typeof entry.edge !== "string" || !allowed.has(entry.edge) ||
+              byId.has(entry.edge) || !Object.hasOwn(entry, "vector"))
+            throw new TypeError("J26 puncture edgeField must have one unique original edge identity and vector");
+          byId.set(entry.edge, entry.vector);
+        }
+        receipt.burgers = burgersOfComplex(view.complex,
+          edges.map(edge => byId.get(edge.id)));
+      }
+      return Object.freeze(receipt);
     },
   }),
   observedHeadGluing: Object.freeze({
