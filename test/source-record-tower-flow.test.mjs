@@ -3,7 +3,8 @@ import test from "node:test";
 import {
   address, admitCell, cell, measured, presence, recordOf, valueOf
 } from "@red-cup-engineering/signcell/cell";
-import { record } from "@red-cup-engineering/computer-data-engineering-services-section/four";
+import { record, samePoint } from "@red-cup-engineering/computer-data-engineering-services-section/four";
+import { at } from "@red-cup-engineering/metrologic/chu";
 import { sourceRecordTowerFlowOfCells } from "../src/cell-graph.mjs";
 
 // A native released-SignCell fixture for the consumer contract. This is NOT
@@ -30,6 +31,10 @@ test("original SignGraph accepts source-ordered record towers without erasing pa
   const graph = sourceRecordTowerFlowOfCells([a, b, reversed, self], towerFixture);
   assert.equal(graph.kind, "signgraph.source-record-tower-flow.v1");
   assert.equal(graph.entries.length, 4, "all four presentations are retained");
+  assert.ok(samePoint(at(graph.chu, reversed, "source-evidence-charge"), "potential"));
+  assert.ok(samePoint(at(graph.chu, a, "source-evidence-charge"), "stable"),
+    "Chu extent merges witnesses at one triple while entries retain each original");
+
   assert.equal(graph.extensionalCells.length, 3, "only extensional source identities coincide");
   assert.equal(graph.flow.edges.length, 3, "the reflexive cell has zero oriented boundary");
   assert.deepEqual(graph.entries.map(x => x.sourceIndex), [0, 1, 2, 3]);
@@ -53,6 +58,8 @@ test("posited-value overrides stay distinct from measured evidence inside graph 
   assert.equal(graph.entries[0].tower.measured, false);
   assert.deepEqual(graph.entries[0].tower.record, record(1, 0));
   assert.equal(graph.entries[0].cell.for.length, 1);
+  assert.ok(samePoint(at(graph.chu, declared, "source-evidence-charge"), "potential"));
+  assert.ok(samePoint(at(graph.chu, declared, "posited-charge"), "absurd"));
 });
 
 test("foreign, stale and corrupted tower projections refuse rather than enter a graph", () => {
