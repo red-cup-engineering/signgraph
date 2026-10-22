@@ -9,7 +9,7 @@
  * right to occupy territory, causal edges, or market trade authority.
  */
 import { gyrobifastigiumJ26 } from "@red-cup-engineering/metrologic/articulation/predicating/geometry/spatial/gyrobifastigium-j26";
-import { cellular3Complex } from "./cohomology.mjs";
+import { cellular2Complex, cellular3Complex } from "./cohomology.mjs";
 
 const freeze = value => Object.freeze(value);
 const identifier = (value, label) => {
@@ -79,6 +79,56 @@ export function j26CellularSurface(geometry = gyrobifastigiumJ26) {
     vertices:freeze(vertices),faces:freeze(faces),
     edges:freeze([...edgesByPair.values()]),
     faceAdjacency:freeze(dual),complex,
+  });
+}
+
+/**
+ * Finite, source-qualified J26 exterior *readout* under explicit 2-cell
+ * removal. Reuse the ORIGINAL Metrologic J26 faces and SignGraph cellular
+ * cohomology — no independent Python incidence, elimination, or Betti solver.
+ *
+ * "skeleton": delete open 2-cells, preserving all original 0/1-cells.
+ * "face-support": keep only closed 2-cells still selected and their supporting
+ * edges/vertices. These are different topological constructions and their H1
+ * can differ. The source J26 geometry itself is never rewritten.
+ *
+ * The deleted labels are J26 source-face identities, not permissions to
+ * remove deployed materials, Work dependencies, or real institutional rights.
+ */
+export function j26PunctureView({ removedFaces, retention } = {}) {
+  if (retention !== "skeleton" && retention !== "face-support")
+    throw new TypeError("j26 puncture: retention must be skeleton or face-support");
+  const surface = j26CellularSurface();
+  const knownFaces = new Set(surface.faces.map(face => face.id));
+  if (!Array.isArray(removedFaces) || removedFaces.length < 1 ||
+      removedFaces.length >= surface.faces.length ||
+      removedFaces.some(id => typeof id !== "string" || !knownFaces.has(id)) ||
+      new Set(removedFaces).size !== removedFaces.length)
+    throw new TypeError("j26 puncture: require distinct nonempty proper source face selection");
+  const removed = new Set(removedFaces);
+  const faces = surface.faces.filter(face => !removed.has(face.id));
+  const usedEdges = new Set(faces.flatMap(face => face.boundary.map(step => step.edge)));
+  const edges = retention === "skeleton" ? surface.edges
+    : surface.edges.filter(edge => usedEdges.has(edge.id));
+  const usedVertices = new Set(edges.flatMap(edge => [edge.from, edge.to]));
+  const vertices = retention === "skeleton" ? surface.vertices
+    : surface.vertices.filter(id => usedVertices.has(id));
+  const complex = cellular2Complex({
+    vertices,
+    edges,
+    faces: faces.map(face => ({ id: face.id, boundary: face.boundary })),
+  });
+  const retainedEdgeIds = new Set(edges.map(edge => edge.id));
+  const retainedVertices = new Set(vertices);
+  return freeze({
+    kind: "signgraph.j26.puncture-view.v1",
+    source: "Obsmetrologia.AperiodicOrder.J26.faceVertices",
+    retention,
+    removedFaces: freeze(surface.faces.map(face => face.id).filter(id => removed.has(id))),
+    retainedFaces: freeze(faces.map(face => face.id)),
+    droppedEdges: freeze(surface.edges.filter(edge => !retainedEdgeIds.has(edge.id)).map(edge => edge.id)),
+    droppedVertices: freeze(surface.vertices.filter(vertex => !retainedVertices.has(vertex))),
+    complex,
   });
 }
 
