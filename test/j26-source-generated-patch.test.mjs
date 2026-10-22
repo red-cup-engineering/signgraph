@@ -234,3 +234,65 @@ test("native puncture readout refuses invented/ambiguous faces and retention", (
   assert.deepEqual(j26CellularSurface().complex.betti, original.complex.betti,
     "finite observation must not mutate the original closed source");
 });
+
+
+test("every proper J26 face removal uses original exact homology, not Python rank", () => {
+  const source = j26CellularSurface();
+  const ids = source.faces.map(face => face.id);
+  const adjacency = new Map(ids.map(id => [id, new Set()]));
+  for (const { faces } of source.faceAdjacency) {
+    const [a, b] = faces;
+    assert.notEqual(a, b);
+    adjacency.get(a).add(b);
+    adjacency.get(b).add(a);
+  }
+  // This is an independent combinatorial oracle over the ORIGINAL dual
+  // face-incidence graph. The exact ranks/Betti numbers come exclusively
+  // from the existing SignGraph cellular2Complex mathematics.
+  const dualComponents = (selected) => {
+    const unseen = new Set(selected);
+    let count = 0;
+    while (unseen.size) {
+      const first = unseen.values().next().value;
+      const stack = [first];
+      unseen.delete(first);
+      count++;
+      while (stack.length) {
+        for (const neighbor of adjacency.get(stack.pop())) {
+          if (!unseen.delete(neighbor)) continue;
+          stack.push(neighbor);
+        }
+      }
+    }
+    return count;
+  };
+  let checked = 0;
+  let adjacentPairs = 0;
+  let separatedPairs = 0;
+  for (let mask = 1; mask < (1 << ids.length) - 1; mask++) {
+    const removedFaces = ids.filter((_, i) => (mask & (1 << i)) !== 0);
+    const open = j26PunctureView({ removedFaces, retention: "skeleton" });
+    const support = j26PunctureView({ removedFaces, retention: "face-support" });
+    assert.deepEqual(open.complex.betti, {
+      h0: 1, h1: removedFaces.length - 1, h2: 0,
+    }, "open-cell deletion, mask " + mask);
+    assert.deepEqual(open.complex.rank, {
+      zero: 7, one: 8 - removedFaces.length,
+    }, "original skeleton must retain each edge, mask " + mask);
+    assert.equal(support.complex.betti.h1, dualComponents(removedFaces) - 1,
+      "face-support H1 must match independent missing-face-dual topology, mask " + mask);
+    assert.equal(support.complex.betti.h2, 0);
+    assert.equal(
+      support.complex.vertices.length - support.complex.edges.length + support.complex.faces.length,
+      support.complex.betti.h0 - support.complex.betti.h1 + support.complex.betti.h2,
+      "actual retained support Euler equality, mask " + mask);
+    assert.equal(open.complex.graphOnlyH1, 7);
+    if (removedFaces.length === 2) {
+      if (support.complex.betti.h1 === 0) adjacentPairs++;
+      else if (support.complex.betti.h1 === 1) separatedPairs++;
+    }
+    checked++;
+  }
+  assert.equal(checked, 254);
+  assert.deepEqual([adjacentPairs, separatedPairs], [14, 14]);
+});
