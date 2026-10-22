@@ -168,11 +168,20 @@ export function sourceRecordTowerFlowOfCells(cells, towerOfCell) {
   });
   // Use the existing oriented graph: subject -> object, self-links have no edge.
   const flow = flowNetworkOfCells(entries.map((entry) => entry.cell));
+  const extensionalCells = cellSet(entries.map((entry) => entry.cell));
+  // Existing native Chu reader, now distinguishing evidence presence from the
+  // posited FOUR value. It is intentionally a LOSSY extensional projection:
+  // original entry witnesses and tally multiplicities stay above in entries.
+  const chu = cellGraph(extensionalCells, [
+    { name: "source-evidence-charge", evaluate: presence },
+    { name: "posited-charge", evaluate: valueOf }
+  ]);
   return Object.freeze({
     kind: "signgraph.source-record-tower-flow.v1",
     flow,
+    chu,
     entries: Object.freeze(entries),
-    extensionalCells: cellSet(entries.map((entry) => entry.cell))
+    extensionalCells
   });
 }
 
