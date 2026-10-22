@@ -304,6 +304,27 @@ automatic installation. This is a planar sixfold lattice model, not
 yet a theorem equating J26's three-dimensional honeycomb with a
 two-dimensional Burgers lattice or with temperature.
 
+## J26 punctures as original source-addressed holonomy operations
+
+Earlier Source Science J26 research [Obsmetrologia #69](https://github.com/lenticule-science/obsmetrologia/pull/69) used an independently implemented Python rational-rank/matrix engine. The real mathematical producers already exist: original Metrologic exports J26's oriented face geometry and SignGraph owns `cellular2Complex`, `burgersOfComplex` and the bounded `signgraph-holonomy` JSONL operation registry. This implementation **reuses them**, rather than cloning the old solver.
+
+`j26PunctureView({ removedFaces, retention })` belongs to the existing `./j26-surface` export, derives *original* J26 edges/face walks from `j26CellularSurface`, and admits two **different** views:
+
+- `retention: "skeleton"` removes only named open 2-cell interiors while retaining all original edges and vertices.
+- `retention: "face-support"` keeps the subcomplex supported by retained closed exterior 2-faces, removing unsupported edges/vertices.
+
+The operation `signgraph.j26.puncture` returns the actual source-face selection, original oriented edge IDs, exact rational topology (ranks, `H0/H1/H2`) and a bounded cell complex, without requiring the caller to invent a new J26 mesh. Optional `edgeField` is an array of `{edge, vector}` entries keyed by the exact **returned original source edge IDs**; the original `burgersOfComplex` then reports local face residues, exactness and global holonomy. It rejects duplicate, absent, extra or non-integral edge observations. The source IDs and returned edge order are relative to the **installed pinned package revision**; do not treat a JSON edge label as authentication, an office right, a physical tensor, or a universal source ID.
+
+Example original-source topology request over the two separately deleted triangular faces:
+
+```sh
+printf '%s\n' '{"operation":"signgraph.j26.puncture","input":{"removedFaces":["leftTop","leftBottom"],"retention":"face-support"}}' | signgraph-holonomy
+```
+
+This original source has Betti `(1,1,0)`. With the retained single-edge displacement witnesses from the older chart (Python B→C maps to native q0→a, and E→F maps to native q3→b, signs from the actual source edge orientations), the **same operation** can produce locally flat, globally non-exact Burgers transport. By contrast, adjacent original `leftTop`/`leftSide1` deletion yields `H1=1` under `skeleton` but `H1=0` under `face-support` because one original edge ceases to be supported. See the native source-indexed tests; do not infer authorization to remove real faces, alter Work dependencies or perform repair.
+
+The finite J26 native test handles every one of its 254 nonempty proper face deletions through the **original exact SignGraph chain complex**, with an independent dual-face adjacency oracle. The original `npm run check:holonomy`, `npm run test:holonomy` and complete `npm test` now include J26 source/tests. The existing GitHub workflow is deliberately **manual-dispatch** due earlier no-runner failures; source and tests alone are not a green dependency-backed package or installed host receipt.
+
 ## J26 volume completion and Burgers/Stokes receiving
 
 The J26 `cellComplex` in **Obsmetrologia** contains one 3-cell as well as
