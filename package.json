@@ -6,7 +6,8 @@
   "files": [
     "src",
     "data/records/requirements-records",
-    "scripts/holonomy.mjs"
+    "scripts/holonomy.mjs",
+    "test/graph.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
