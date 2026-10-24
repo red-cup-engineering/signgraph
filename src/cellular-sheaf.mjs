@@ -445,24 +445,33 @@ export function tensorCellularSheaves(factors) {
         !factor.sourceRef.trim()))
     throw new TypeError("cellularSheaf tensor requires 2..4 exact source-attributed factors");
   const source=factors[0].sheaf;
-  const congruent = (left,right) =>
-    coincidenceKey(left) === coincidenceKey(right);
-  for (const factor of factors.slice(1)) {
+  // A sheaf's source identity is its witnessed vertex/edge incidence, not
+  // its input-array enumeration. Multiple custodians may supply the same
+  // lawful base chart in a different order. Align exact SignCell
+  // coincidence keys rather than treating that order as physical geometry.
+  const aligned=factors.map(factor=>{
     const other=factor.sheaf;
     if(other.vertices.length!==source.vertices.length ||
        other.edges.length!==source.edges.length)
       throw new RangeError("cellularSheaf tensor factors have different source graphs");
-    for(let i=0;i<source.vertices.length;i++)
-      if(!congruent(source.vertices[i].id,other.vertices[i].id))
-        throw new RangeError("cellularSheaf tensor cannot silently reassign stalk source identities");
-    for(let i=0;i<source.edges.length;i++){
-      const edge=source.edges[i],compared=other.edges[i];
-      if(!congruent(edge.id,compared.id) ||
-         !congruent(edge.from,compared.from) ||
-         !congruent(edge.to,compared.to))
-        throw new RangeError("cellularSheaf tensor requires exactly aligned, oriented source incidence");
-    }
-  }
+    const byVertex=new Map(other.vertices.map(vertex=>[coincidenceKey(vertex.id),vertex]));
+    const byEdge=new Map(other.edges.map(edge=>[coincidenceKey(edge.id),edge]));
+    const vertices=source.vertices.map(vertex=>byVertex.get(coincidenceKey(vertex.id)));
+    if(vertices.some(vertex=>vertex===undefined))
+      throw new RangeError("cellularSheaf tensor cannot silently reassign stalk source identities");
+    const edges=source.edges.map(edge=>{
+      const otherEdge=byEdge.get(coincidenceKey(edge.id));
+      if(otherEdge===undefined ||
+         coincidenceKey(otherEdge.from)!==coincidenceKey(edge.from) ||
+         coincidenceKey(otherEdge.to)!==coincidenceKey(edge.to))
+        throw new RangeError("cellularSheaf tensor requires the same oriented source incidence");
+      return otherEdge;
+    });
+    return Object.freeze({
+      vertices:Object.freeze(vertices),
+      edges:Object.freeze(edges)
+    });
+  });
   const multiply = (left,right) => {
     const [a,b]=ratPairOfEntry(left),[c,d]=ratPairOfEntry(right);
     return rationalOfBigInts(a*c,b*d);
@@ -473,8 +482,7 @@ export function tensorCellularSheaves(factors) {
   const kron=(left,right)=>left.flatMap(aRow=>
     right.map(bRow=>aRow.flatMap(a=>bRow.map(b=>multiply(a,b)))));
   let product=source;
-  for(const factor of factors.slice(1)){
-    const next=factor.sheaf;
+  for(const next of aligned.slice(1)){
     // Forecast tensor dimensions *before* allocating any Kronecker matrices.
     // For a large source-dimensional factor this prevents accidental
     // quadratic/cubic memory allocation before a late refusal.
