@@ -14,7 +14,7 @@ import {
   cellular2Complex, cellular3Complex, burgersOfComplex, affineHolonomyOfComplex,
 } from "./cohomology.mjs";
 import { geometricReceiving, metricSquareOfVector } from "./embedding.mjs";
-import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing, derivePerformedHeadShadow } from "./mark-gluing.mjs";
+import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing, derivePerformedHeadShadow, assessPerformedBoundaryFactorization } from "./mark-gluing.mjs";
 
 export const LIMITS = Object.freeze({
   inputBytes: 65536,
@@ -287,6 +287,31 @@ export const operations = Object.freeze({
     inputSchema: performedHeadInputSchema,
     execute(input, { workBudget } = {}) {
       return derivePerformedHeadShadow(boundedHeadObservation(input, workBudget));
+    },
+  }),
+  boundaryFactorization: Object.freeze({
+    id: "signgraph.mark-incidence.boundary-factorization",
+    description: "Test whether complete recipient-specific source classes descend through the ORIGINAL performed claim-address boundary; return a source occurrence obstruction if not.",
+    inputSchema: Object.freeze({
+      type: "object", additionalProperties: false,
+      required: Object.freeze(["articulating", "requiredReadings"]),
+      properties: Object.freeze({
+        articulating: { type: "object" },
+        steps: { type: "integer", minimum: 0, maximum: 6 },
+        requiredReadings: { type: "array", items: { type: "object" } },
+      }),
+    }),
+    execute(input, { workBudget } = {}) {
+      if (!input || typeof input !== "object" || Array.isArray(input) ||
+          Object.keys(input).some(key => !["articulating","steps","requiredReadings"].includes(key)))
+        throw new TypeError("boundary factorization requires original Articulating, steps and recipient readings");
+      if (new TextEncoder().encode(JSON.stringify(input)).length > budgetOf(workBudget).inputBytes)
+        throw new RangeError("boundary factorization exceeds the input byte budget");
+      const generated = boundedHeadObservation({
+        articulating: input.articulating,
+        ...(input.steps === undefined ? {} : { steps: input.steps }),
+      }, workBudget);
+      return assessPerformedBoundaryFactorization(derivePerformedHeadShadow(generated), input.requiredReadings);
     },
   }),
   articulatingTower: Object.freeze({

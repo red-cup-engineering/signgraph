@@ -8,7 +8,7 @@ import { address as cellAddress } from "@red-cup-engineering/signcell/cell";
 import {
   derivePerformedHeadShadow, derivePerformedObservationRoutes,
   composePerformedObservationRoutes, readPerformedSemioverseFiber,
-  transportPerformedSemioverseClaim,
+  transportPerformedSemioverseClaim, assessPerformedBoundaryFactorization,
 } from "../src/mark-gluing.mjs";
 import { executeOperation, operations } from "../src/operations.mjs";
 
@@ -302,4 +302,49 @@ test("source-generated re-attention chain obeys finite fiber law without licensi
     assert.deepEqual(image.filter(pair => pair.sourceComposable)
       .map(pair => pair.sourceStepAddresses), exact);
   }
+});
+
+test("source-indexed receiving requirements descend through a boundary only when all its fibers agree", () => {
+  const view = derivePerformedHeadShadow({ articulating: performedSource(), steps: 3 });
+  const readings = view.semioverse.claimEntries.map(entry => ({
+    claimIndex: entry.claimIndex, requiredClass: "portable",
+  }));
+  const yes = assessPerformedBoundaryFactorization(view, readings);
+  assert.equal(yes.status, "conditional-factorization-on-finite-source");
+  assert.equal(yes.sourceClaimCount, view.semioverse.claimEntries.length);
+  assert.equal(yes.authority, "none");
+  assert.equal(yes.settlement, "not-established");
+  assert.ok(yes.observedBoundaryCount < yes.sourceClaimCount);
+  assert.deepEqual(yes.obstructions, []);
+  const [one, later] = [2, 3].map(index => view.semioverse.claimEntries.find(e =>
+    e.firstOccurrenceIndex === index && e.secondOccurrenceIndex === index));
+  assert.equal(one.claimAddress, later.claimAddress);
+  assert.notEqual(one.firstOccurrenceId, later.firstOccurrenceId);
+  const selective = readings.map(row => row.claimIndex === later.claimIndex
+    ? { ...row, requiredClass: "pinned" } : row);
+  const no = assessPerformedBoundaryFactorization(view, selective);
+  assert.equal(no.status, "source-distinction-obstructed");
+  assert.equal(no.inducedBoundaryReadings, null);
+  assert.ok(no.obstructions.some(witness =>
+    witness.claimAddress === one.claimAddress &&
+    witness.first.firstOccurrenceId !== witness.second.firstOccurrenceId));
+  assert.equal(no.authority, "none");
+});
+
+test("boundary factorization refuses partial, duplicated, forged and noncanonical recipient readings", () => {
+  const view = derivePerformedHeadShadow({ articulating: performedSource(), steps: 2 });
+  const rows = view.semioverse.claimEntries.map(entry => ({
+    claimIndex: entry.claimIndex, requiredClass: "unsettled",
+  }));
+  assert.throws(() => assessPerformedBoundaryFactorization(view, rows.slice(1)), /one recipient classification/);
+  assert.throws(() => assessPerformedBoundaryFactorization(view, [...rows.slice(0, -1), rows[0]]),
+    /unique, canonical/);
+  assert.throws(() => assessPerformedBoundaryFactorization(view, rows.map((row,i) =>
+    i === 1 ? { ...row, requiredClass: "an arbitrary string" } : row)), /canonical/);
+  const forged = structuredClone(view);
+  forged.semioverse.claimEntries[0].firstOccurrenceId = "not-source-generated";
+  assert.throws(() => assessPerformedBoundaryFactorization(forged, rows), /inconsistent original/);
+  const portable = structuredClone(view);
+  assert.deepEqual(assessPerformedBoundaryFactorization(portable, rows),
+    assessPerformedBoundaryFactorization(view, rows));
 });

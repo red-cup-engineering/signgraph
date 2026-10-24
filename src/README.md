@@ -319,6 +319,49 @@ nor a stress/strain law, temperature scale, or thermodynamic free-energy
 identification. Those remain genuine theorem and qualification targets;
 the new geometry data is a concrete carrier on which to attempt them.
 
+## Finite receiving-boundary factorization (Wood Between the Worlds research)
+
+The original `mark-gluing` module can now check a **necessary condition for
+a proposed cross-dimensional receiving portal**, on the source-generated
+Semioverse incidence it already computes. The original performed source
+generates `claimEntries`, each with a distinct `claimIndex` and
+source-occurrence identifiers. Its coarse observed boundary reads
+`claimAddress`. A caller may supply one explicitly *conditional*
+`{claimIndex, requiredClass}` for **every original occurrence**, where the
+class is a proposed receiving requirement, not verified source truth.
+
+`assessPerformedBoundaryFactorization(view, requiredReadings)` checks
+whether the proposed receiving classification is constant on every
+fiber of the original claim-address readout. In finite set terms,
+`d = r ∘ q` for a uniquely induced `r` on the observed image exactly
+when `q(a) = q(b)` implies `d(a) = d(b)` for every pair of *performed*
+source positions. If any fiber disagrees, the response identifies two
+original claim indices and performed-source occurrence IDs which the portal
+would wrongly collapse. It never manufactures a missing original lift,
+world-state, permission, job reservation, connection, payment, or settled
+consumer obligation. Serialized observations are read-only claims, not
+authenticated original source.
+
+The existing bounded JSONL operation
+`signgraph.mark-incidence.boundary-factorization` accepts only the same
+original Articulating and bounded source-derived steps as
+`performed-head-shadow`, together with the complete recipient classes.
+It invokes this exact function: no second solver, registry or ontology.
+A positive read means only **conditional factorability of that particular
+classification through that particular observation**. Any real receiving
+dimension must additionally prove its own admission, compatible transport,
+local settlement, source-preserving return and independent original consumer
+acceptance. Missing classifications refuse rather than meaning unknown or
+zero. Different candidate dimensions can be checked independently without
+merging their resource pools or authority.
+
+This implements one finite negative-control instrument for
+[Obsmetrologia's original Semioverse/Paracosm research](https://github.com/lenticule-science/obsmetrologia/blob/main/docs/research/2026-10-19-semioverse-paracosm-obstructed-shadow-categories.md)
+and the [historic Wood paper](https://drive.google.com/file/d/1jRAssyV4r1EnzwX-FzoLpBmp4yf9LzIz/view).
+It is neither the proof of the historic Wood's universal mediator nor a
+replacement for original SignGraph resource offers, SignCraft pressure,
+Organizing authority, or execution-owner Work.
+
 ## Depends on
 
 ### Data-owned resource composition

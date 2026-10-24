@@ -928,3 +928,104 @@ export function transportPerformedSemioverseClaim(shadow, fromPointIndex, toPoin
     source: shadow.semioverse.continuedSourceId,
   });
 }
+
+/** Compare one proposed receiving classification with the original performed
+ * Semioverse claim-address boundary. This finite test is the factorization
+ * condition for d to descend through q, not a new authority or a universal
+ * Wood mediator. It produces an original-occurrence counterexample when
+ * two source claims share q but require different receiving treatments.
+ */
+export function assessPerformedBoundaryFactorization(shadow, requiredReadings) {
+  // This is a conditional finite receiving/observation check, NOT a portal
+  // implementation, source-authentication function or host/office admission.
+  const semi = shadow?.semioverse;
+  const ids = semi?.sourceEventIds, entries = semi?.claimEntries;
+  if (shadow?.kind !== "signgraph.performedHeadObservationShadow.v1" ||
+      semi?.kind !== "signgraph.performedSemioverseIncidence.v1" ||
+      semi.continuedSourceId !== shadow.continuedSourceId ||
+      semi.originalSourceId !== shadow.originalSourceId ||
+      !Array.isArray(ids) || ids.length < 1 ||
+      ids.length > 32 || new Set(ids).size !== ids.length ||
+      ids.some(id => typeof id !== "string" || !id.length) ||
+      !Array.isArray(entries) || entries.length !== ids.length ** 2)
+    throw new TypeError("boundary check requires a complete original performed Semioverse readout");
+  // Native SignCell generates one ordered pair for every pair of original
+  // Utterance occurrences. This validates structural custody of the readout,
+  // not the authenticity of a serialized source or any external permission.
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e?.claimIndex !== i ||
+        !Number.isSafeInteger(e.firstOccurrenceIndex) ||
+        !Number.isSafeInteger(e.secondOccurrenceIndex) ||
+        e.firstOccurrenceId !== ids[e.firstOccurrenceIndex] ||
+        e.secondOccurrenceId !== ids[e.secondOccurrenceIndex] ||
+        typeof e.claimAddress !== "string" || !e.claimAddress.length)
+      throw new TypeError("boundary check found an inconsistent original claim occurrence");
+  }
+  if (!Array.isArray(requiredReadings) || requiredReadings.length !== entries.length)
+    throw new TypeError("boundary check requires one recipient classification for every original claim occurrence");
+  const readings = new Array(entries.length);
+  for (const supplied of requiredReadings) {
+    if (!supplied || typeof supplied !== "object" || Array.isArray(supplied) ||
+        Object.keys(supplied).sort().join(",") !== "claimIndex,requiredClass" ||
+        !Number.isSafeInteger(supplied.claimIndex) ||
+        supplied.claimIndex < 0 || supplied.claimIndex >= entries.length ||
+        typeof supplied.requiredClass !== "string" ||
+        !/^[a-z][a-z0-9._:-]{0,127}$/u.test(supplied.requiredClass) ||
+        readings[supplied.claimIndex] !== undefined)
+      throw new TypeError("boundary check requires unique, canonical, complete recipient classifications");
+    readings[supplied.claimIndex] = supplied.requiredClass;
+  }
+  const image = new Map(), obstructions = [];
+  const sourceCase = (entry, requiredClass) => freeze({
+    claimIndex: entry.claimIndex,
+    firstOccurrenceId: entry.firstOccurrenceId,
+    secondOccurrenceId: entry.secondOccurrenceId,
+    requiredClass,
+  });
+  for (const entry of entries) {
+    const demanded = readings[entry.claimIndex];
+    const held = image.get(entry.claimAddress);
+    if (held === undefined) {
+      image.set(entry.claimAddress, {
+        first: entry, requiredClass: demanded, indices: [entry.claimIndex],
+        hasObstruction: false,
+      });
+    } else {
+      held.indices.push(entry.claimIndex);
+      if (held.requiredClass !== demanded && !held.hasObstruction) {
+        obstructions.push(freeze({
+          kind: "source-distinction-lost-at-boundary",
+          claimAddress: entry.claimAddress,
+          first: sourceCase(held.first, held.requiredClass),
+          second: sourceCase(entry, demanded),
+        }));
+        held.hasObstruction = true;
+      }
+    }
+  }
+  // Finite descent criterion: d factors through q on the complete original
+  // source exactly when d is constant on every fiber of q. Here q is the
+  // original SignCell claimAddress readout, never arbitrary user-named edges.
+  const factorable = obstructions.length === 0;
+  return freeze({
+    kind: "signgraph.performedBoundaryFactorization.v1",
+    originalSourceId: shadow.originalSourceId,
+    continuedSourceId: shadow.continuedSourceId,
+    sourceClaimCount: entries.length,
+    observedBoundaryCount: image.size,
+    status: factorable ? "conditional-factorization-on-finite-source" : "source-distinction-obstructed",
+    inducedBoundaryReadings: factorable
+      ? freeze([...image].map(([claimAddress, held]) => freeze({
+          claimAddress, requiredClass: held.requiredClass,
+          sourceClaimIndices: freeze([...held.indices]),
+        })))
+      : null,
+    obstructions: freeze(obstructions),
+    sourceStanding: "original-performed-source-readout-not-issuer-authentication",
+    recipientStanding: "caller-supplied-classifications-not-independent-acceptance",
+    authority: "none",
+    execution: "not-performed",
+    settlement: "not-established",
+  });
+}
