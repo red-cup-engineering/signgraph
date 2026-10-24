@@ -1201,6 +1201,38 @@ export function readPerformedKinematicSectionSpace(shadow, { patches, sections }
       originalOrderedPairPositions:claimCount,
       semanticAddressQuotientAuthority:"none",
     }),
+    // Each source-performed kinematic slice is a REAL three-index Boolean
+    // incidence tensor, not an arbitrary vector invented by the caller:
+    // H[p,i,j]=[i<=upper(p)][j<=upper(p)]. Every ordered (i,j) is exactly
+    // the original SignCell generated claim at i*N+j. Equal claimAddress
+    // cells NEVER identify distinct occurrences. Exact CP factors are
+    // indexed by the original upper performed source index k:
+    // H = Σ_k [upper(p)=k] ⊗ [i<=k] ⊗ [j<=k].
+    // This is a bounded *factorization of incidence*, NOT a proved
+    // quasicrystalline diffraction spectrum, numeric physical hypertensor,
+    // universal Day convolution or independently granted compute capacity.
+    sourceIncidenceHypertensor:freeze({
+      kind:"signgraph.sourceGeneratedKinematicIncidenceHypertensor.v1",
+      axes:freeze(["earned-kinematic-locus","first-original-performance","second-original-performance"]),
+      originalOccurrenceIds:semi.sourceEventIds,
+      claimIndexFormula:"firstOccurrenceIndex * N + secondOccurrenceIndex",
+      incidenceFormula:"1[firstIndex <= upperEventIndex(point)] * 1[secondIndex <= upperEventIndex(point)]",
+      slices:freeze(union.map(p=>freeze({
+        pointIndex:p,sourceUpperEventIndex:W.points[p].upperEventIndex,
+        admittedPairPositions:(W.points[p].upperEventIndex+1)**2,
+      }))),
+      exactFiniteFactorization:freeze(
+        [...new Set(union.map(p=>W.points[p].upperEventIndex))]
+          .sort((a,b)=>a-b).map(upper=>freeze({
+            upperEventIndex:upper,
+            kinematicPointIndices:freeze(union.filter(p=>W.points[p].upperEventIndex===upper)),
+            bothOriginalAxesPrefixSize:upper+1,
+            term:"indicator[upper(point)==k] * indicator[first<=k] * indicator[second<=k]",
+          }))
+      ),
+      ambientCoefficientDomain:"Boolean incidence; linear rational extension conditional on an owning math conversion",
+      semanticStanding:"source-performed incidence, not an evidence charge or active FOUR valuation",
+    }),
     overlaps,overlapObstructions:freeze(obstructions),
     gluedSection:glued,
     categoricalBoundary:"restriction of coherent sections is contravariant; performed source occurrences themselves remain forward-only opfibration",
