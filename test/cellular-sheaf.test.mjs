@@ -5,7 +5,7 @@ import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
   apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
-  weightedSheafDirichlet, weightedSheafLaplacian,
+  weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection,
 } from "../src/cellular-sheaf.mjs";
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} !~ ${b}`);
@@ -470,4 +470,62 @@ test("nonzero numerical sheaf products refuse host underflow rather than fabrica
   assert.equal(weightedSheafDirichlet(ordinary, [[[1]]], [0, 2]).energy, 4);
   assert.throws(() => weightedSheafDirichlet(ordinary, [[[1]]], [0, 1e-200]),
     /underflowed host arithmetic/);
+});
+
+
+test("source-partial rational stalk readings construct a real global section rather than zero filling",()=>{
+  const sheaf=constantSheaf(["research","engineering"],[{
+    id:"original-dependency",from:"research",to:"engineering"
+  }],1);
+  const lifted=extendCellularSheafSection(sheaf,[
+    {vertex:"research",coordinate:0,value:"7/3",sourceRecord:"source:original-science-witness"}
+  ]);
+  assert.equal(lifted.status,"mathematically-liftable");
+  assert.deepEqual(lifted.exactSection.map(x=>[x.num,x.den]),[["7","3"],["7","3"]]);
+  assert.equal(lifted.unobservedCoordinates,1);
+  assert.equal(lifted.freeDimensions,0);
+  assert.equal(lifted.sourceRows[0].origin,"cellular-restriction");
+  assert.equal(lifted.sourceRows[1].sourceRecord,"source:original-science-witness");
+  assert.equal(lifted.sourceAuthority,"not independently verified");
+  const unobserved=extendCellularSheafSection(sheaf,[]);
+  assert.equal(unobserved.freeDimensions,1);
+  assert.equal(unobserved.observedCoordinateCount,0);
+  assert.equal(unobserved.unobservedCoordinates,2);
+});
+
+test("two irreconcilable source-local stalk readings return a witnessed no-extension equation",()=>{
+  const sheaf=constantSheaf(["science","operations"],[{id:"handoff",from:"science",to:"operations"}],1);
+  const result=extendCellularSheafSection(sheaf,[
+    {vertex:"science",coordinate:0,value:7,sourceRecord:"science:observation"},
+    {vertex:"operations",coordinate:0,value:8,sourceRecord:"operations:counter-reading"}
+  ]);
+  assert.equal(result.status,"mathematically-obstructed");
+  assert.equal(result.exactSection,null);
+  assert.equal(result.sourceRows.length,3);
+  const [edge,science,ops]=result.obstruction.sourceEquationWeights;
+  assert.deepEqual(result.sourceRows.map(row=>row.origin),
+    ["cellular-restriction","source-observation","source-observation"]);
+  // δx = operations − science; the exact certificate weights sum to 0
+  // in each unknown but a nonzero signed combination of claimed readings.
+  const rational=x=>Number(x.num)/Number(x.den);
+  assert.equal(-rational(edge)+rational(science),0);
+  assert.equal(rational(edge)+rational(ops),0);
+  assert.notEqual(7*rational(science)+8*rational(ops),0);
+});
+
+test("a nontrivial source restriction admits compatible partial vectors with genuine free stalk directions",()=>{
+  const sheaf=cellularSheaf({
+    vertices:[{id:"left",dim:2},{id:"right",dim:2}],
+    edges:[{id:"typed-interface",from:"left",to:"right",dim:1,
+      restrict:{from:[[1,0]],to:[[0,1]]}}]
+  });
+  const view=extendCellularSheafSection(sheaf,[
+    {vertex:"left",coordinate:0,value:11,sourceRecord:"original:left"}
+  ]);
+  assert.equal(view.status,"mathematically-liftable");
+  assert.equal(view.freeDimensions,2);
+  assert.equal(Number(view.exactSection[0].num),11);
+  assert.equal(Number(view.exactSection[3].num),11);
+  assert.equal(view.unobservedCoordinates,3);
+  assert.equal(view.sourceRows[0].edge,"typed-interface");
 });
