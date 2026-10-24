@@ -409,3 +409,45 @@ test("three distinct original performances behind one observed head require two 
   assert.equal(result.authority, "none");
   assert.equal(result.settlement, "not-established");
 });
+
+
+test("actual source-generated cellular L-Space cover operation returns source occurrence triples, not a fictional backward witness",()=>{
+  const articulating=performedSource(),steps=2;
+  const shadow=derivePerformedHeadShadow({articulating,steps});
+  const targetPointIndex=shadow.kinematic.points.length-1;
+  const all=readPerformedSemioverseFiber(shadow,targetPointIndex)
+    .entries.map(entry=>entry.claimIndex);
+  const input={articulating,steps,targetPointIndex,
+    patches:[{pointIndex:targetPointIndex,claimIndices:all}]};
+  const result=executeOperation("signgraph.mark-incidence.performed-cellular-cover",input);
+  assert.equal(result.status,"glued-conditional-section");
+  assert.equal(result.complete,true);
+  assert.equal(result.compatible,true);
+  assert.deepEqual(result.globalSection.map(row=>row.claimIndex),all);
+  assert.equal(result.globalSection.every(row=>row.firstOccurrenceId && row.secondOccurrenceId),true);
+  assert.equal(result.scope.includes("not full sheafification"),true);
+
+  const earlier=shadow.kinematic.sequencing.find(edge=>
+    edge.child===targetPointIndex)?.parent;
+  if(earlier!==undefined){
+    const old=readPerformedSemioverseFiber(shadow,earlier).entries.map(row=>row.claimIndex);
+    const partial=executeOperation("signgraph.mark-incidence.performed-cellular-cover",{
+      articulating,steps,targetPointIndex,
+      patches:[{pointIndex:earlier,claimIndices:old}],
+    });
+    assert.equal(partial.complete,false);
+    assert.equal(partial.globalSection,null);
+    assert.ok(partial.uncovered.length>0);
+    const incompatible=executeOperation("signgraph.mark-incidence.performed-cellular-cover",{
+      articulating,steps,targetPointIndex,
+      patches:[
+        {pointIndex:earlier,claimIndices:old.slice(0,1)},
+        {pointIndex:targetPointIndex,claimIndices:all.slice(1)},
+      ],
+    });
+    assert.equal(incompatible.compatible,false);
+    assert.ok(incompatible.incompatibleOverlaps.some(item=>
+      item.firstOccurrenceId && item.secondOccurrenceId));
+    assert.equal(incompatible.globalSection,null);
+  }
+});
