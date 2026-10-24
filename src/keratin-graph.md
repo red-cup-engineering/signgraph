@@ -21,7 +21,7 @@ The executable example uses three source-labeled original predications: two inco
 ```js
 import {
   keratinPositionKey, keratinGraphOfPredications, analyzeKeratinGraph,
-  keratinLinearSheaf, keratinGraphToDot,
+  keratinLinearSheaf, assessKeratinLinearObservations, keratinGraphToDot,
 } from '@red-cup-engineering/signgraph/keratin-graph';
 
 const graph = keratinGraphOfPredications({
@@ -59,6 +59,34 @@ Lock events form an ordered, separately identified, append-only history. Each ma
 ### Numeric sheaf alternative on the same source relations
 
 `keratinLinearSheaf(graph,{vertexStalks,relationStalks})` reuses the same original vertex and directed contact identities but supplies *separate* finite-dimensional vector stalks and restriction matrices. It delegates construction to the existing `cellularSheaf` and exact rational `cellularSheafCohomology` rather than implementing another matrix/rank engine. It measures sheaf `H⁰/H¹` on the **graph one-skeleton**. Matrix restrictions and their semantics are caller-supplied. This does not extend linear restrictions over attached 2-cells; the original [SignGraph 2-complex/sheaf work #17](https://github.com/red-cup-engineering/signgraph/pull/17) owns that additional translation. Thus even `H¹=0` in a *filled topological surface* need not equal the graph-sheaf `H¹`; one cannot deduce physical closure by reusing a numerical rank.
+
+### Complete source observations versus the zero cochain
+
+The *pure* `cellular-sheaf.mjs` operation `cochain(sheaf, entries)` deliberately **extends omitted stalk coordinates by numerical zero**, which is lawful for constructing an algebraic vector but is **not** an observed fact. A physical or informational observer's missing report must not be passed through that implicit extension as if an instrument saw zero.
+
+The original Keratin reader now has `assessKeratinLinearObservations(linearReading, observations, {tolerance:0})`, downstream of `keratinLinearSheaf`. It accepts only the exact in-process linear reading associated with the original source-positioned graph. An observation has `{position, value, sourceRecord}`, where `value` is a finite scalar for a one-dimensional stalk or a dense array matching the declared stalk dimension. The source record is a **caller-named provenance label**, not cryptographic authentication or a SignChain positive truth witness.
+
+Its finite rules are intentionally strict:
+
+- Missing even one stalk: `status:'unassayed-missing-or-contested-source'`, `vector:null`, `compatible:null`. In particular *no supplied measurements* cannot become the mathematically zero cochain by accident.
+- Two different values for one original position: return *both* source reports in `contestedPositions`, retain `vector:null`, and refuse to invoke the numeric coboundary. Repeated agreeing reports retain independent source labels but produce only one coordinate.
+- One complete uncontested assignment: reuse the **same** SignGraph `cochain → coboundary → apply` kernel. The result includes the original source occurrence IDs, per-edge numerical residual vectors, the finite Euclidean residual norm and a caller-selected numeric tolerance. Thus the result is `compatible-numeric-coboundary` or `incompatible-numeric-coboundary` **only**. A small floating-point residual is no proof of exact rational gluing, a real sensor's authority, or a physically measured deformation.
+- Only dense, material numeric source slots are admitted; accessor-backed fields, foreign graph positions, unsupported dimensions, nonfinite values, and unrecognized options refuse before numerical interpretation. Returned reports, vectors and residuals are independently frozen snapshots.
+
+This is a strict *observation-to-mathematical-projection boundary*, not a second cochain algebra, new graph, numeric solver or substitute for SignChain's independent for/against logic. A finite-state model can have **zero compatible global sections** while a distinct real-linear stalk model on the same underlying original graph has a constant numerical section. The native regression explicitly preserves that disagreement; it must not be erased by a shared word such as “geometry.”
+
+Here is the source shape, after the separately supplied original `graph`, `vertexStalks` and `relationStalks` have been admitted:
+
+```js
+const linear = keratinLinearSheaf(graph, { vertexStalks, relationStalks });
+const result = assessKeratinLinearObservations(linear, [
+  { position: keratinPositionKey('a'), value: 4, sourceRecord: 'instrument:sample-a' },
+  { position: keratinPositionKey('b'), value: 4, sourceRecord: 'instrument:sample-b' },
+  // A missing original position keeps result.vector === null, not zero.
+]);
+```
+
+**Receiving:** the added four tests are authored in `test/keratin-graph.test.mjs` and were exercised as their exact source bodies with isolated modeled non-geometric suppliers (4/4 passing). The genuine installed SignGraph/Metrologic/SignCell dependency-closed tests, source-qualified measurement attestations, immutable release and independent consumer receipt remain open. No geometry-as-physics claim follows.
 
 ### Visualization and interchange
 
