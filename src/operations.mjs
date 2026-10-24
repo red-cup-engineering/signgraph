@@ -289,6 +289,44 @@ export const operations = Object.freeze({
       return derivePerformedHeadShadow(boundedHeadObservation(input, workBudget));
     },
   }),
+  performedKinematicSections: Object.freeze({
+    id:"signgraph.mark-incidence.performed-kinematic-sections",
+    description:"Query genuine source-generated Kinematic Alexandrov upper-opens, coherent local occurrence-pair sections, exact sparse 3-axis incidence tensor factors, compatible gluing and original overlap obstructions from the existing performed Articulating.",
+    inputSchema:Object.freeze({
+      type:"object",additionalProperties:false,
+      required:Object.freeze(["articulating","patches"]),
+      properties:Object.freeze({
+        articulating:{type:"object"},
+        steps:{type:"integer",minimum:0,maximum:6},
+        patches:{type:"array",minItems:1,maxItems:8,
+          items:{type:"array",minItems:1,
+            items:{type:"integer",minimum:0}}},
+        sections:{type:"array",items:{type:"array",items:{
+          type:"object",additionalProperties:false,
+          required:["pointIndex","claimIndex"],
+          properties:{pointIndex:{type:"integer",minimum:0},
+            claimIndex:{type:"integer",minimum:0}},
+        }}},
+      }),
+    }),
+    execute(input,{workBudget}={}){
+      if(!input||typeof input!=="object"||Array.isArray(input)||
+         Object.keys(input).some(k=>!["articulating","steps","patches","sections"].includes(k))||
+         !Array.isArray(input.patches)||input.patches.length<1||input.patches.length>8)
+        throw new TypeError("performed kinematic sections need original Articulating and finite source patches");
+      const budget=budgetOf(workBudget);
+      if(new TextEncoder().encode(JSON.stringify(input)).length>budget.inputBytes)
+        throw new RangeError("performed kinematic sections exceed source-host byte budget");
+      const source=boundedHeadObservation({
+        articulating:input.articulating,
+        ...(input.steps===undefined?{}:{steps:input.steps}),
+      },workBudget);
+      return readPerformedKinematicSectionSpace(derivePerformedHeadShadow(source),{
+        patches:input.patches,
+        ...(input.sections===undefined?{}:{sections:input.sections}),
+      });
+    },
+  }),
   performedCellularCover: Object.freeze({
     id:"signgraph.mark-incidence.performed-cellular-cover",
     description:"Read a source-generated kinematic/L-Space claim fiber as finite cellular local sections, reporting genuine uncovered and incompatible original occurrence pairs, gluing only a conditional compatible full cover.",
