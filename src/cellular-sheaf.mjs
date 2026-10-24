@@ -370,20 +370,23 @@ export function extendCellularSheafSection(sheaf, observations = []) {
         typeof row.sourceRecord !== "string" || !row.sourceRecord.trim() ||
         row.sourceRecord.length > 1024)
       throw new TypeError("source-local section needs one actual stalk coordinate and witness locator");
-    ratPairOfEntry(row.value); // finite EXACT scalar admission, not numeric projection
+    const [numerator,denominator]=ratPairOfEntry(row.value);
     const column=at.offset+row.coordinate;
     return Object.freeze({
-      vertex:at.vertex.id,coordinate:row.coordinate,value:row.value,
+      vertex:at.vertex.id,coordinate:row.coordinate,
+      value:denominator===1n?String(numerator):numerator+"/"+denominator,
       column,sourceRecord:row.sourceRecord,
       equationIndex:sheaf.c1+i,
       sourceAuthentication:"caller-assertion-unverified"
     });
   });
   const differential=exactCoboundary(sheaf);
-  const constraints=differential.map((values,i) =>
-    Object.freeze({index:i,kind:"original-edge-restriction",
-      edge:sheaf.edges.find((edge,e)=>i>=sheaf.edgeOffsets[e] && i<sheaf.edgeOffsets[e]+edge.dim)?.id,
-      row:Object.freeze([...values]),rightHandSide:0}));
+  const edgeEquationSources=sheaf.edges.flatMap((edge,e)=>
+    Array.from({length:edge.dim},(_,coordinate)=>Object.freeze({
+      equationIndex:sheaf.edgeOffsets[e]+coordinate,
+      origin:"cellular-restriction",edge:edge.id,edgeCoordinate:coordinate
+    })));
+  const observedCoordinates=new Set(measured.map(row=>row.column));
   const coefficients=[
     ...differential,
     ...measured.map(row=>Array.from({length:sheaf.c0},(_,i)=>i===row.column?1:0))
@@ -394,8 +397,7 @@ export function extendCellularSheafSection(sheaf, observations = []) {
   ];
   const answer=ratSolve(coefficients,rhs,{columns:sheaf.c0});
   const sourceRows=Object.freeze([
-    ...constraints.map(x=>Object.freeze({equationIndex:x.index,
-      origin:"cellular-restriction",edge:x.edge})),
+    ...edgeEquationSources,
     ...measured.map(x=>Object.freeze({equationIndex:x.equationIndex,
       origin:"source-observation",vertex:x.vertex,coordinate:x.coordinate,
       sourceRecord:x.sourceRecord}))
@@ -406,7 +408,8 @@ export function extendCellularSheafSection(sheaf, observations = []) {
       "mathematically-liftable":"mathematically-obstructed",
     sourceRows,
     observedCoordinateCount:measured.length,
-    unobservedCoordinates:sheaf.c0-measured.length,
+    distinctObservedCoordinates:observedCoordinates.size,
+    unobservedCoordinates:sheaf.c0-observedCoordinates.size,
     exactSection:answer.particular,
     extensionDirections:answer.kernelBasis,
     freeDimensions:answer.freeColumns.length,
