@@ -64,12 +64,13 @@ Lock events form an ordered, separately identified, append-only history. Each ma
 
 The *pure* `cellular-sheaf.mjs` operation `cochain(sheaf, entries)` deliberately **extends omitted stalk coordinates by numerical zero**, which is lawful for constructing an algebraic vector but is **not** an observed fact. A physical or informational observer's missing report must not be passed through that implicit extension as if an instrument saw zero.
 
-The original Keratin reader now has `assessKeratinLinearObservations(linearReading, observations, {tolerance:0})`, downstream of `keratinLinearSheaf`. It accepts only the exact in-process linear reading associated with the original source-positioned graph. An observation has `{position, value, sourceRecord}`, where `value` is a finite scalar for a one-dimensional stalk or a dense array matching the declared stalk dimension. The source record is a **caller-named provenance label**, not cryptographic authentication or a SignChain positive truth witness.
+The original Keratin reader now has `assessKeratinLinearObservations(linearReading, observations, {tolerance:0})`, downstream of `keratinLinearSheaf`. It accepts only the exact in-process linear reading associated with the original source-positioned graph. An observation has `{position, value, sourceRecord, evidence:{for:[...], against:[...]}}`, where `value` is a finite scalar for a one-dimensional stalk or a dense array matching the declared stalk dimension. `evidence` names two independently retained, source-identified testimony lanes. The original **Computer Data FOUR** operation derives `unknown`, `held`, `denied`, or `contested` from their nonemptiness; numerical gluing only accepts a `held` local report. The source record and witness names are **caller-supplied**, not cryptographic authentication, verified SignChain testimony or authority.
 
 Its finite rules are intentionally strict:
 
-- Missing even one stalk: `status:'unassayed-missing-or-contested-source'`, `vector:null`, `compatible:null`. In particular *no supplied measurements* cannot become the mathematically zero cochain by accident.
+- Missing even one stalk: `status:'unassayed-incomplete-or-unqualified-source'`, `vector:null`, `compatible:null`. In particular *no supplied measurements* cannot become the mathematically zero cochain by accident.
 - Two different values for one original position: return *both* source reports in `contestedPositions`, retain `vector:null`, and refuse to invoke the numeric coboundary. Repeated agreeing reports retain independent source labels but produce only one coordinate.
+- A value with neither evidence side, a negative-only side, or both positive and negative sides: retain the Data FOUR reading and exact witness lists in `unqualifiedPositions`; do not infer numeric support from a nonempty `sourceRecord` or from agreement with another observation. Neither consensus over contradictory reports nor sorting of report arrays creates evidence.
 - One complete uncontested assignment: reuse the **same** SignGraph `cochain → coboundary → apply` kernel. The result includes the original source occurrence IDs, per-edge numerical residual vectors, the finite Euclidean residual norm and a caller-selected numeric tolerance. Thus the result is `compatible-numeric-coboundary` or `incompatible-numeric-coboundary` **only**. A small floating-point residual is no proof of exact rational gluing, a real sensor's authority, or a physically measured deformation.
 - Only dense, material numeric source slots are admitted; accessor-backed fields, foreign graph positions, unsupported dimensions, nonfinite values, and unrecognized options refuse before numerical interpretation. Returned reports, vectors and residuals are independently frozen snapshots.
 
@@ -80,13 +81,15 @@ Here is the source shape, after the separately supplied original `graph`, `verte
 ```js
 const linear = keratinLinearSheaf(graph, { vertexStalks, relationStalks });
 const result = assessKeratinLinearObservations(linear, [
-  { position: keratinPositionKey('a'), value: 4, sourceRecord: 'instrument:sample-a' },
-  { position: keratinPositionKey('b'), value: 4, sourceRecord: 'instrument:sample-b' },
+  { position: keratinPositionKey('a'), value: 4, sourceRecord: 'instrument:sample-a',
+    evidence: { for: ['source:sample-a'], against: [] } },
+  { position: keratinPositionKey('b'), value: 4, sourceRecord: 'instrument:sample-b',
+    evidence: { for: ['source:sample-b'], against: [] } },
   // A missing original position keeps result.vector === null, not zero.
 ]);
 ```
 
-**Receiving:** the added four tests are authored in `test/keratin-graph.test.mjs` and were exercised as their exact source bodies with isolated modeled non-geometric suppliers (4/4 passing). The genuine installed SignGraph/Metrologic/SignCell dependency-closed tests, source-qualified measurement attestations, immutable release and independent consumer receipt remain open. No geometry-as-physics claim follows.
+**Receiving:** the added five tests are authored in `test/keratin-graph.test.mjs` and were exercised as their exact source bodies with the original Computer Data FOUR reading and SignGraph numeric cochain/coboundary implementation, with unrelated Feather/Cohomology suppliers stubbed (5/5 passing). The genuine installed SignGraph/Metrologic/SignCell dependency-closed tests, source-qualified measurement attestations, immutable release and independent consumer receipt remain open. No geometry-as-physics claim follows.
 
 ### Visualization and interchange
 
