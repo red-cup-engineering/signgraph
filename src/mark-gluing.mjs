@@ -1008,12 +1008,45 @@ export function assessPerformedBoundaryFactorization(shadow, requiredReadings) {
   // source exactly when d is constant on every fiber of q. Here q is the
   // original SignCell claimAddress readout, never arbitrary user-named edges.
   const factorable = obstructions.length === 0;
+  // The coarsest recipient-sufficient refinement of this ORIGINAL q source
+  // groups exactly (original claimAddress, recipient-required class).
+  // Never refine a source via a caller-invented alias or imply consent to
+  // disclose any class. Group index is local to a boundary: not a global ID.
+  const byBoundary = new Map();
+  for (const entry of entries) {
+    const observed = entry.claimAddress, requirement = readings[entry.claimIndex];
+    let classes = byBoundary.get(observed);
+    if (classes === undefined) { classes = new Map(); byBoundary.set(observed, classes); }
+    let group = classes.get(requirement);
+    if (group === undefined) {
+      group = { claimAddress: observed, requiredClass: requirement,
+        classIndexWithinBoundary: classes.size, sourceClaimIndices: [] };
+      classes.set(requirement, group);
+    }
+    group.sourceClaimIndices.push(entry.claimIndex);
+  }
+  const groups = freeze([...byBoundary.values()].flatMap(classes =>
+    [...classes.values()].map(group => freeze({
+      ...group, sourceClaimIndices: freeze(group.sourceClaimIndices),
+    }))));
+  const maxClassesPerBoundary = Math.max(1,
+    ...[...byBoundary.values()].map(classes => classes.size));
+  const necessaryRefinement = freeze({
+    kind: "signgraph.conditionalReceivingBoundaryRefinement.v1",
+    groups, extraClasses: groups.length - byBoundary.size,
+    maxClassesPerBoundary,
+    // A finite fixed-width sidecar can reuse tags in different q fibers.
+    // This bound says nothing about source secrecy or permitted disclosure.
+    minimumAdditionalTagBits: Math.ceil(Math.log2(maxClassesPerBoundary)),
+    standing: "proposed-minimal-distinction-only-not-disclosed-or-authorized",
+  });
   return freeze({
     kind: "signgraph.performedBoundaryFactorization.v1",
     originalSourceId: shadow.originalSourceId,
     continuedSourceId: shadow.continuedSourceId,
     sourceClaimCount: entries.length,
     observedBoundaryCount: image.size,
+    necessaryRefinement,
     status: factorable ? "conditional-factorization-on-finite-source" : "source-distinction-obstructed",
     inducedBoundaryReadings: factorable
       ? freeze([...image].map(([claimAddress, held]) => freeze({

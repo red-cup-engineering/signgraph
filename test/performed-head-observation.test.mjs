@@ -316,6 +316,8 @@ test("source-indexed receiving requirements descend through a boundary only when
   assert.equal(yes.settlement, "not-established");
   assert.ok(yes.observedBoundaryCount < yes.sourceClaimCount);
   assert.deepEqual(yes.obstructions, []);
+  assert.equal(yes.necessaryRefinement.extraClasses, 0);
+  assert.equal(yes.necessaryRefinement.minimumAdditionalTagBits, 0);
   const [one, later] = [2, 3].map(index => view.semioverse.claimEntries.find(e =>
     e.firstOccurrenceIndex === index && e.secondOccurrenceIndex === index));
   assert.equal(one.claimAddress, later.claimAddress);
@@ -325,6 +327,10 @@ test("source-indexed receiving requirements descend through a boundary only when
   const no = assessPerformedBoundaryFactorization(view, selective);
   assert.equal(no.status, "source-distinction-obstructed");
   assert.equal(no.inducedBoundaryReadings, null);
+  assert.ok(no.necessaryRefinement.extraClasses >= 1);
+  assert.equal(no.necessaryRefinement.minimumAdditionalTagBits, 1);
+  assert.equal(no.necessaryRefinement.standing,
+    "proposed-minimal-distinction-only-not-disclosed-or-authorized");
   assert.ok(no.obstructions.some(witness =>
     witness.claimAddress === one.claimAddress &&
     witness.first.firstOccurrenceId !== witness.second.firstOccurrenceId));
@@ -376,4 +382,30 @@ test("native boundary classification and bounded JSONL use the exact same perfor
   assert.throws(() => executeOperation(id, {
     ...input, requiredReadings, unauthorized: true,
   }), /requires original Articulating/);
+});
+
+test("three distinct original performances behind one observed head require two local sidecar bits", () => {
+  const view = derivePerformedHeadShadow({ articulating: performedSource(), steps: 3 });
+  const originals = [2, 3, 4].map(n => view.semioverse.claimEntries.find(entry =>
+    entry.firstOccurrenceIndex === n && entry.secondOccurrenceIndex === n));
+  assert.equal(new Set(originals.map(x => x.claimAddress)).size, 1);
+  assert.equal(new Set(originals.map(x => x.firstOccurrenceId)).size, 3);
+  const distinct = new Map(originals.map((entry,i) =>
+    [entry.claimIndex, ["one","two","three"][i]]));
+  const readings = view.semioverse.claimEntries.map(entry => ({
+    claimIndex: entry.claimIndex,
+    requiredClass: distinct.get(entry.claimIndex) ?? "one",
+  }));
+  const result = assessPerformedBoundaryFactorization(view, readings);
+  assert.equal(result.status, "source-distinction-obstructed");
+  const relevant = result.necessaryRefinement.groups.filter(row =>
+    row.claimAddress === originals[0].claimAddress);
+  assert.equal(relevant.length, 3);
+  assert.deepEqual(relevant.map(row => row.classIndexWithinBoundary), [0,1,2]);
+  assert.equal(result.necessaryRefinement.maxClassesPerBoundary, 3);
+  assert.equal(result.necessaryRefinement.minimumAdditionalTagBits, 2);
+  const flattened = relevant.flatMap(row => row.sourceClaimIndices);
+  for (const source of originals) assert.ok(flattened.includes(source.claimIndex));
+  assert.equal(result.authority, "none");
+  assert.equal(result.settlement, "not-established");
 });
