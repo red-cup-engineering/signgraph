@@ -122,10 +122,18 @@ export function constantSheaf(vertexIds, edgeList, dim = 1) {
   });
 }
 
-/** A finite numeric 0-cochain over vertex stalks, in vertex order. Absent vertices read zero.
- * Repeated identical local readings are idempotent; disagreeing readings of one stalk cannot be
- * silently glued by last-write-wins. Witnesses/FOUR belong in the separate sign evidence fibers. */
-export function cochain(sheaf, entries) {
+/** A finite numeric 0-cochain over vertex stalks, in vertex order.
+ * Mathematical zero extension of omitted coordinates is the historical default
+ * and remains valid algebra. It does NOT mean an observer measured zero.
+ * Observational consumers MUST select {missing:'refuse'} after resolving their
+ * own FOUR/SignChain evidence, and no missing positive-dimensional stalk may
+ * then be silently converted into a numerical global section.
+ * Repeated identical local readings are idempotent; disagreeing readings of
+ * one stalk cannot be silently glued by last-write-wins.
+ * Witnesses/FOUR belong in the separate sign evidence fibers. */
+export function cochain(sheaf, entries, { missing = 'zero' } = {}) {
+  if(!['zero','refuse'].includes(missing))
+    throw new TypeError("cochain: missing policy must be zero or refuse");
   const out = new Array(sheaf.c0).fill(0);
   const seen = new Map();
   for (const { vertex, value } of entries) {
@@ -144,6 +152,11 @@ export function cochain(sheaf, entries) {
     }
     seen.set(index, [...values]);
     values.forEach((v, k) => { out[sheaf.vertexOffsets[index] + k] = v; });
+  }
+  if(missing==='refuse') {
+    const absent=sheaf.vertices.filter((vertex,index)=>vertex.dim>0&&!seen.has(index));
+    if(absent.length)
+      throw new RangeError("cochain: incomplete observation omitted "+absent.length+" positive-dimensional stalks");
   }
   return out;
 }
