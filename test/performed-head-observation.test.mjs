@@ -348,3 +348,32 @@ test("boundary factorization refuses partial, duplicated, forged and noncanonica
   assert.deepEqual(assessPerformedBoundaryFactorization(portable, rows),
     assessPerformedBoundaryFactorization(view, rows));
 });
+
+test("native boundary classification and bounded JSONL use the exact same performed source", () => {
+  const input = { articulating: performedSource(), steps: 3 };
+  const shadow = derivePerformedHeadShadow(input);
+  const requiredReadings = shadow.semioverse.claimEntries.map(entry => ({
+    claimIndex: entry.claimIndex, requiredClass: "source-permitted",
+  }));
+  const id = "signgraph.mark-incidence.boundary-factorization";
+  const direct = executeOperation(id, { ...input, requiredReadings });
+  assert.deepEqual(direct, assessPerformedBoundaryFactorization(shadow, requiredReadings));
+  assert.equal(direct.authority, "none");
+  assert.equal(direct.status, "conditional-factorization-on-finite-source");
+  const runner = fileURLToPath(new URL("../scripts/holonomy.mjs", import.meta.url));
+  const invoked = spawnSync(process.execPath, [runner], {
+    input: JSON.stringify({ operation: id, input: { ...input, requiredReadings } }) + "\n",
+    encoding: "utf8", maxBuffer: 1024 * 1024,
+  });
+  assert.equal(invoked.status, 0, invoked.stderr);
+  const result = JSON.parse(invoked.stdout.trim());
+  assert.equal(result.ok, true);
+  assert.equal(result.operation, id);
+  assert.deepEqual(result.receipt, direct);
+  assert.throws(() => executeOperation(id, {
+    ...input, requiredReadings: requiredReadings.slice(1),
+  }), /one recipient classification/);
+  assert.throws(() => executeOperation(id, {
+    ...input, requiredReadings, unauthorized: true,
+  }), /requires original Articulating/);
+});
