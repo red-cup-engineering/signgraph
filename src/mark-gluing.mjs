@@ -936,8 +936,9 @@ export function transportPerformedSemioverseClaim(shadow, fromPointIndex, toPoin
  * cover. This is the first COMPARISON of patches of the original performed
  * Semioverse, NOT an assumed Grothendieck coverage or a sheaf theorem.
  *
- * Each host-selected patch is a subset of actual original claim-occurrence
- * coordinates at an earned kinematic point. K(C)'s forward lift licenses
+ * Each host-selected patch has an EXPLICIT sparse domain of actually
+ * admitted original claim occurrences at an earned kinematic point, with
+ * its selected subset given SEPARATELY. K(C)'s forward lift licenses
  * transport from each patch to the target. An inverse-image on the POWERS
  * of supported coordinates may then restrict an observed section backwards
  * by intersection: this does not reverse an original performed Articulating.
@@ -957,30 +958,40 @@ export function readPerformedCellularCover(shadow, targetPointIndex, localPatche
   const byIndex=new Map(target.entries.map(entry=>[String(entry.claimIndex),entry]));
   const owned=localPatches.map((patch,number)=>{
     if(!patch||typeof patch!=="object"||Array.isArray(patch)||
-       Object.keys(patch).some(k=>!["pointIndex","claimIndices"].includes(k))||
-       !Array.isArray(patch.claimIndices)||patch.claimIndices.length>targetIds.length)
-      throw new TypeError("L-Space patch requires only source locus and selected claim indices");
+       Object.keys(patch).some(k=>!["pointIndex","coveredClaimIndices","selectedClaimIndices"].includes(k))||
+       !Array.isArray(patch.coveredClaimIndices)||
+       !Array.isArray(patch.selectedClaimIndices)||
+       patch.coveredClaimIndices.length>targetIds.length||
+       patch.selectedClaimIndices.length>patch.coveredClaimIndices.length)
+      throw new TypeError("L-Space cellular patch requires real covered occurrence pairs separately from its selected ones");
     const original=readPerformedSemioverseFiber(shadow,patch.pointIndex);
     // No caller-supplied cover relation: the actual generated kinematic arrow
     // must exist; source forward transport of EVERY local occurrence is read.
-    const originalSupport=original.entries.map(entry=>String(entry.claimIndex));
-    for(const entry of original.entries)
-      transportPerformedSemioverseClaim(shadow,patch.pointIndex,targetPointIndex,entry.claimIndex);
+    // A local chart covers a chosen source-qualified part of its earned
+    // fiber, NOT the entire fiber just because one locus was named. Without
+    // this separate domain, every complete cover would require the target
+    // whole-fiber patch and gluing would be almost tautological.
+    const sourceIds=new Set(original.entries.map(entry=>entry.claimIndex));
     const seen=new Set();
-    for(const index of patch.claimIndices) {
-      if(!Number.isSafeInteger(index)||index<0||!original.entries.some(x=>x.claimIndex===index)||
-          seen.has(index))
-        throw new TypeError("L-Space patch selects unknown, duplicated or future claim");
+    for(const index of patch.coveredClaimIndices){
+      if(!Number.isSafeInteger(index)||index<0||!sourceIds.has(index)||seen.has(index))
+        throw new TypeError("L-Space cellular domain must name distinct real performed source pairs");
       seen.add(index);
+      transportPerformedSemioverseClaim(shadow,patch.pointIndex,targetPointIndex,index);
     }
-    const selection=subset(patch.claimIndices.map(String));
+    const chosen=new Set();
+    for(const index of patch.selectedClaimIndices){
+      if(!Number.isSafeInteger(index)||!seen.has(index)||chosen.has(index))
+        throw new TypeError("L-Space selected source pair must occur once inside its actual patch domain");
+      chosen.add(index);
+    }
+    const support=meet(subset(patch.coveredClaimIndices.map(String)),targetSupport);
+    const selection=meet(subset(patch.selectedClaimIndices.map(String)),support);
     return freeze({
       patch:number,pointIndex:patch.pointIndex,
-      sourceSupport:subset(originalSupport),
-      // Section-level reindexing is an intersection within original
-      // support, not an inverse transport of new performed occurrences.
-      selected:meet(selection,targetSupport),
-      witness:"host-selected section over a genuine source kinematic patch, not sourced FOUR valuation",
+      sourceSupport:support,
+      selected:selection,
+      witness:"caller-selected covered coordinates all verified as original performed claim pairs; selection still has no independent FOUR witness",
     });
   });
   let covered=subset([]);
@@ -1048,7 +1059,7 @@ export function readPerformedCellularCover(shadow, targetPointIndex, localPatche
     globalSection:sourceEntries,
     geometry:"original performed kinematic interval points and ordered source-occurrence pair axes; no fabricated continuum/tensor metric",
     variance:"source occurrences lift FORWARD; section supports compare by exact finite restriction, not backwards source acts",
-    scope:"conditional finite coordinate-cover and sparse 3-axis source-incidence readout; not full sheafification, FOUR valuation, rights, settlement or earned global L-Space",
+    scope:"conditional local cellular fiber chart descent with explicit original support and selected membership; not full sheafification, independently witnessed FOUR valuation, rights, settlement or global L-Space",
   });
 }
 
