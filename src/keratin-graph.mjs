@@ -358,7 +358,7 @@ export function assessKeratinLinearObservations(reading, observations, options={
   // admission; this is never its implicit missing->0 extension.
   const vector=cochain(sheaf,positions.map(row=>({
     vertex:row.position,value:row.reports[0].value,
-  })));
+  })),{missing:'refuse'});
   const delta=apply(coboundary(sheaf),vector);
   const edgeResiduals=frozen(sheaf.edges.map((edge,i)=>{
     const values=delta.slice(sheaf.edgeOffsets[i],sheaf.edgeOffsets[i]+edge.dim);
