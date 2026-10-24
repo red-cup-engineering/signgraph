@@ -138,7 +138,7 @@ const linearSpec=(graph,{twisted=false}={})=>keratinLinearSheaf(graph,{
     restrict:{from:[[1]],to:[[twisted&&e.occurrence==='b>c'?-1:1]]},
   })),
 });
-const reading=(position,value,sourceRecord)=>({position:id(position),value,sourceRecord});
+const reading=(position,value,sourceRecord)=>({position:id(position),value,sourceRecord,evidence:{for:[sourceRecord],against:[]}});
 
 test('a complete observed linear sheaf preserves source identity and never proves a separate discrete model',()=>{
   const graph=specimen(),linear=linearSpec(graph);
@@ -169,7 +169,7 @@ test('a complete observed linear sheaf preserves source identity and never prove
 test('missing source positions and contested local measurements never receive implicit zero extension',()=>{
   const linear=linearSpec(specimen());
   const empty=assessKeratinLinearObservations(linear,[]);
-  assert.equal(empty.status,'unassayed-missing-or-contested-source');
+  assert.equal(empty.status,'unassayed-incomplete-or-unqualified-source');
   assert.deepEqual(empty.missingPositions,[id('a'),id('b'),id('c')]);
   assert.equal(empty.vector,null);
   assert.equal(empty.residualNorm,null);
@@ -195,6 +195,37 @@ test('missing source positions and contested local measurements never receive im
   assert.deepEqual(corroborated.vector,[0,0,0]);
   assert.equal(corroborated.positions[0].reports.length,2,
     'independent agreeing witnesses survive without numerical double counting');
+});
+
+test('FOUR source testimony governs whether a complete numeric reading may become geometry',()=>{
+  const linear=linearSpec(specimen());
+  const held=[reading('a',0,'evidence:a'),reading('b',0,'evidence:b'),reading('c',0,'evidence:c')];
+  assert.equal(assessKeratinLinearObservations(linear,held).compatible,true);
+  const variants=[
+    {reading:'unknown', evidence:{for:[],against:[]}},
+    {reading:'denied', evidence:{for:[],against:['witness:negative']}},
+    {reading:'contested', evidence:{for:['witness:positive'],against:['witness:negative']}},
+  ];
+  for(const variant of variants){
+    const result=assessKeratinLinearObservations(linear,[
+      {...held[0],evidence:variant.evidence}, held[1],held[2],
+    ]);
+    assert.equal(result.status,'unassayed-incomplete-or-unqualified-source');
+    assert.deepEqual(result.missingPositions,[]);
+    assert.deepEqual(result.contestedPositions,[]);
+    assert.equal(result.unqualifiedPositions[0].position,id('a'));
+    assert.equal(result.unqualifiedPositions[0].reports[0].reading,variant.reading,
+      'Data FOUR meaning is preserved, not converted to a numeric vote');
+    assert.equal(result.vector,null,'a denied, contested or unwitnessed value cannot produce an apparent zero');
+    assert.equal(result.compatible,null);
+  }
+  const mixed=assessKeratinLinearObservations(linear,[
+    held[0], {...held[0],sourceRecord:'source:opposition',evidence:{for:[],against:['witness:opposes']}},
+    held[1],held[2],
+  ]);
+  assert.equal(mixed.unqualifiedPositions[0].reports[0].reading,'denied');
+  assert.equal(mixed.compatible,null,
+    'an independent opposing source cannot be silently outvoted by a positive source');
 });
 
 test('genuine witnessed values can conflict with local restriction geometry, without claiming physical forces',()=>{
@@ -234,6 +265,15 @@ test('foreign, accessor-backed, nonfinite or surplus numeric assertions refuse b
     /undeclared fields/);
   assert.throws(()=>assessKeratinLinearObservations(linear,[{...reading('a',0,'meter'),admitsPower:true}]),
     /undeclared fields/);
+  assert.throws(()=>assessKeratinLinearObservations(linear,[{...reading('a',0,'meter'),evidence:{for:[],against:[],probability:1}}]),
+    /undeclared fields/);
+  assert.throws(()=>assessKeratinLinearObservations(linear,[{...reading('a',0,'meter'),evidence:{for:['witness','witness'],against:[]}}]),
+    /duplicate identity/);
+  assert.throws(()=>assessKeratinLinearObservations(linear,[{position:id('a'),value:0,sourceRecord:'meter'}]),
+    /own data fields/);
+  const evidence=reading('a',0,'meter');
+  Object.defineProperty(evidence.evidence.for,'0',{get(){return 'forged';},enumerable:true});
+  assert.throws(()=>assessKeratinLinearObservations(linear,[evidence]),/material source identities/);
   let calls=0;
   const accessor=reading('a',[0],'meter');
   Object.defineProperty(accessor,'value',{get(){calls++;return [0];},enumerable:true});
