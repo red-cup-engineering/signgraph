@@ -15,7 +15,7 @@
  */
 import { featherGraphOfPredications } from './feather-graph.mjs';
 import { cellular2Complex } from './cohomology.mjs';
-import { cellularSheaf, cellularSheafCohomology } from './cellular-sheaf.mjs';
+import { apply, coboundary, cochain, cellularSheaf, cellularSheafCohomology } from './cellular-sheaf.mjs';
 
 const freeze = Object.freeze;
 const isRecord = x => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -24,6 +24,7 @@ const ordered = (a,b) => a < b ? -1 : a > b ? 1 : 0;
 const frozen = values => freeze([...values]);
 const admitted = new WeakSet();
 const analysisOwners = new WeakMap();
+const linearOwners = new WeakMap();
 const MAX_POSITIONS = 128, MAX_RELATIONS = 256, MAX_FACES = 32;
 const MAX_HOLES = 32, MAX_LOCKS = 512, MAX_OBSERVERS = 8;
 const MAX_STATES = 16, MAX_ALLOWED_PAIRS = 256;
@@ -238,10 +239,98 @@ export function keratinLinearSheaf(graph, {vertexStalks,relationStalks} = {}) {
   }
   if(edges.size!==pred.size)fail('linear sheaf missing original directed relation');
   const sheaf=cellularSheaf({vertices:[...vertices.values()],edges:[...edges.values()]});
-  return freeze({kind:'signgraph.keratinGraph.linearSheafReading.v1',
+  const reading=freeze({kind:'signgraph.keratinGraph.linearSheafReading.v1',
     sheaf,cohomology:sheaf.exact?cellularSheafCohomology(sheaf):null,
     sourceOccurrences:frozen([...pred.values()].map(p=>freeze({occurrence:p.occurrence,sourceRecord:p.sourceRecord}))),
     qualification:'original edge identities retained; linear restrictions supplied; exact H1 belongs to graph sheaf only, not a filled surface or physical keratin',
+  });
+  linearOwners.set(reading,graph);
+  return reading;
+}
+
+/**
+ * Source-identified finite linear observations over the SAME admitted
+ * Keratin/Feather graph and its original cellular sheaf, not another graph.
+ *
+ * A pure mathematical cochain is defined on every stalk and the legacy
+ * `cochain(sheaf, partialEntries)` intentionally zero-extends unspecified
+ * coordinates. That law is NOT a license to treat UNOBSERVED source positions
+ * as measured zeros. Here complete independent reports must exist for all
+ * positive-dimensional stalks before we invoke the original cochain and
+ * coboundary kernels. Incompatible source reports remain an obstruction with
+ * their sources, never first/last-writer wins. A small numeric coboundary
+ * measures conditional linear compatibility, not a FOUR settlement, true
+ * physical strain, verified source attestation, or a witnessed causal Hole.
+ */
+export function assessKeratinLinearObservations(reading, observations, options={}) {
+  if(!linearOwners.has(reading))
+    fail('linear observations require the original in-process Keratin linear reading');
+  fields(options,['tolerance'],'linear observation options');
+  const {tolerance=0}=options;
+  if(typeof tolerance!=='number'||!Number.isFinite(tolerance)||tolerance<0)
+    fail('linear observation tolerance must be a finite nonnegative number');
+  if(!Array.isArray(observations)||observations.length>MAX_POSITIONS*8)
+    fail('linear observations must be a bounded list of source-named values');
+
+  const sheaf=reading.sheaf;
+  const byPosition=new Map(sheaf.vertices.map(vertex=>[vertex.id,[]]));
+  for(const observation of observations) {
+    fields(observation,['position','value','sourceRecord'],'linear observation');
+    const {position,sourceRecord}=observation;
+    requireName(sourceRecord,'linear observation sourceRecord');
+    const rows=byPosition.get(position);
+    const vertex=sheaf.vertices.find(entry=>entry.id===position);
+    if(rows===undefined||vertex===undefined)
+      fail('linear observation names no original sheaf position');
+    const values=Array.isArray(observation.value)?observation.value:[observation.value];
+    if(values.length!==vertex.dim||values.some(v=>typeof v!=='number'||!Number.isFinite(v)))
+      fail('linear observation needs complete finite numeric stalk coordinates');
+    rows.push(freeze({sourceRecord,value:frozen(values)}));
+  }
+  const positions=frozen(sheaf.vertices.map(vertex=>freeze({
+    position:vertex.id,
+    reports:frozen(byPosition.get(vertex.id)),
+  })));
+  const missingPositions=frozen(positions.filter(row=>row.reports.length===0).map(row=>row.position));
+  const contestedPositions=frozen(positions.filter(row=>row.reports.some(report=>
+    report.value.some((value,i)=>value!==row.reports[0].value[i]))).map(row=>freeze({
+    position:row.position,
+    reports:row.reports,
+  })));
+  const complete=missingPositions.length===0&&contestedPositions.length===0;
+  if(!complete)return freeze({
+    kind:'signgraph.keratinGraph.linearObservation.v1',
+    status:'unassayed-missing-or-contested-source',
+    positions,missingPositions,contestedPositions,
+    vector:null,edgeResiduals:null,residualNorm:null,compatible:null,
+    originalGraphOnly:true,sourceAuthentication:'caller-supplied-not-adjudicated',
+    physicalInterpretation:'not-established',
+  });
+  // Reuse the ORIGINAL mathematical cochain/δ, after explicit complete
+  // admission; this is never its implicit missing->0 extension.
+  const vector=cochain(sheaf,positions.map(row=>({
+    vertex:row.position,value:row.reports[0].value,
+  })));
+  const delta=apply(coboundary(sheaf),vector);
+  const edgeResiduals=frozen(sheaf.edges.map((edge,i)=>{
+    const values=delta.slice(sheaf.edgeOffsets[i],sheaf.edgeOffsets[i]+edge.dim);
+    const residual=Math.hypot(...values);
+    if(!Number.isFinite(residual))fail('linear observation numerical residual exceeds host arithmetic');
+    const source=reading.sourceOccurrences.find(o=>o.occurrence===edge.id);
+    return freeze({occurrence:edge.id,sourceRecord:source?.sourceRecord??null,
+      values:frozen(values),norm:residual});
+  }));
+  const residualNorm=Math.hypot(...delta);
+  if(!Number.isFinite(residualNorm))
+    fail('linear observation numerical norm exceeds host arithmetic');
+  const compatible=residualNorm<=tolerance;
+  return freeze({
+    kind:'signgraph.keratinGraph.linearObservation.v1',
+    status:compatible?'compatible-numeric-coboundary':'incompatible-numeric-coboundary',
+    positions,missingPositions,contestedPositions,
+    vector:frozen(vector),edgeResiduals,residualNorm,compatible,tolerance,
+    originalGraphOnly:true,sourceAuthentication:'caller-supplied-not-adjudicated',
+    physicalInterpretation:'not-established',
   });
 }
 
