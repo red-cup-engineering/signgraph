@@ -13,6 +13,7 @@ import { cellular2Complex } from "./cohomology.mjs";
 import { createGraph, observedTwoStepPaths } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { kinematicDiamondSpaceOf } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/causal";
 import { subset, meet, join, le } from "@red-cup-engineering/metrologic/sheaf/topology/d-frame";
+import { finitePreorder, admitUpperOpen, finiteCoherentSectionSpace } from "@red-cup-engineering/metrologic/models/order/finite-preorder";
 import { articulatedPredications } from "@red-cup-engineering/signcell/predication";
 import { address as cellAddress } from "@red-cup-engineering/signcell/cell";
 import * as chain from "@red-cup-engineering/signchain/bilattice";
@@ -1086,24 +1087,25 @@ export function readPerformedKinematicSectionSpace(shadow, { patches, sections }
       throw new TypeError("kinematic cover needs actual oriented original sequencing edges");
     return edge;
   });
+  const frame=finitePreorder(pointCount,edges.map(edge=>[edge.parent,edge.child]));
   const normalized=patches.map((source,index)=>{
     if(!Array.isArray(source)||source.length<1||source.length>pointCount||
        source.some((point,i)=>!Number.isSafeInteger(point)||point<0||
          point>=pointCount||(i>0&&source[i-1]>=point)))
       throw new TypeError("kinematic cover patch "+index+" needs canonical sorted earned loci");
-    const present=new Set(source);
-    for(const {parent,child} of edges)
-      if(present.has(parent)&&!present.has(child))
-        throw new TypeError("patch "+index+" is not an upper-open region of the ORIGINAL kinematic sequencing");
-    return freeze([...source]);
+    // Metrologic, not SignGraph, owns transitive Alexandrov upper-opens.
+    // Exact original Articulating emitted all these endpoint sequencing pairs.
+    try{return admitUpperOpen(frame,source);}
+    catch(error){throw new TypeError("patch "+index+" is not a source-generated upper-open region: "+error.message);}
+
   });
   const union=freeze([...new Set(normalized.flat())].sort((a,b)=>a-b));
   const claimCount=semi.claimEntries.length;
   // Exact membership comes from the ORIGINAL performed upper prefix, not an
   // after-the-fact claim address or an arbitrary chosen valuation.
-  const admitted=new Map(union.map(p=>[
-    p,new Set(readPerformedSemioverseFiber(shadow,p).entries.map(entry=>entry.claimIndex)),
-  ]));
+  const fibers=Array.from({length:pointCount},(_,p)=>
+    readPerformedSemioverseFiber(shadow,p).entries.map(entry=>entry.claimIndex));
+  const admitted=new Map(union.map(p=>[p,new Set(fibers[p])]));
   for(const [i,entry] of semi.claimEntries.entries()){
     if(entry?.claimIndex!==i||
        entry.firstOccurrenceId!==semi.sourceEventIds[entry.firstOccurrenceIndex]||
@@ -1111,36 +1113,11 @@ export function readPerformedKinematicSectionSpace(shadow, { patches, sections }
       throw new TypeError("source kinematic sheaf lost original performed pair positions");
   }
   const choicesOf=indices=>{
-    const parent=new Map(indices.map(p=>[p,p]));
-    const find=start=>{
-      let p=start;
-      while(parent.get(p)!==p){parent.set(p,parent.get(parent.get(p)));p=parent.get(p);}
-      return p;
-    };
-    for(const {parent:a,child:b} of edges)
-      if(parent.has(a)&&parent.has(b)){
-        const left=find(a),right=find(b);
-        if(left!==right)parent.set(right,left);
-      }
-    const groups=new Map();
-    for(const p of indices){
-      const root=find(p);
-      if(!groups.has(root))groups.set(root,[]);
-      groups.get(root).push(p);
-    }
-    const components=[...groups.values()].map(points=>{
-      const first=admitted.get(points[0]);
-      const options=[...first].filter(claim=>
-        points.every(point=>admitted.get(point).has(claim)));
-      return freeze({pointIndices:freeze(points),
-        sourcePairIndices:freeze(options),
-        possibleSections:options.length});
-    });
-    const count=components.reduce((product,x)=>
-      product*BigInt(x.possibleSections),1n);
-    return freeze({
-      components:freeze(components),possibleSections:count.toString(),
-    });
+    // Do not construct a second finite reachability/section solver in this
+    // sourced SignGraph consumer. The original Metrologic finite preorder
+    // now owns the transitive site, connected components and exact products.
+    const space=finiteCoherentSectionSpace(frame,fibers,indices);
+    return freeze({components:space.components,possibleSections:space.possibleSections});
   };
   const patchSpace=freeze(normalized.map((indices,i)=>freeze({
     index:i,pointIndices:indices,...choicesOf(indices),
