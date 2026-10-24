@@ -13,7 +13,7 @@ import { cellular2Complex } from "./cohomology.mjs";
 import { createGraph, observedTwoStepPaths } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { kinematicDiamondSpaceOf } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/causal";
 import { subset, meet, join, le } from "@red-cup-engineering/metrologic/sheaf/topology/d-frame";
-import { finitePreorder, admitUpperOpen, finiteCoherentSectionSpace } from "@red-cup-engineering/metrologic/models/order/finite-preorder";
+import { finitePreorder, admitUpperOpen, finiteCoherentSectionSpace, finitePrefixIncidenceFactors } from "@red-cup-engineering/metrologic/models/order/finite-preorder";
 import { articulatedPredications } from "@red-cup-engineering/signcell/predication";
 import { address as cellAddress } from "@red-cup-engineering/signcell/cell";
 import * as chain from "@red-cup-engineering/signchain/bilattice";
@@ -1123,6 +1123,8 @@ export function readPerformedKinematicSectionSpace(shadow, { patches, sections }
     index:i,pointIndices:indices,...choicesOf(indices),
   })));
   const global=choicesOf(union);
+  const tensorFactors=finitePrefixIncidenceFactors(
+    union.map(p=>W.points[p].upperEventIndex),semi.sourceEventIds.length);
   const overlaps=freeze(normalized.flatMap((left,i)=>
     normalized.slice(i+1).map((right,index)=>freeze({
       left:i,right:i+1+index,
@@ -1216,22 +1218,18 @@ export function readPerformedKinematicSectionSpace(shadow, { patches, sections }
       axes:freeze(["earned-kinematic-locus","first-original-performance","second-original-performance"]),
       originalOccurrenceIds:semi.sourceEventIds,
       claimIndexFormula:"firstOccurrenceIndex * N + secondOccurrenceIndex",
-      incidenceFormula:"1[firstIndex <= upperEventIndex(point)] * 1[secondIndex <= upperEventIndex(point)]",
-      slices:freeze(union.map(p=>freeze({
-        pointIndex:p,sourceUpperEventIndex:W.points[p].upperEventIndex,
-        admittedPairPositions:(W.points[p].upperEventIndex+1)**2,
+      incidenceFormula:"1[firstIndex<=upperEventIndex(point)] * 1[secondIndex<=upperEventIndex(point)]",
+      nonzeroIncidences:tensorFactors.nonzeroIncidences,
+      denseEquivalentPositions:tensorFactors.denseEquivalentPositions,
+      cpRankUpperBound:tensorFactors.cpRankUpperBound,
+      sourceIndexedFactors:freeze(tensorFactors.exactFiniteFactorization.map(term=>freeze({
+        upperEventIndex:term.upperEventIndex,
+        kinematicPointIndices:freeze(term.pointIndices.map(local=>union[local])),
+        bothOriginalAxesPrefixSize:term.sourcePrefixLength,
+        exactFactorTerm:term.factorization,
       }))),
-      exactFiniteFactorization:freeze(
-        [...new Set(union.map(p=>W.points[p].upperEventIndex))]
-          .sort((a,b)=>a-b).map(upper=>freeze({
-            upperEventIndex:upper,
-            kinematicPointIndices:freeze(union.filter(p=>W.points[p].upperEventIndex===upper)),
-            bothOriginalAxesPrefixSize:upper+1,
-            term:"indicator[upper(point)==k] * indicator[first<=k] * indicator[second<=k]",
-          }))
-      ),
-      ambientCoefficientDomain:"Boolean incidence; linear rational extension conditional on an owning math conversion",
-      semanticStanding:"source-performed incidence, not an evidence charge or active FOUR valuation",
+      coefficientSemantics:"Boolean occurrence-incidence; numerical extension only after qualified Math-source conversion",
+      sourceStanding:"original Articulating-pair source, not physical/FOUR/economic evidence",
     }),
     overlaps,overlapObstructions:freeze(obstructions),
     gluedSection:glued,
