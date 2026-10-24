@@ -16,6 +16,14 @@ test("cochain: finite numeric vertex readings admit idempotent repetition, not f
   const s = cellularSheaf({ vertices: [{ id: "a", dim: 2 }, { id: "b", dim: 1 }], edges: [] });
   assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "b", value: 3 }]), [1, 2, 3]);
   assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "a", value: [1, 2] }]), [1, 2, 0]);
+  assert.throws(()=>cochain(s,[{vertex:"a",value:[1,2]}],{missing:"refuse"}),
+    /incomplete observation omitted 1 positive-dimensional stalks/,
+    "unknown local value is not an observed numerical zero");
+  assert.deepEqual(cochain(s,[{vertex:"a",value:[1,2]},{vertex:"b",value:0}],{missing:"refuse"}),[1,2,0],
+    "an actual observed zero is different from default zero extension");
+  assert.deepEqual(cochain(s,[{vertex:"a",value:[1,2]}],{missing:"zero"}),[1,2,0],
+    "pure algebraic zero extension remains an explicit available operation");
+  assert.throws(()=>cochain(s,[],{missing:"ambiguous"}),/missing policy/);
   assert.throws(
     () => cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "a", value: [1, 3] }]),
     /conflicting duplicate vertex readings/,
