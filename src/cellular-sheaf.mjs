@@ -22,6 +22,7 @@
 import { coincidenceKey } from "@red-cup-engineering/signcell/cell";
 import { isExactEntry, ratPairOfEntry, ratRank, ratSolve } from "@red-cup-engineering/exact-number-data-service/rational-matrix";
 import { rationalToFiniteNumber } from "@red-cup-engineering/exact-number-data-service/exact-number-host";
+import { rationalOfBigInts } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { rankVanishing } from "./cohomology.mjs";
 
 const freezeMatrix = (matrix) => Object.freeze(matrix.map((row) => Object.freeze([...row])));
@@ -419,6 +420,93 @@ export function extendCellularSheafSection(sheaf, observations = []) {
     mathematicalAssay:"exact finite rational 1-skeleton restrictions",
     sourceAuthority:"not independently verified",
     temporalDescent:"not-proved-by-this-1-skeleton-projection",
+  });
+}
+
+/**
+ * Fiberwise rational tensor of TWO TO FOUR admitted cellular sheaves over the
+ * very same source-indexed 1-skeleton. This is the genuine algebraic tensor
+ * of vertex/edge stalks and restriction maps, not a second topos, invented
+ * trace convolution, quasicrystalline diffraction, or source generation.
+ *
+ * (F tensor G)(v) = F(v) tensor_Q G(v)
+ * (F tensor G)(e) = F(e) tensor_Q G(e)
+ * rho_(v,e) = rho_F(v,e) tensor rho_G(v,e).
+ *
+ * Factor source revisions remain explicit. This narrow interpretation
+ * is a finite constructive input to L-Space's proposed cellular hypertensor
+ * charts, not proof that an arbitrary historical QCHT trace cover admits
+ * this tensor or that time/2-cell/KZ coherence has been transported.
+ */
+export function tensorCellularSheaves(factors) {
+  if (!Array.isArray(factors) || factors.length < 2 || factors.length > 4 ||
+      factors.some(factor => factor?.sheaf?.kind !== "signgraph.cellularSheaf" ||
+        factor.sheaf.exact !== true || typeof factor.sourceRef !== "string" ||
+        !factor.sourceRef.trim()))
+    throw new TypeError("cellularSheaf tensor requires 2..4 exact source-attributed factors");
+  const source=factors[0].sheaf;
+  const congruent = (left,right) =>
+    coincidenceKey(left) === coincidenceKey(right);
+  for (const factor of factors.slice(1)) {
+    const other=factor.sheaf;
+    if(other.vertices.length!==source.vertices.length ||
+       other.edges.length!==source.edges.length)
+      throw new RangeError("cellularSheaf tensor factors have different source graphs");
+    for(let i=0;i<source.vertices.length;i++)
+      if(!congruent(source.vertices[i].id,other.vertices[i].id))
+        throw new RangeError("cellularSheaf tensor cannot silently reassign stalk source identities");
+    for(let i=0;i<source.edges.length;i++){
+      const edge=source.edges[i],compared=other.edges[i];
+      if(!congruent(edge.id,compared.id) ||
+         !congruent(edge.from,compared.from) ||
+         !congruent(edge.to,compared.to))
+        throw new RangeError("cellularSheaf tensor requires exactly aligned, oriented source incidence");
+    }
+  }
+  const multiply = (left,right) => {
+    const [a,b]=ratPairOfEntry(left),[c,d]=ratPairOfEntry(right);
+    return rationalOfBigInts(a*c,b*d);
+  };
+  // Indexed tensor row order: (left row, right row); column order:
+  // (left column, right column). No flattening of an arbitrary incidence
+  // tensor into unrelated source records is permitted.
+  const kron=(left,right)=>left.flatMap(aRow=>
+    right.map(bRow=>aRow.flatMap(a=>bRow.map(b=>multiply(a,b)))));
+  let product=source;
+  for(const factor of factors.slice(1)){
+    const next=factor.sheaf;
+    const vertices=product.vertices.map((v,i)=>({
+      id:v.id,dim:v.dim*next.vertices[i].dim
+    }));
+    const edges=product.edges.map((edge,i)=>{
+      const counterpart=next.edges[i];
+      return {
+        id:edge.id,from:edge.from,to:edge.to,
+        dim:edge.dim*counterpart.dim,
+        restrict:{
+          from:kron(edge.restrict.from,counterpart.restrict.from),
+          to:kron(edge.restrict.to,counterpart.restrict.to)
+        }
+      };
+    });
+    const totalVertices=vertices.reduce((n,v)=>n+v.dim,0);
+    const totalEdges=edges.reduce((n,e)=>n+e.dim,0);
+    if(totalVertices>256 || totalEdges>256 ||
+       !Number.isSafeInteger(totalVertices) || !Number.isSafeInteger(totalEdges))
+      throw new RangeError("cellularSheaf tensor exceeds the bounded rational chart");
+    product=cellularSheaf({vertices,edges});
+  }
+  return Object.freeze({...product,
+    tensor:Object.freeze({
+      kind:"signgraph.cellularSheaf.stalkwiseTensor.v1",
+      factors:Object.freeze(factors.map(f=>f.sourceRef)),
+      base:"identical source-indexed oriented 1-skeleton",
+      algebra:"exact rational stalk tensor with Kronecker restriction",
+      traceConvolution:"not-claimed",
+      aperiodicity:"not-proved",
+      temporalCoherence:"not-proved",
+      sourceAuthority:"caller-supplied-not-independently-authenticated"
+    })
   });
 }
 
