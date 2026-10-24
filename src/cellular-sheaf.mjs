@@ -20,7 +20,7 @@
  * order; no transcendental functions.
  */
 import { coincidenceKey } from "@red-cup-engineering/signcell/cell";
-import { isExactEntry, ratPairOfEntry, ratRank } from "@red-cup-engineering/exact-number-data-service/rational-matrix";
+import { isExactEntry, ratPairOfEntry, ratRank, ratSolve } from "@red-cup-engineering/exact-number-data-service/rational-matrix";
 import { rationalToFiniteNumber } from "@red-cup-engineering/exact-number-data-service/exact-number-host";
 import { rankVanishing } from "./cohomology.mjs";
 
@@ -327,6 +327,96 @@ function exactCoboundary(sheaf) {
     }
   });
   return rows;
+}
+
+/**
+ * Construct an actual exact affine global section extending a finite set of
+ * source-attributed local stalk coordinates on the original cellular sheaf.
+ *
+ * Partial observation is NOT zero extension: unobserved coordinates are free
+ * unknowns, bound only by the source's genuine restriction maps. Unlike the
+ * cochain() constructor (which intentionally zero-fills absent numeric input),
+ * this construction asks for a compatible global lift.
+ *
+ * Every edge row is a true original δ⁰ restriction equation; every observed
+ * coordinate adds its exact witnessed equality. The original Data algebra
+ * solves all equations and returns a global rational section + freedom, or a
+ * checkable combination of source rows proving nonliftability. No second
+ * rational solver, sheaf cohomology system or evidence ledger is created.
+ *
+ * This finite vector-stalk result is a CONDITIONAL computational projection
+ * downstream of Obsmetrologia's generated site and masked descent; it does
+ * NOT manufacture an Articulating occurrence, FOUR evidence, a temporal
+ * restriction, source truth, a full hypertensor topos or a buyer receipt.
+ */
+export function extendCellularSheafSection(sheaf, observations = []) {
+  if (sheaf?.kind !== "signgraph.cellularSheaf" ||
+      !Array.isArray(sheaf.vertices) || !Array.isArray(sheaf.edges) ||
+      sheaf.exact !== true)
+    throw new TypeError("cellularSheaf extension needs an original exact rational sheaf");
+  if (!Array.isArray(observations) || sheaf.c0 > 256 ||
+      sheaf.c1 + observations.length > 256)
+    throw new RangeError("cellularSheaf extension exceeds the exact 256-coordinate/equation envelope");
+  const sites = new Map(sheaf.vertices.map((v,i) => [coincidenceKey(v.id), {
+    vertex:v,index:i,offset:sheaf.vertexOffsets[i]
+  }]));
+  const measured = observations.map((row,i) => {
+    if (!row || typeof row !== "object" || Array.isArray(row) ||
+        Object.keys(row).some(key => !["vertex","coordinate","value","sourceRecord"].includes(key)))
+      throw new TypeError("source-local section needs a typed source observation");
+    const at=sites.get(coincidenceKey(row.vertex));
+    if (!at || !Number.isSafeInteger(row.coordinate) ||
+        row.coordinate < 0 || row.coordinate >= at.vertex.dim ||
+        typeof row.sourceRecord !== "string" || !row.sourceRecord.trim() ||
+        row.sourceRecord.length > 1024)
+      throw new TypeError("source-local section needs one actual stalk coordinate and witness locator");
+    ratPairOfEntry(row.value); // finite EXACT scalar admission, not numeric projection
+    const column=at.offset+row.coordinate;
+    return Object.freeze({
+      vertex:at.vertex.id,coordinate:row.coordinate,value:row.value,
+      column,sourceRecord:row.sourceRecord,
+      equationIndex:sheaf.c1+i,
+      sourceAuthentication:"caller-assertion-unverified"
+    });
+  });
+  const differential=exactCoboundary(sheaf);
+  const constraints=differential.map((values,i) =>
+    Object.freeze({index:i,kind:"original-edge-restriction",
+      edge:sheaf.edges.find((edge,e)=>i>=sheaf.edgeOffsets[e] && i<sheaf.edgeOffsets[e]+edge.dim)?.id,
+      row:Object.freeze([...values]),rightHandSide:0}));
+  const coefficients=[
+    ...differential,
+    ...measured.map(row=>Array.from({length:sheaf.c0},(_,i)=>i===row.column?1:0))
+  ];
+  const rhs=[
+    ...Array.from({length:sheaf.c1},()=>0),
+    ...measured.map(row=>row.value)
+  ];
+  const answer=ratSolve(coefficients,rhs,{columns:sheaf.c0});
+  const sourceRows=Object.freeze([
+    ...constraints.map(x=>Object.freeze({equationIndex:x.index,
+      origin:"cellular-restriction",edge:x.edge})),
+    ...measured.map(x=>Object.freeze({equationIndex:x.equationIndex,
+      origin:"source-observation",vertex:x.vertex,coordinate:x.coordinate,
+      sourceRecord:x.sourceRecord}))
+  ]);
+  return Object.freeze({
+    kind:"signgraph.cellularSheaf.sourceLocalExtension.v1",
+    status:answer.status==="solution-family"?
+      "mathematically-liftable":"mathematically-obstructed",
+    sourceRows,
+    observedCoordinateCount:measured.length,
+    unobservedCoordinates:sheaf.c0-measured.length,
+    exactSection:answer.particular,
+    extensionDirections:answer.kernelBasis,
+    freeDimensions:answer.freeColumns.length,
+    // A genuine obstruction is a linear combination of sourceRows in order.
+    // No source record is thereby authenticated or given effect authority.
+    obstruction:answer.obstruction,
+    mathematicalAssay:"exact finite rational 1-skeleton restrictions",
+    sourceAuthority:"not independently verified",
+    temporalDescent:"not-proved-by-this-1-skeleton-projection",
+  });
 }
 
 // — the heat flow —
