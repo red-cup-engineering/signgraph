@@ -5,7 +5,7 @@ import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
   apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
-  weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection,
+  weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection, tensorCellularSheaves,
 } from "../src/cellular-sheaf.mjs";
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} !~ ${b}`);
@@ -528,4 +528,41 @@ test("a nontrivial source restriction admits compatible partial vectors with gen
   assert.equal(Number(view.exactSection[3].num),11);
   assert.equal(view.unobservedCoordinates,3);
   assert.equal(view.sourceRows[0].edge,"typed-interface");
+});
+
+
+test("exact tensor composition is a productive source-indexed construction, invariant under separate source enumeration",()=>{
+  const base=constantSheaf(["a","b","c"],[
+    {id:"ab",from:"a",to:"b"},
+    {id:"bc",from:"b",to:"c"}
+  ],1);
+  const make=(ids,edges)=>cellularSheaf({
+    vertices:ids.map(id=>({id,dim:1})),
+    edges:edges.map(([id,from,to,weight])=>({
+      id,from,to,dim:1,restrict:{from:[[weight]],to:[[1]]}
+    }))
+  });
+  const original=make(["a","b","c"],[
+    ["ab","a","b",2],["bc","b","c",3]
+  ]);
+  const differentOrder=make(["c","a","b"],[
+    ["bc","b","c",3],["ab","a","b",2]
+  ]);
+  const tensor=(other)=>tensorCellularSheaves([
+    {sourceRef:"base:source",sheaf:base},{sourceRef:"partner:source",sheaf:other}
+  ]);
+  const one=tensor(original),two=tensor(differentOrder);
+  assert.deepEqual(one.edges,two.edges,"source order is not relational geometry");
+  const observation={vertex:"a",coordinate:0,value:"7/5",sourceRecord:"source:consented"};
+  const lift=extendCellularSheafSection(two,[observation]);
+  assert.equal(lift.status,"mathematically-liftable");
+  assert.deepEqual(lift.exactSection.map(x=>x.num+"/"+x.den),
+    ["7/5","14/5","42/5"]);
+  assert.equal(two.tensor.aperiodicity,"not-proved");
+  assert.equal(two.tensor.traceConvolution,"not-claimed");
+  const conflict=extendCellularSheafSection(two,[observation,
+    {vertex:"c",coordinate:0,value:9,sourceRecord:"source:contrary"}]);
+  assert.equal(conflict.status,"mathematically-obstructed");
+  assert.equal(conflict.exactSection,null);
+  assert.equal(conflict.sourceRows.at(-1).sourceRecord,"source:contrary");
 });
