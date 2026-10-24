@@ -339,10 +339,11 @@ export const operations = Object.freeze({
         targetPointIndex:{type:"integer",minimum:0},
         patches:{type:"array",minItems:1,maxItems:64,items:{
           type:"object",additionalProperties:false,
-          required:["pointIndex","claimIndices"],
+          required:["pointIndex","coveredClaimIndices","selectedClaimIndices"],
           properties:{
             pointIndex:{type:"integer",minimum:0},
-            claimIndices:{type:"array",items:{type:"integer",minimum:0}},
+            coveredClaimIndices:{type:"array",items:{type:"integer",minimum:0}},
+            selectedClaimIndices:{type:"array",items:{type:"integer",minimum:0}},
           },
         }},
       }),
