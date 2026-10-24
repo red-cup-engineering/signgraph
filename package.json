@@ -62,8 +62,8 @@
     "test": "node --test \"test/**/*.test.mjs\"",
     "check:holonomy": "node --check src/embedding.mjs && node --check src/cohomology.mjs && node --check src/paths.mjs && node --check src/cellular-sheaf.mjs && node --check src/hierarchical-circuit.mjs && node --check src/operations.mjs && node --check scripts/holonomy.mjs",
     "test:holonomy": "node --test test/cellular-2complex.test.mjs test/sixfold-holonomy.test.mjs test/holonomy-operations.test.mjs test/geometric-receiving.test.mjs test/cellular-sheaf.test.mjs test/hierarchical-circuit.test.mjs",
-    "check:keratin": "node --check src/keratin-graph.mjs && node --check examples/keratin-hole-workbench.mjs",
-    "test:keratin": "node --test test/keratin-graph.test.mjs",
+    "check:keratin": "node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs && node --check examples/keratin-hole-workbench.mjs",
+    "test:keratin": "node --test test/cellular-sheaf.test.mjs test/keratin-graph.test.mjs",
     "demo:keratin": "node examples/keratin-hole-workbench.mjs"
   },
   "repository": {
