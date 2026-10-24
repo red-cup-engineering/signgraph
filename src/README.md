@@ -112,6 +112,20 @@ delegates vector-stalk restrictions and exact rational H0/H1 to the original
 `cellularSheaf` engine. Graph-sheaf H1 is not asserted to equal filled-surface
 H1.
 
+`assessKeratinLinearObservations` is the strict **observed information → numeric
+geometry** gate on that exact linear source graph. Each local numeric reading
+carries separately named positive and negative witnesses and is evaluated
+through the original Computer Data FOUR algebra. Unobserved stalks, source
+disagreement, and any unknown/denied/contested testimony preserve their
+source identities but produce **no numeric cochain or compatibility verdict**.
+Only complete, unopposed readings go through the *existing*
+`cochain → coboundary → apply` operations, returning source-identified edge
+residuals. The pure cochain kernel's implicit zero-extension remains valid
+mathematics but cannot be mistaken for a measured zero; this consumer
+checks completeness before invoking it. The results are conditional host-float
+numerical geometry, not an authenticated measurement, exact gluing theorem,
+material physics or derived causal horizon.
+
 `keratinGraphToDot` renders directed source arrows separately from dotted
 hole/filled-face **annotations**, retaining source record IDs and exact
 analysis status. Graphviz is a standard visualization projection, never
