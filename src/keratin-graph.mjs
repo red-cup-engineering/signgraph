@@ -16,6 +16,7 @@
 import { featherGraphOfPredications } from './feather-graph.mjs';
 import { cellular2Complex } from './cohomology.mjs';
 import { apply, coboundary, cochain, cellularSheaf, cellularSheafCohomology } from './cellular-sheaf.mjs';
+import { readingOfSides } from '@red-cup-engineering/computer-data-engineering-services-section/four';
 
 const freeze = Object.freeze;
 const isRecord = x => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -252,6 +253,9 @@ export function keratinLinearSheaf(graph, {vertexStalks,relationStalks} = {}) {
  * Source-identified finite linear observations over the SAME admitted
  * Keratin/Feather graph and its original cellular sheaf, not another graph.
  *
+ * Every candidate local value is a caller-supplied for/against witness
+ * pair, evaluated through the ORIGINAL Data FOUR reading algebra; only
+ * "held" (positive, not opposed) may enter a numerical cochain.
  * A pure mathematical cochain is defined on every stalk and the legacy
  * `cochain(sheaf, partialEntries)` intentionally zero-extends unspecified
  * coordinates. That law is NOT a license to treat UNOBSERVED source positions
@@ -271,11 +275,24 @@ export function assessKeratinLinearObservations(reading, observations, options={
     fail('linear observation tolerance must be a finite nonnegative number');
   if(!Array.isArray(observations)||observations.length>MAX_POSITIONS*8)
     fail('linear observations must be a bounded list of source-named values');
+  const witnessLane=(values,side)=>{
+    if(!Array.isArray(values)||values.length>64)
+      fail('linear observation '+side+' testimony must be a bounded witness list');
+    const names=[];
+    for(let i=0;i<values.length;i++){
+      const slot=Object.getOwnPropertyDescriptor(values,String(i));
+      if(!slot||!Object.hasOwn(slot,'value')||!named(slot.value))
+        fail('linear observation '+side+' testimony requires material source identities');
+      names.push(slot.value);
+    }
+    unique(names,'linear observation '+side+' testimony');
+    return frozen(names);
+  };
 
   const sheaf=reading.sheaf;
   const byPosition=new Map(sheaf.vertices.map(vertex=>[vertex.id,[]]));
   for(const observation of observations) {
-    fields(observation,['position','value','sourceRecord'],'linear observation');
+    fields(observation,['position','value','sourceRecord','evidence'],'linear observation');
     // Neither source identifiers nor values may execute getters. Sample each
     // caller-supplied source record once, before numerical interpretation.
     const own=key=>{
@@ -285,6 +302,16 @@ export function assessKeratinLinearObservations(reading, observations, options={
     };
     const position=own('position'),sourceRecord=own('sourceRecord');
     requireName(sourceRecord,'linear observation sourceRecord');
+    const evidence=own('evidence');
+    fields(evidence,['for','against'],'linear evidence');
+    const side=key=>{
+      const slot=Object.getOwnPropertyDescriptor(evidence,key);
+      if(!slot||!Object.hasOwn(slot,'value'))
+        fail('linear observation evidence needs two material witness lanes');
+      return witnessLane(slot.value,key);
+    };
+    const positive=side('for'),negative=side('against');
+    const valuation=readingOfSides('extremal',positive.length>0,negative.length>0);
     const rows=byPosition.get(position);
     const vertex=sheaf.vertices.find(entry=>entry.id===position);
     if(rows===undefined||vertex===undefined)
@@ -299,7 +326,8 @@ export function assessKeratinLinearObservations(reading, observations, options={
       }):[value];
     if(values.length!==vertex.dim||values.some(v=>typeof v!=='number'||!Number.isFinite(v)))
       fail('linear observation needs complete finite numeric stalk coordinates');
-    rows.push(freeze({sourceRecord,value:frozen(values)}));
+    rows.push(freeze({sourceRecord,value:frozen(values),
+      evidence:freeze({for:positive,against:negative}),reading:valuation}));
   }
   const positions=frozen(sheaf.vertices.map(vertex=>freeze({
     position:vertex.id,
@@ -311,11 +339,17 @@ export function assessKeratinLinearObservations(reading, observations, options={
     position:row.position,
     reports:row.reports,
   })));
-  const complete=missingPositions.length===0&&contestedPositions.length===0;
+  const unqualifiedPositions=frozen(positions.filter(row=>row.reports.some(report=>
+    report.reading!=='held')).map(row=>freeze({
+    position:row.position,
+    reports:row.reports.filter(report=>report.reading!=='held'),
+  })));
+  const complete=missingPositions.length===0&&contestedPositions.length===0&&
+    unqualifiedPositions.length===0;
   if(!complete)return freeze({
     kind:'signgraph.keratinGraph.linearObservation.v1',
-    status:'unassayed-missing-or-contested-source',
-    positions,missingPositions,contestedPositions,
+    status:'unassayed-incomplete-or-unqualified-source',
+    positions,missingPositions,contestedPositions,unqualifiedPositions,
     vector:null,edgeResiduals:null,residualNorm:null,compatible:null,
     originalGraphOnly:true,sourceAuthentication:'caller-supplied-not-adjudicated',
     physicalInterpretation:'not-established',
@@ -341,7 +375,7 @@ export function assessKeratinLinearObservations(reading, observations, options={
   return freeze({
     kind:'signgraph.keratinGraph.linearObservation.v1',
     status:compatible?'compatible-numeric-coboundary':'incompatible-numeric-coboundary',
-    positions,missingPositions,contestedPositions,
+    positions,missingPositions,contestedPositions,unqualifiedPositions,
     vector:frozen(vector),edgeResiduals,residualNorm,compatible,tolerance,
     originalGraphOnly:true,sourceAuthentication:'caller-supplied-not-adjudicated',
     physicalInterpretation:'not-established',
