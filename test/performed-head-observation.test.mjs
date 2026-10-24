@@ -418,7 +418,12 @@ test("actual source-generated cellular L-Space cover operation returns source oc
   const all=readPerformedSemioverseFiber(shadow,targetPointIndex)
     .entries.map(entry=>entry.claimIndex);
   const input={articulating,steps,targetPointIndex,
-    patches:[{pointIndex:targetPointIndex,claimIndices:all}]};
+    patches:[
+      {pointIndex:targetPointIndex,coveredClaimIndices:all.filter((_,i)=>i%2===0),
+        selectedClaimIndices:all.filter((_,i)=>i%2===0)},
+      {pointIndex:targetPointIndex,coveredClaimIndices:all.filter((_,i)=>i%2===1),
+        selectedClaimIndices:all.filter((_,i)=>i%2===1)},
+    ]};
   const result=executeOperation("signgraph.mark-incidence.performed-cellular-cover",input);
   assert.equal(result.status,"glued-conditional-section");
   assert.equal(result.complete,true);
@@ -433,7 +438,7 @@ test("actual source-generated cellular L-Space cover operation returns source oc
     const old=readPerformedSemioverseFiber(shadow,earlier).entries.map(row=>row.claimIndex);
     const partial=executeOperation("signgraph.mark-incidence.performed-cellular-cover",{
       articulating,steps,targetPointIndex,
-      patches:[{pointIndex:earlier,claimIndices:old}],
+      patches:[{pointIndex:earlier,coveredClaimIndices:old,selectedClaimIndices:old}],
     });
     assert.equal(partial.complete,false);
     assert.equal(partial.globalSection,null);
@@ -441,8 +446,10 @@ test("actual source-generated cellular L-Space cover operation returns source oc
     const incompatible=executeOperation("signgraph.mark-incidence.performed-cellular-cover",{
       articulating,steps,targetPointIndex,
       patches:[
-        {pointIndex:earlier,claimIndices:old.slice(0,1)},
-        {pointIndex:targetPointIndex,claimIndices:all.slice(1)},
+        {pointIndex:earlier,coveredClaimIndices:old.slice(0,1),
+          selectedClaimIndices:old.slice(0,1)},
+        {pointIndex:targetPointIndex,coveredClaimIndices:all,
+          selectedClaimIndices:all.slice(1)},
       ],
     });
     assert.equal(incompatible.compatible,false);
