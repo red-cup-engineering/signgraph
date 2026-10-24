@@ -394,3 +394,78 @@ SignCell continues to own typed source identity and SignChain owns the actual
 tellings. The SignGraph source edition 0.5.0 selects exact SignCell 0.10.0,
 whose concept address ordering is defined by the same canonical byte comparator.
 This needs genuine package/lock selection before a running consumer can claim it.
+
+
+## Performed L-Space: real executable finite fiber/sheaf and hypertensor operators
+
+The original Mark → Utterance → **performed Articulating** route remains the
+only way to generate these kinematic source occurrences. This SignGraph
+package already exposed performed Kinematic and Semioverse source incidence,
+but its more substantial source-coded Alexandrov coherent-section space
+and exact prefix hypertensor factorization were **not reachable from the
+ordinary headless operation registry**. The same native source now exposes
+two *different*, compatible finite views through the incumbent
+signgraph-holonomy JSONL executable:
+
+**Kinematic coherent sections and source hypertensor**
+
+- operation: signgraph.mark-incidence.kinematic-section-descent
+- input: original typed Articulating, source reattention step count (0–6),
+  **patches** as canonical arrays of already-generated kinematic point
+  indices forming Alexandrov upper-open regions; optional local **sections**
+  with exactly one original claimIndex per point in each patch. Local sections
+  must remain source-coordinate-coherent along original Kinematic arrows.
+- output: exact finite Metrologic component intersection and compatible
+  section count, patch overlaps, original source claim-pair obstructions,
+  conditionally glued source-preserving global section, and Boolean
+  **incidence hypertensor** with three source axes
+  (kinematic point × first performed occurrence × second performed occurrence).
+  The original Metrologic prefix-factor producer supplies a sparse exact
+  CP-style upper-bound decomposition (not a minimal CP rank or measured
+  physical tensor). No dense fake 3-array is built.
+- only original performed source support licenses each indexed coordinate.
+  Shared extensional Claim address never fuses different source acts.
+
+**Cellular partial charts inside a single fiber**
+
+- operation: signgraph.mark-incidence.performed-cellular-cover
+- input: original typed Articulating, step count, target kinematic point, and
+  1–64 partial source charts. Each chart supplies an earned pointIndex,
+  **coveredClaimIndices** naming the real source-supported cell coordinates
+  actually in its domain, and **selectedClaimIndices** as its separately
+  selected subset. A future or duplicate claim source refuses. Local chart
+  domains are NOT automatically equal to a whole fiber.
+- output: source-specific coverage, overlaps, missing original pairs and
+  contradictory selected membership, with a conditional global section
+  only if domain union covers every target source pair and all overlaps agree.
+  Each selected global row keeps original source occurrence indices/IDs and
+  distinct content-addressed Claim presentation.
+
+Both operations are pure source-inspection services under the existing
+64-KiB request and original work-budget context. Both are *conditional*
+finite sheaf-like computations, not free Grothendieck sheafification,
+FOUR truth charge, backward Articulating, material quasicrystal behavior,
+client permission, live L-Space web service or accepted revenue. In
+particular: a user-supplied selected membership is never rebranded as
+independently witnessed evidence. The exact [Obsmetrologia GeneratedWorlds
+candidate](https://github.com/lenticule-science/obsmetrologia-science-services-section/pull/68)
+proposes source-bounded sparse Patch/Section restriction and conditional
+cover gluing, but has not received a Lean kernel run.
+
+Call the **existing** signgraph-holonomy binary with JSON lines shaped as
+{operation, input}; source Articulating must be obtained from the original
+SignCell constructor, not invented in a demo JSON. The command returns
+{ok, line, operation, receipt} and explicit refusing errors without
+filesystem, network, account or host effects. The original recorded-source
+test exercises both actual performed-source operations when the selected
+Metrologic and SignCell package versions are installed. The source-only
+mathematical assays are not an installed CLI or accepted customer workload.
+
+**Economic/policy user:** an externally authorized Odoo/Salesforce or AWS
+source may *later* be admitted as original SignCell/EAVT evidence and lawfully
+performed Articulating, then the same operations can expose source-local
+agreement/obstruction for a paid provenance audit. This bridge is not
+automatically performed by SignGraph, and an AWS Resource Explorer View
+permission is not permission to publish tenant resource names or conduct
+resource changes. Buyer contracts, source-to-Mark conformance, settlement
+and original Group commercial receiving stay separate.
