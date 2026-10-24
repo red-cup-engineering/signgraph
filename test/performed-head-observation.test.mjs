@@ -8,7 +8,7 @@ import { address as cellAddress } from "@red-cup-engineering/signcell/cell";
 import {
   derivePerformedHeadShadow, derivePerformedObservationRoutes,
   composePerformedObservationRoutes, readPerformedSemioverseFiber,
-  transportPerformedSemioverseClaim, assessPerformedBoundaryFactorization,
+  transportPerformedSemioverseClaim, assessPerformedBoundaryFactorization, readPerformedKinematicSectionSpace,
 } from "../src/mark-gluing.mjs";
 import { executeOperation, operations } from "../src/operations.mjs";
 
@@ -450,4 +450,40 @@ test("actual source-generated cellular L-Space cover operation returns source oc
       item.firstOccurrenceId && item.secondOccurrenceId));
     assert.equal(incompatible.globalSection,null);
   }
+});
+
+
+test("the original performed source yields a genuine gluable coherent kinematic hypertensor",()=>{
+  // Not a freely authored graph/trace: the actual original SignCell
+  // constructor is used by the owning SignGraph source generator.
+  const performed={articulating:performedSource(),steps:2};
+  const shadow=derivePerformedHeadShadow(performed);
+  const region=shadow.kinematic.points.map((_p,i)=>i);
+  const sourceSection=region.map(pointIndex=>({pointIndex,claimIndex:0}));
+  const matched=executeOperation("signgraph.mark-incidence.kinematic-section-descent",{
+    ...performed,patches:[region,region],
+    sections:[sourceSection,sourceSection],
+  });
+  assert.equal(matched.status,"original-source-sections-glued");
+  assert.equal(matched.gluedSection.length,region.length);
+  assert.deepEqual(matched.gluedSection.map(x=>x.claimIndex),
+    region.map(()=>0));
+  const hypertensor=matched.sourceIncidenceHypertensor;
+  assert.equal(hypertensor.originalOccurrenceIds.length,
+    shadow.semioverse.sourceEventIds.length);
+  const mathematicallyExpected=shadow.kinematic.points.reduce((n,p)=>
+    n+(p.upperEventIndex+1)**2,0);
+  assert.equal(hypertensor.nonzeroIncidences,String(mathematicallyExpected));
+  assert.equal(hypertensor.metrologicFactorReceipt.nonzeroIncidences,
+    hypertensor.nonzeroIncidences);
+  assert.ok(hypertensor.cpRankUpperBound<=shadow.semioverse.sourceEventIds.length);
+  assert.equal(matched.customerSettlement,"not-established");
+  const second=region.map(pointIndex=>({pointIndex,claimIndex:1}));
+  const opposed=readPerformedKinematicSectionSpace(shadow,{
+    patches:[region,region],sections:[sourceSection,second],
+  });
+  assert.equal(opposed.status,"overlap-obstructed");
+  assert.equal(opposed.gluedSection,null);
+  assert.equal(opposed.overlapObstructions[0].leftClaimIndex,0);
+  assert.equal(opposed.overlapObstructions[0].rightClaimIndex,1);
 });
