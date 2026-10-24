@@ -120,9 +120,11 @@ disagreement, and any unknown/denied/contested testimony preserve their
 source identities but produce **no numeric cochain or compatibility verdict**.
 Only complete, unopposed readings go through the *existing*
 `cochain → coboundary → apply` operations, returning source-identified edge
-residuals. The pure cochain kernel's implicit zero-extension remains valid
-mathematics but cannot be mistaken for a measured zero; this consumer
-checks completeness before invoking it. The results are conditional host-float
+residuals. The pure cochain kernel's default zero-extension remains valid
+mathematics, but observed input requires its explicit `{missing:'refuse'}`
+mode. This consumer first checks FOUR testimony and complete source
+coverage, **then** invokes that original cochain in strict mode: omitted
+measurement can never become a measured zero at either layer. The results are conditional host-float
 numerical geometry, not an authenticated measurement, exact gluing theorem,
 material physics or derived causal horizon.
 
