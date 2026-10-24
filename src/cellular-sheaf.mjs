@@ -475,25 +475,30 @@ export function tensorCellularSheaves(factors) {
   let product=source;
   for(const factor of factors.slice(1)){
     const next=factor.sheaf;
+    // Forecast tensor dimensions *before* allocating any Kronecker matrices.
+    // For a large source-dimensional factor this prevents accidental
+    // quadratic/cubic memory allocation before a late refusal.
+    const vertexDims=product.vertices.map((v,i)=>v.dim*next.vertices[i].dim);
+    const edgeDims=product.edges.map((edge,i)=>edge.dim*next.edges[i].dim);
+    const totalVertices=vertexDims.reduce((n,dim)=>n+dim,0);
+    const totalEdges=edgeDims.reduce((n,dim)=>n+dim,0);
+    if(totalVertices>256 || totalEdges>256 ||
+       !Number.isSafeInteger(totalVertices) || !Number.isSafeInteger(totalEdges))
+      throw new RangeError("cellularSheaf tensor exceeds the bounded rational chart");
     const vertices=product.vertices.map((v,i)=>({
-      id:v.id,dim:v.dim*next.vertices[i].dim
+      id:v.id,dim:vertexDims[i]
     }));
     const edges=product.edges.map((edge,i)=>{
       const counterpart=next.edges[i];
       return {
         id:edge.id,from:edge.from,to:edge.to,
-        dim:edge.dim*counterpart.dim,
+        dim:edgeDims[i],
         restrict:{
           from:kron(edge.restrict.from,counterpart.restrict.from),
           to:kron(edge.restrict.to,counterpart.restrict.to)
         }
       };
     });
-    const totalVertices=vertices.reduce((n,v)=>n+v.dim,0);
-    const totalEdges=edges.reduce((n,e)=>n+e.dim,0);
-    if(totalVertices>256 || totalEdges>256 ||
-       !Number.isSafeInteger(totalVertices) || !Number.isSafeInteger(totalEdges))
-      throw new RangeError("cellularSheaf tensor exceeds the bounded rational chart");
     product=cellularSheaf({vertices,edges});
   }
   return Object.freeze({...product,
