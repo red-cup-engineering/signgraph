@@ -1051,6 +1051,188 @@ export function readPerformedCellularCover(shadow, targetPointIndex, localPatche
   });
 }
 
+/**
+ * Actual finite Alexandrov section-space of ORIGINAL performed Semioverse
+ * occurrence pairs. The older trace-hypertensor manuscripts assert gluing
+ * of recognition fibers, but the source's performed fibers transport FORWARD
+ * and are not presheaves. A coherent section is a different object:
+ * a selection of the SAME original occurrence pair at comparable positions.
+ *
+ * Restriction is by selecting fewer source-generated positions of an
+ * already coherent section. Binary gluing requires local assignments to
+ * agree on every common position. This constructs and counts the exact
+ * source-possible finite section space, not a fabricated backward transport,
+ * modal nucleus, sheaf H1, physical quasicrystal or licensed external Work.
+ */
+export function readPerformedKinematicSectionSpace(shadow, { patches, sections } = {}) {
+  const W=shadow?.kinematic, semi=shadow?.semioverse;
+  if(shadow?.kind!=="signgraph.performedHeadObservationShadow.v1"||
+     W?.kind!=="signgraph.performedArticulatingKinematicReadout.v1"||
+     semi?.kind!=="signgraph.performedSemioverseIncidence.v1"||
+     shadow.continuedSourceId!==semi.continuedSourceId ||
+     !Array.isArray(W.points)||W.points.length<1||W.points.length>120||
+     !Array.isArray(W.sequencing)||!Array.isArray(semi.claimEntries)||
+     !Array.isArray(semi.sourceEventIds)||
+     semi.claimEntries.length!==semi.sourceEventIds.length**2)
+    throw new TypeError("source-coherent kinematic sections require the existing full performed Semioverse");
+  if(!Array.isArray(patches)||patches.length<1||patches.length>8)
+    throw new RangeError("kinematic cover requires 1..8 finite source-selected opens");
+  const pointCount=W.points.length;
+  const edges=W.sequencing.map(edge=>{
+    if(!Number.isSafeInteger(edge?.parent)||!Number.isSafeInteger(edge?.child)||
+       edge.parent<0||edge.child<0||
+       edge.parent>=pointCount||edge.child>=pointCount||
+       edge.parent===edge.child)
+      throw new TypeError("kinematic cover needs actual oriented original sequencing edges");
+    return edge;
+  });
+  const normalized=patches.map((source,index)=>{
+    if(!Array.isArray(source)||source.length<1||source.length>pointCount||
+       source.some((point,i)=>!Number.isSafeInteger(point)||point<0||
+         point>=pointCount||(i>0&&source[i-1]>=point)))
+      throw new TypeError("kinematic cover patch "+index+" needs canonical sorted earned loci");
+    const present=new Set(source);
+    for(const {parent,child} of edges)
+      if(present.has(parent)&&!present.has(child))
+        throw new TypeError("patch "+index+" is not an upper-open region of the ORIGINAL kinematic sequencing");
+    return freeze([...source]);
+  });
+  const union=freeze([...new Set(normalized.flat())].sort((a,b)=>a-b));
+  const claimCount=semi.claimEntries.length;
+  // Exact membership comes from the ORIGINAL performed upper prefix, not an
+  // after-the-fact claim address or an arbitrary chosen valuation.
+  const admitted=new Map(union.map(p=>[
+    p,new Set(readPerformedSemioverseFiber(shadow,p).entries.map(entry=>entry.claimIndex)),
+  ]));
+  for(const [i,entry] of semi.claimEntries.entries()){
+    if(entry?.claimIndex!==i||
+       entry.firstOccurrenceId!==semi.sourceEventIds[entry.firstOccurrenceIndex]||
+       entry.secondOccurrenceId!==semi.sourceEventIds[entry.secondOccurrenceIndex])
+      throw new TypeError("source kinematic sheaf lost original performed pair positions");
+  }
+  const choicesOf=indices=>{
+    const parent=new Map(indices.map(p=>[p,p]));
+    const find=start=>{
+      let p=start;
+      while(parent.get(p)!==p){parent.set(p,parent.get(parent.get(p)));p=parent.get(p);}
+      return p;
+    };
+    for(const {parent:a,child:b} of edges)
+      if(parent.has(a)&&parent.has(b)){
+        const left=find(a),right=find(b);
+        if(left!==right)parent.set(right,left);
+      }
+    const groups=new Map();
+    for(const p of indices){
+      const root=find(p);
+      if(!groups.has(root))groups.set(root,[]);
+      groups.get(root).push(p);
+    }
+    const components=[...groups.values()].map(points=>{
+      const first=admitted.get(points[0]);
+      const options=[...first].filter(claim=>
+        points.every(point=>admitted.get(point).has(claim)));
+      return freeze({pointIndices:freeze(points),
+        sourcePairIndices:freeze(options),
+        possibleSections:options.length});
+    });
+    const count=components.reduce((product,x)=>
+      product*BigInt(x.possibleSections),1n);
+    return freeze({
+      components:freeze(components),possibleSections:count.toString(),
+    });
+  };
+  const patchSpace=freeze(normalized.map((indices,i)=>freeze({
+    index:i,pointIndices:indices,...choicesOf(indices),
+  })));
+  const global=choicesOf(union);
+  const overlaps=freeze(normalized.flatMap((left,i)=>
+    normalized.slice(i+1).map((right,index)=>freeze({
+      left:i,right:i+1+index,
+      pointIndices:freeze(left.filter(p=>right.includes(p))),
+    }))));
+  let glued=null,obstructions=[];
+  if(sections!==undefined){
+    if(!Array.isArray(sections)||sections.length!==normalized.length)
+      throw new TypeError("a local source section must be supplied for every original open");
+    const locals=normalized.map((indices,i)=>{
+      const received=sections[i];
+      if(!Array.isArray(received)||received.length!==indices.length)
+        throw new TypeError("source section requires exactly one source pair per open point");
+      const selections=new Map();
+      for(let j=0;j<indices.length;j++){
+        const row=received[j];
+        if(!row||Object.keys(row).sort().join(",")!=="claimIndex,pointIndex"||
+           row.pointIndex!==indices[j]||
+           !Number.isSafeInteger(row.claimIndex)||row.claimIndex<0||
+           row.claimIndex>=claimCount||
+           !admitted.get(row.pointIndex).has(row.claimIndex))
+          throw new TypeError("local section must select an ORIGINAL performed pair at its earned point");
+        selections.set(row.pointIndex,row.claimIndex);
+      }
+      // Coherence is a source identity constraint, NOT equality of
+      // observational addresses (distinct performed pairs may look equal).
+      for(const component of patchSpace[i].components)
+        if(new Set(component.pointIndices.map(p=>selections.get(p))).size!==1)
+          throw new TypeError("local source section does not preserve its original occurrence pair along kinematic arrows");
+      return selections;
+    });
+    obstructions=overlaps.flatMap(pair=>pair.pointIndices.flatMap(p=>{
+      const left=locals[pair.left].get(p),right=locals[pair.right].get(p);
+      if(left===right)return [];
+      const a=semi.claimEntries[left],b=semi.claimEntries[right];
+      return [freeze({kind:"non-gluable-original-source-overlap",
+        leftPatch:pair.left,rightPatch:pair.right,pointIndex:p,
+        leftClaimIndex:left,rightClaimIndex:right,
+        leftSourceOccurrences:freeze([a.firstOccurrenceId,a.secondOccurrenceId]),
+        rightSourceOccurrences:freeze([b.firstOccurrenceId,b.secondOccurrenceId]),
+        claimAddressesCoincide:a.claimAddress===b.claimAddress,
+        reason:"even equal observed claim addresses do not identify distinct performed original source pairs",
+      })];
+    }));
+    if(obstructions.length===0){
+      const byPoint=new Map();
+      for(const local of locals)for(const [p,index] of local)
+        byPoint.set(p,index);
+      // Coherence across patch boundaries follows *only* for genuinely
+      // upward-open regions: if p≤q and p is in a patch, that patch contains q.
+      const combined=[...byPoint].sort((a,b)=>a[0]-b[0]);
+      for(const component of global.components)
+        if(new Set(component.pointIndices.map(p=>byPoint.get(p))).size!==1)
+          throw new TypeError("the original open-cover local coherence did not glue globally");
+      glued=freeze(combined.map(([pointIndex,claimIndex])=>{
+        const claim=semi.claimEntries[claimIndex];
+        return freeze({pointIndex,claimIndex,
+          firstOccurrenceId:claim.firstOccurrenceId,
+          secondOccurrenceId:claim.secondOccurrenceId,
+          claimAddress:claim.claimAddress,
+        });
+      }));
+    }
+  }
+  return freeze({
+    kind:"signgraph.performedKinematicSectionSpace.v1",
+    status:sections===undefined?"unselected-source-section-space":
+      obstructions.length?"overlap-obstructed":"original-source-sections-glued",
+    originalSourceId:shadow.originalSourceId,
+    continuedSourceId:shadow.continuedSourceId,
+    kinematicOpenCriterion:"upward-closed under original endpoint sequencing",
+    patchSpaces:patchSpace,
+    unionRegion:freeze({pointIndices:union,...global}),
+    pairFiberShape:freeze({
+      sourceOccurrences:semi.sourceEventIds.length,
+      originalOrderedPairPositions:claimCount,
+      semanticAddressQuotientAuthority:"none",
+    }),
+    overlaps,overlapObstructions:freeze(obstructions),
+    gluedSection:glued,
+    categoricalBoundary:"restriction of coherent sections is contravariant; performed source occurrences themselves remain forward-only opfibration",
+    mathematicalScope:"finite source-coherent binary descent, not arbitrary Grothendieck sheaf, numerical sheaf H1, modal Heyting topos or proven quasicrystalline hypertensor",
+    evidenceAuthority:"conditional mathematical readout of original performed Articulating, no independently received Lean/kernel/actor credential",
+    customerSettlement:"not-established",
+  });
+}
+
 /** Compare one proposed receiving classification with the original performed
  * Semioverse claim-address boundary. This finite test is the factorization
  * condition for d to descend through q, not a new authority or a universal
