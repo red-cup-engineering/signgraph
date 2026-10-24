@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {keratinGraphOfPredications,keratinPositionKey,analyzeKeratinGraph,keratinGraphToDot} from '../src/keratin-graph.mjs';
+import {keratinGraphOfPredications,keratinPositionKey,keratinLinearSheaf,assessKeratinLinearObservations,analyzeKeratinGraph,keratinGraphToDot} from '../src/keratin-graph.mjs';
 
 const p = (s, display='same') => ({performed:s,side:'token',display});
 const edge = (id, from, predicate, to) => ({occurrence:id,sourceRecord:`source:${id}`,cell:{subject:p(from),predicate,object:p(to)}});
@@ -129,6 +129,119 @@ test('linear keratin sheaf reuses native cellular restriction/cohomology arithme
   assert.equal(twisted.cohomology.h1,0);
   assert.equal(g.topology.betti.h1,1,'linear sheaf H1 differs from topological H1');
   assert.throws(()=>keratinLinearSheaf(g,{vertexStalks,relationStalks:relationStalks.slice(1)}),/missing original directed relation/);
+});
+
+const linearSpec=(graph,{twisted=false}={})=>keratinLinearSheaf(graph,{
+  vertexStalks:graph.feather.positions.map(p=>({position:p.key,dim:1})),
+  relationStalks:graph.feather.predications.map(e=>({
+    occurrence:e.occurrence,dim:1,
+    restrict:{from:[[1]],to:[[twisted&&e.occurrence==='b>c'?-1:1]]},
+  })),
+});
+const reading=(position,value,sourceRecord)=>({position:id(position),value,sourceRecord});
+
+test('a complete observed linear sheaf preserves source identity and never proves a separate discrete model',()=>{
+  const graph=specimen(),linear=linearSpec(graph);
+  assert.equal(analyzeKeratinGraph(graph).sectionCount,0,
+    'the original odd-parity finite-state constraints have no global compatible state');
+  const source=[reading('a',[4],'meter:A'),reading('b',4,'meter:B'),reading('c',4,'meter:C')];
+  const projected=assessKeratinLinearObservations(linear,source);
+  assert.equal(projected.status,'compatible-numeric-coboundary');
+  assert.equal(projected.compatible,true);
+  assert.deepEqual(projected.vector,[4,4,4]);
+  assert.equal(projected.residualNorm,0);
+  assert.deepEqual(projected.edgeResiduals.map(edge=>edge.occurrence),
+    graph.feather.predications.map(edge=>edge.occurrence),
+    'the residual names original performed relation occurrences');
+  assert.deepEqual(projected.edgeResiduals.map(edge=>edge.sourceRecord),
+    graph.feather.predications.map(edge=>edge.sourceRecord),
+    'no spectral or geometric view invents source records');
+  assert.equal(projected.sourceAuthentication,'caller-supplied-not-adjudicated');
+  assert.equal(projected.physicalInterpretation,'not-established');
+  assert.equal(Object.isFrozen(projected.positions),true);
+  source[0].value[0]=100;
+  assert.deepEqual(projected.vector,[4,4,4],
+    'proof-bearing projection is a snapshot, not a mutable caller view');
+  assert.equal(analyzeKeratinGraph(graph).sectionCount,0,
+    'numeric compatibility in a DIFFERENT linear stalk sheaf does not erase the odd-parity obstruction');
+});
+
+test('missing source positions and contested local measurements never receive implicit zero extension',()=>{
+  const linear=linearSpec(specimen());
+  const empty=assessKeratinLinearObservations(linear,[]);
+  assert.equal(empty.status,'unassayed-missing-or-contested-source');
+  assert.deepEqual(empty.missingPositions,[id('a'),id('b'),id('c')]);
+  assert.equal(empty.vector,null);
+  assert.equal(empty.residualNorm,null);
+  assert.equal(empty.compatible,null);
+  const partial=assessKeratinLinearObservations(linear,[reading('a',0,'meter:a-zero')]);
+  assert.deepEqual(partial.missingPositions,[id('b'),id('c')]);
+  assert.equal(partial.vector,null,'unobserved b and c are NOT observed zero');
+  const contradict=assessKeratinLinearObservations(linear,[
+    reading('a',0,'meter:for'),reading('a',1,'meter:against'),
+    reading('b',0,'meter:b'),reading('c',0,'meter:c'),
+  ]);
+  assert.deepEqual(contradict.missingPositions,[]);
+  assert.equal(contradict.contestedPositions.length,1);
+  assert.equal(contradict.contestedPositions[0].position,id('a'));
+  assert.deepEqual(contradict.contestedPositions[0].reports.map(x=>x.sourceRecord),['meter:for','meter:against']);
+  assert.equal(contradict.vector,null);
+  assert.equal(contradict.compatible,null);
+  const corroborated=assessKeratinLinearObservations(linear,[
+    reading('a',0,'meter:first'),reading('a',0,'meter:second'),
+    reading('b',0,'meter:b'),reading('c',0,'meter:c'),
+  ]);
+  assert.equal(corroborated.compatible,true);
+  assert.deepEqual(corroborated.vector,[0,0,0]);
+  assert.equal(corroborated.positions[0].reports.length,2,
+    'independent agreeing witnesses survive without numerical double counting');
+});
+
+test('genuine witnessed values can conflict with local restriction geometry, without claiming physical forces',()=>{
+  const graph=specimen(),ordinary=linearSpec(graph);
+  const observed=[reading('a',1,'meter:a'),reading('b',1,'meter:b'),reading('c',1,'meter:c')];
+  assert.equal(assessKeratinLinearObservations(ordinary,observed).compatible,true);
+  const twisted=linearSpec(graph,{twisted:true});
+  assert.equal(twisted.cohomology.h0,0);
+  const obstruction=assessKeratinLinearObservations(twisted,observed);
+  assert.equal(obstruction.compatible,false);
+  assert.equal(obstruction.status,'incompatible-numeric-coboundary');
+  assert.ok(obstruction.residualNorm>0);
+  const edge=obstruction.edgeResiduals.find(x=>x.occurrence==='b>c');
+  assert.deepEqual(edge.values,[-2]);
+  assert.equal(edge.norm,2);
+  assert.equal(obstruction.physicalInterpretation,'not-established');
+  const tolerated=assessKeratinLinearObservations(twisted,observed,{tolerance:2});
+  assert.equal(tolerated.compatible,true,
+    'declared numerical tolerance changes only the conditional numeric judgment, not original testimony');
+  assert.equal(tolerated.residualNorm,obstruction.residualNorm);
+});
+
+test('foreign, accessor-backed, nonfinite or surplus numeric assertions refuse before geometry',()=>{
+  const graph=specimen(),linear=linearSpec(graph);
+  assert.throws(()=>assessKeratinLinearObservations(structuredClone(linear),[]),
+    /original in-process/);
+  assert.throws(()=>assessKeratinLinearObservations(linear,[reading('foreign',0,'meter:foreign')]),
+    /no original sheaf position/);
+  for(const v of [NaN,Infinity,-Infinity,'0',[0,1],[]])
+    assert.throws(()=>assessKeratinLinearObservations(linear,[reading('a',v,'meter:bad')]),
+      /finite numeric stalk coordinates/);
+  assert.throws(()=>assessKeratinLinearObservations(linear,[reading('a',0,'')]),
+    /sourceRecord/);
+  assert.throws(()=>assessKeratinLinearObservations(linear,[],{tolerance:-1}),
+    /tolerance/);
+  assert.throws(()=>assessKeratinLinearObservations(linear,[],{unqualifiedEffect:true}),
+    /undeclared fields/);
+  assert.throws(()=>assessKeratinLinearObservations(linear,[{...reading('a',0,'meter'),admitsPower:true}]),
+    /undeclared fields/);
+  let calls=0;
+  const accessor=reading('a',[0],'meter');
+  Object.defineProperty(accessor,'value',{get(){calls++;return [0];},enumerable:true});
+  assert.throws(()=>assessKeratinLinearObservations(linear,[accessor]),/own data fields/);
+  const array=reading('a',[0],'meter');
+  Object.defineProperty(array.value,0,{get(){calls++;return 0;},enumerable:true});
+  assert.throws(()=>assessKeratinLinearObservations(linear,[array]),/dense own data slots/);
+  assert.equal(calls,0,'malicious getters were not invoked to obtain the numerical source');
 });
 
 test('two duplicate candidate hole cycles can each be nontrivial while their aggregate boundary span has rank one',()=>{
