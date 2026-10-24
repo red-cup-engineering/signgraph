@@ -14,7 +14,7 @@ import {
   cellular2Complex, cellular3Complex, burgersOfComplex, affineHolonomyOfComplex,
 } from "./cohomology.mjs";
 import { geometricReceiving, metricSquareOfVector } from "./embedding.mjs";
-import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing, derivePerformedHeadShadow, readPerformedCellularCover, assessPerformedBoundaryFactorization } from "./mark-gluing.mjs";
+import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing, derivePerformedHeadShadow, readPerformedCellularCover, assessPerformedBoundaryFactorization, readPerformedKinematicSectionSpace } from "./mark-gluing.mjs";
 
 export const LIMITS = Object.freeze({
   inputBytes: 65536,
@@ -348,6 +348,39 @@ export const operations = Object.freeze({
         ...(input.steps === undefined ? {} : { steps: input.steps }),
       }, workBudget);
       return assessPerformedBoundaryFactorization(derivePerformedHeadShadow(generated), input.requiredReadings);
+    },
+  }),
+  generatedKinematicSections: Object.freeze({
+    id: "signgraph.mark-incidence.kinematic-section-descent",
+    description: "Compute exact source-performed Alexandrov-open section spaces and gluing of genuine coherent original occurrence pairs; source opfibration remains forward-only.",
+    inputSchema: Object.freeze({
+      type: "object", additionalProperties: false,
+      required: Object.freeze(["articulating","patches"]),
+      properties: Object.freeze({
+        articulating: { type: "object" },
+        steps: { type: "integer", minimum: 0, maximum: 6 },
+        patches: { type: "array", minItems: 1, maxItems: 8, items: { type: "array", items: {type:"integer"} } },
+        sections: { type: "array", items: { type: "array", items: { type: "object",
+          required:["pointIndex","claimIndex"],additionalProperties:false,
+          properties:{pointIndex:{type:"integer"},claimIndex:{type:"integer"}} } } },
+      }),
+    }),
+    execute(input, { workBudget } = {}) {
+      if(!input||typeof input!=="object"||Array.isArray(input)||
+         Object.keys(input).some(key=>!["articulating","steps","patches","sections"].includes(key))||
+         !Array.isArray(input.patches))
+        throw new TypeError("kinematic section descent requires original Articulating and source-selected kinematic opens");
+      if(new TextEncoder().encode(JSON.stringify(input)).length>budgetOf(workBudget).inputBytes)
+        throw new RangeError("kinematic section descent exceeds original 64KiB Work budget");
+      const generated=boundedHeadObservation({
+        articulating:input.articulating,
+        ...(input.steps===undefined?{}:{steps:input.steps}),
+      },workBudget);
+      return readPerformedKinematicSectionSpace(
+        derivePerformedHeadShadow(generated),{
+          patches:input.patches,
+          ...(input.sections===undefined?{}:{sections:input.sections}),
+        });
     },
   }),
   articulatingTower: Object.freeze({
