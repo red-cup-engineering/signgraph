@@ -233,7 +233,7 @@ receiving establishes parity and then a measured improvement.
 - `relation-adapters` — projections from already-parsed Markdown, JavaScript,
   and EAVT evidence into relation observations.
 - `pam` — graph-backed predicate-algebra modeling over EAVT's relation web
-  (`@red-cup-engineering/eavt-engineering-services-section/relation-web`), which is data: content-addressed
+  (`@red-cup-engineering/eavt-services-section/relation-web`), which is data: content-addressed
   relation observations over plain JSON terms, with no cell, valuation or FOUR.
 
 ## Pure functional boundary
