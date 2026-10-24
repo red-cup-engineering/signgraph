@@ -12,6 +12,7 @@ import { semanticId }
 import { cellular2Complex } from "./cohomology.mjs";
 import { createGraph, observedTwoStepPaths } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { kinematicDiamondSpaceOf } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/causal";
+import { subset, meet, join, le } from "@red-cup-engineering/metrologic/sheaf/topology/d-frame";
 import { articulatedPredications } from "@red-cup-engineering/signcell/predication";
 import { address as cellAddress } from "@red-cup-engineering/signcell/cell";
 import * as chain from "@red-cup-engineering/signchain/bilattice";
@@ -926,6 +927,127 @@ export function transportPerformedSemioverseClaim(shadow, fromPointIndex, toPoin
     firstOccurrenceId: claim.firstOccurrenceId,
     secondOccurrenceId: claim.secondOccurrenceId,
     source: shadow.semioverse.continuedSourceId,
+  });
+}
+
+/**
+ * An actually queryable, finite, source-generated local-to-global fiber
+ * cover. This is the first COMPARISON of patches of the original performed
+ * Semioverse, NOT an assumed Grothendieck coverage or a sheaf theorem.
+ *
+ * Each host-selected patch is a subset of actual original claim-occurrence
+ * coordinates at an earned kinematic point. K(C)'s forward lift licenses
+ * transport from each patch to the target. An inverse-image on the POWERS
+ * of supported coordinates may then restrict an observed section backwards
+ * by intersection: this does not reverse an original performed Articulating.
+ * Metrologic owns these exact finite Heyting/powerset operations.
+ *
+ * Overlaps require equal selected membership for each SAME original occurrence
+ * pair; equal extensional claimAddress does not collapse independent acts.
+ * Incompatible overlap preserves its two opposed patch statements; incomplete
+ * coverage preserves original uncovered pairs. Neither is silently completed.
+ */
+export function readPerformedCellularCover(shadow, targetPointIndex, localPatches) {
+  const target = readPerformedSemioverseFiber(shadow,targetPointIndex);
+  if(!Array.isArray(localPatches)||localPatches.length<1||localPatches.length>64)
+    throw new TypeError("cellular L-Space cover requires 1-64 source-indexed patches");
+  const targetIds=target.entries.map(entry=>String(entry.claimIndex));
+  const targetSupport=subset(targetIds);
+  const byIndex=new Map(target.entries.map(entry=>[String(entry.claimIndex),entry]));
+  const owned=localPatches.map((patch,number)=>{
+    if(!patch||typeof patch!=="object"||Array.isArray(patch)||
+       Object.keys(patch).some(k=>!["pointIndex","claimIndices"].includes(k))||
+       !Array.isArray(patch.claimIndices)||patch.claimIndices.length>targetIds.length)
+      throw new TypeError("L-Space patch requires only source locus and selected claim indices");
+    const original=readPerformedSemioverseFiber(shadow,patch.pointIndex);
+    // No caller-supplied cover relation: the actual generated kinematic arrow
+    // must exist; source forward transport of EVERY local occurrence is read.
+    const originalSupport=original.entries.map(entry=>String(entry.claimIndex));
+    for(const entry of original.entries)
+      transportPerformedSemioverseClaim(shadow,patch.pointIndex,targetPointIndex,entry.claimIndex);
+    const seen=new Set();
+    for(const index of patch.claimIndices) {
+      if(!Number.isSafeInteger(index)||index<0||!original.entries.some(x=>x.claimIndex===index)||
+          seen.has(index))
+        throw new TypeError("L-Space patch selects unknown, duplicated or future claim");
+      seen.add(index);
+    }
+    const selection=subset(patch.claimIndices.map(String));
+    return freeze({
+      patch:number,pointIndex:patch.pointIndex,
+      sourceSupport:subset(originalSupport),
+      // Section-level reindexing is an intersection within original
+      // support, not an inverse transport of new performed occurrences.
+      selected:meet(selection,targetSupport),
+      witness:"host-selected section over a genuine source kinematic patch, not sourced FOUR valuation",
+    });
+  });
+  let covered=subset([]);
+  for(const patch of owned)covered=join(covered,patch.sourceSupport);
+  const uncovered=targetSupport.elements.filter(id=>!covered.elements.includes(id));
+  const opposed=[];
+  for(let left=0;left<owned.length;left++)for(let right=left+1;right<owned.length;right++){
+    const overlap=meet(owned[left].sourceSupport,owned[right].sourceSupport);
+    for(const id of overlap.elements){
+      const a=owned[left].selected.elements.includes(id);
+      const b=owned[right].selected.elements.includes(id);
+      if(a!==b){
+        const entry=byIndex.get(id);
+        opposed.push(freeze({
+          claimIndex:entry.claimIndex,claimAddress:entry.claimAddress,
+          firstOccurrenceId:entry.firstOccurrenceId,
+          secondOccurrenceId:entry.secondOccurrenceId,
+          leftPatch:left,rightPatch:right,leftSelected:a,rightSelected:b,
+        }));
+      }
+    }
+  }
+  // Construct a global section ONLY for a complete, overlap-compatible
+  // cover. Set union is lawful after this guard; it doesn't settle charge.
+  const complete=le(targetSupport,covered),compatible=opposed.length===0;
+  let selected=null;
+  if(complete&&compatible){
+    selected=subset([]);
+    for(const patch of owned)selected=join(selected,patch.selected);
+  }
+  const sourceEntries=selected===null?null:
+    freeze(target.entries.filter(entry=>selected.elements.includes(String(entry.claimIndex)))
+      .map(entry=>freeze({
+        locus:targetPointIndex,
+        claimIndex:entry.claimIndex,
+        firstOccurrenceIndex:entry.firstOccurrenceIndex,
+        secondOccurrenceIndex:entry.secondOccurrenceIndex,
+        firstOccurrenceId:entry.firstOccurrenceId,
+        secondOccurrenceId:entry.secondOccurrenceId,
+        claimAddress:entry.claimAddress,
+      })));
+  return freeze({
+    kind:"signgraph.performedCellularFiberCover.v1",
+    originalSourceId:shadow.originalSourceId,
+    continuedSourceId:shadow.continuedSourceId,
+    targetPointIndex,
+    patchCount:owned.length,
+    sourceOccurrenceCount:target.entries.length,
+    complete,compatible,
+    status:complete&&compatible?"glued-conditional-section":"obstructed",
+    patches:freeze(owned.map(p=>freeze({
+      patch:p.patch,pointIndex:p.pointIndex,
+      sourceClaimIndices:freeze(p.sourceSupport.elements.map(Number)),
+      selectedClaimIndices:freeze(p.selected.elements.map(Number)),
+    }))),
+    uncovered:freeze(uncovered.map(id=>{
+      const e=byIndex.get(id);
+      return freeze({
+        claimIndex:e.claimIndex,claimAddress:e.claimAddress,
+        firstOccurrenceId:e.firstOccurrenceId,
+        secondOccurrenceId:e.secondOccurrenceId,
+      });
+    })),
+    incompatibleOverlaps:freeze(opposed),
+    globalSection:sourceEntries,
+    geometry:"original performed kinematic interval points and ordered source-occurrence pair axes; no fabricated continuum/tensor metric",
+    variance:"source occurrences lift FORWARD; section supports compare by exact finite restriction, not backwards source acts",
+    scope:"conditional finite coordinate-cover and sparse 3-axis source-incidence readout; not full sheafification, FOUR valuation, rights, settlement or earned global L-Space",
   });
 }
 
