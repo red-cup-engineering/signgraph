@@ -276,13 +276,27 @@ export function assessKeratinLinearObservations(reading, observations, options={
   const byPosition=new Map(sheaf.vertices.map(vertex=>[vertex.id,[]]));
   for(const observation of observations) {
     fields(observation,['position','value','sourceRecord'],'linear observation');
-    const {position,sourceRecord}=observation;
+    // Neither source identifiers nor values may execute getters. Sample each
+    // caller-supplied source record once, before numerical interpretation.
+    const own=key=>{
+      const slot=Object.getOwnPropertyDescriptor(observation,key);
+      if(!slot||!Object.hasOwn(slot,'value'))fail('linear observations require own data fields');
+      return slot.value;
+    };
+    const position=own('position'),sourceRecord=own('sourceRecord');
     requireName(sourceRecord,'linear observation sourceRecord');
     const rows=byPosition.get(position);
     const vertex=sheaf.vertices.find(entry=>entry.id===position);
     if(rows===undefined||vertex===undefined)
       fail('linear observation names no original sheaf position');
-    const values=Array.isArray(observation.value)?observation.value:[observation.value];
+    const value=own('value');
+    const values=Array.isArray(value)
+      ?Array.from({length:value.length},(_,i)=>{
+        const slot=Object.getOwnPropertyDescriptor(value,String(i));
+        if(!slot||!Object.hasOwn(slot,'value'))
+          fail('linear observation values require dense own data slots');
+        return slot.value;
+      }):[value];
     if(values.length!==vertex.dim||values.some(v=>typeof v!=='number'||!Number.isFinite(v)))
       fail('linear observation needs complete finite numeric stalk coordinates');
     rows.push(freeze({sourceRecord,value:frozen(values)}));
