@@ -14,7 +14,7 @@ import {
   cellular2Complex, cellular3Complex, burgersOfComplex, affineHolonomyOfComplex,
 } from "./cohomology.mjs";
 import { geometricReceiving, metricSquareOfVector } from "./embedding.mjs";
-import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing, derivePerformedHeadShadow, assessPerformedBoundaryFactorization } from "./mark-gluing.mjs";
+import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing, derivePerformedHeadShadow, readPerformedCellularCover, assessPerformedBoundaryFactorization } from "./mark-gluing.mjs";
 
 export const LIMITS = Object.freeze({
   inputBytes: 65536,
@@ -287,6 +287,42 @@ export const operations = Object.freeze({
     inputSchema: performedHeadInputSchema,
     execute(input, { workBudget } = {}) {
       return derivePerformedHeadShadow(boundedHeadObservation(input, workBudget));
+    },
+  }),
+  performedCellularCover: Object.freeze({
+    id:"signgraph.mark-incidence.performed-cellular-cover",
+    description:"Read a source-generated kinematic/L-Space claim fiber as finite cellular local sections, reporting genuine uncovered and incompatible original occurrence pairs, gluing only a conditional compatible full cover.",
+    inputSchema:Object.freeze({
+      type:"object",additionalProperties:false,
+      required:Object.freeze(["articulating","targetPointIndex","patches"]),
+      properties:Object.freeze({
+        articulating:{type:"object"},
+        steps:{type:"integer",minimum:0,maximum:6},
+        targetPointIndex:{type:"integer",minimum:0},
+        patches:{type:"array",minItems:1,maxItems:64,items:{
+          type:"object",additionalProperties:false,
+          required:["pointIndex","claimIndices"],
+          properties:{
+            pointIndex:{type:"integer",minimum:0},
+            claimIndices:{type:"array",items:{type:"integer",minimum:0}},
+          },
+        }},
+      }),
+    }),
+    execute(input,{workBudget}={}){
+      if(!input||typeof input!=="object"||Array.isArray(input)||
+         Object.keys(input).some(k=>!["articulating","steps","targetPointIndex","patches"].includes(k))||
+         !Number.isSafeInteger(input.targetPointIndex)||input.targetPointIndex<0||
+         !Array.isArray(input.patches)||input.patches.length<1||input.patches.length>64)
+        throw new TypeError("performed cellular cover requires source Articulating, kinematic locus and bounded original patches");
+      if(new TextEncoder().encode(JSON.stringify(input)).length>budgetOf(workBudget).inputBytes)
+        throw new RangeError("performed cellular cover exceeds native source-byte budget");
+      const generated=boundedHeadObservation({
+        articulating:input.articulating,
+        ...(input.steps===undefined?{}:{steps:input.steps}),
+      },workBudget);
+      return readPerformedCellularCover(
+        derivePerformedHeadShadow(generated),input.targetPointIndex,input.patches);
     },
   }),
   boundaryFactorization: Object.freeze({
