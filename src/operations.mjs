@@ -290,7 +290,7 @@ export const operations = Object.freeze({
     },
   }),
   performedKinematicSections: Object.freeze({
-    id:"signgraph.mark-incidence.performed-kinematic-sections",
+    id:"signgraph.mark-incidence.kinematic-section-descent",
     description:"Query genuine source-generated Kinematic Alexandrov upper-opens, coherent local occurrence-pair sections, exact sparse 3-axis incidence tensor factors, compatible gluing and original overlap obstructions from the existing performed Articulating.",
     inputSchema:Object.freeze({
       type:"object",additionalProperties:false,
