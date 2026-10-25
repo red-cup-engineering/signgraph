@@ -85,7 +85,7 @@ test("diffusion: converges to the harmonic section (component means) and lies in
   assert.deepEqual(again.firings, r.firings);
 });
 
-test("Hodge degree 0: H¹ = 0 sheaf, diffusion limit is a global section in ker L", () => {
+test("Hodge degree 0: tree and rotated stalks admit globally harmonic sections", () => {
   const tree = constantSheaf(["a", "b", "c"], [["a", "b"], ["b", "c"]]);
   const h = hodgeCheck(tree, [4, -1, 9]);
   assert.equal(h.h1, 0);
@@ -101,6 +101,44 @@ test("Hodge degree 0: H¹ = 0 sheaf, diffusion limit is a global section in ker 
   assert.ok(hr.harmonic);
   near(hr.section[2], -hr.section[1], 1e-8); // x_b = R x_a = (-a1, a0)
   near(hr.section[3], hr.section[0], 1e-8);
+});
+
+test("Hodge degree 0: a balanced cycle has nonzero H⁰ and H¹ at once", () => {
+  const cycle = constantSheaf(["a", "b", "c"], [["a", "b"], ["b", "c"], ["c", "a"]]);
+  const cohomology = cellularSheafCohomology(cycle);
+  assert.equal(cohomology.h0, 1);
+  assert.equal(cohomology.h1, 1, "a cycle is not a forest, but still admits global sections");
+  const projection = hodgeCheck(cycle, [1, 2, 9]);
+  assert.equal(projection.h1, 1);
+  assert.equal(projection.harmonic, true);
+  [4, 4, 4].forEach((expected, i) => near(projection.section[i], expected));
+  near(projection.sectionResidual, 0);
+  near(projection.laplacianResidual, 0);
+});
+
+test("Hodge degree 0: frustrated signed cycle has H⁰ = H¹ = 0 and only the zero harmonic", () => {
+  const edges = [
+    { id: "ab", from: "a", to: "b" },
+    { id: "bc", from: "b", to: "c" },
+    { id: "ca", from: "c", to: "a" },
+  ].map(({ id, from, to }) => ({
+    id, from, to, dim: 1, restrict: { from: [[1]], to: [[-1]] },
+  }));
+  const cycle = cellularSheaf({
+    vertices: ["a", "b", "c"].map((id) => ({ id, dim: 1 })), edges,
+  });
+  const cohomology = cellularSheafCohomology(cycle);
+  assert.equal(cohomology.h0, 0, "odd negative holonomy destroys nonzero global sections");
+  assert.equal(cohomology.h1, 0, "vanishing H¹ does not create a nonzero harmonic section");
+  const delta = apply(coboundary(cycle), [1, 1, 1]);
+  assert.deepEqual(delta, [-2, -2, -2]);
+  assert.equal(delta.reduce((sum, r) => sum + r * r, 0), 12);
+  const projection = hodgeCheck(cycle, [1, 1, 1]);
+  assert.equal(projection.h1, 0);
+  assert.equal(projection.harmonic, true, "the zero section is harmonic");
+  projection.section.forEach((value) => near(value, 0));
+  near(projection.sectionResidual, 0);
+  near(projection.laplacianResidual, 0);
 });
 
 test("diffuse: pinned testimony is order-independent, identical repetition is idempotent, and incompatibility remains visible", () => {

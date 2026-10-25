@@ -13,7 +13,10 @@ test("a spoken name yields every original sided, revisioned source claim without
   ],mentions:["notes/c.md","notes/a.md"]});
   assert.equal(graph.kind,"signgraph.intensional-dossier/v1");
   assert.equal(graph.primary.readings.length,2);
-  assert.equal(graph.coverage.textualMentions,1);
+  assert.equal(graph.coverage.textualMentions,2,
+    "a source reading does not erase a separate lexical passage at the same path");
+  assert.deepEqual(graph.primary.passages.map(p=>p.path),["notes/c.md","notes/a.md"]);
+  assert.equal(graph.graph.edges.filter(e=>e.kind==="mentions-name").length,2);
   assert.equal(graph.graph.edges.filter(e=>e.kind==="source-telling").length,3);
   assert.equal(graph.primary.readings[0].claims[0].for[0],"author:one");
   assert.equal(graph.primary.readings[0].claims[1].against[0],"author:two");

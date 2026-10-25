@@ -1,8 +1,24 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import { makeNiUri } from "@red-cup-engineering/uri-services-section/ni-uri";
 import { markResource, markSpace } from "@red-cup-engineering/computer-data-engineering-services-section/digital-mark-space";
 import { bitPatchOfBytes, bitPatchOfResource, restrictBitPatch, glueBitPatches } from "../src/bit-sheaf.mjs";
+
+test("the composed resource owner is Data 0.7.1 and foreign instances still refuse", async () => {
+  const require = createRequire(import.meta.url);
+  const owner = "@red-cup-engineering/computer-data-engineering-services-section";
+  assert.equal(require(`${owner}/package.json`).version, "0.7.1");
+  const original = markResource(Uint8Array.of(0xa5));
+  assert.deepEqual(bitPatchOfResource(original).bits, [1,0,1,0,0,1,0,1]);
+  // A second evaluation of the genuine provider has distinct private admission.
+  // Equal code and NI identity must never authorize foreign resource objects.
+  const foreign = await import(`${import.meta.resolve(`${owner}/digital-mark-space`)}?foreign-admission`);
+  const other = foreign.markResource(Uint8Array.of(0xa5));
+  assert.equal(other.address, original.address);
+  assert.throws(() => bitPatchOfResource(other), /admitted mark resource/);
+  assert.throws(() => bitPatchOfResource({...original}), /admitted mark resource/);
+});
 
 test("raw byte identity is independent of media format and path; bit order is exact",()=>{
   const bytes=Uint8Array.from([0xA5,0x0F]),full=bitPatchOfBytes(bytes);

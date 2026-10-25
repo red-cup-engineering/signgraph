@@ -100,3 +100,165 @@ export function spectrumOfMarkSubstitution(input) {
     scope:"finite original Mark-word substitution; no minimal-polynomial, Pisot, transfinite ordinal, physical dimension or H1 claim",
   });
 }
+
+
+/**
+ * Grow possible finite "molecular" Mark words by firing ONLY substitution
+ * utterances in an original, genuinely performed Articulating source.
+ *
+ * This is not an abstract graph, stochastic optimizer, or source of free
+ * rewrites. The supplier is spectrumOfMarkSubstitution's already admitted
+ * original Mark->Utterance->Articulating spectrum; the only variation is
+ * choosing which existing Mark occurrence receives its own source rule.
+ * Externally supplied seed/target words are application inputs, NOT extra
+ * mathematical generators or proofs of necessities.
+ *
+ * Search all one-occurrence reactions breadth-first, preserving distinct
+ * performed reaction PATHS even if a later Mark-word projection coincides.
+ * Stop only after a COMPLETE generation is examined. A bounded or truncated
+ * frontier cannot claim target unreachability or minimality. "Selected" means
+ * fewest performed source-rule firings to an exact caller-supplied word under
+ * this particular finite reaction semantics. It is not useful behavior,
+ * biological fitness, physical energy, proof equivalence, or a chemical law.
+ */
+export function selectSourceMarkReactions(input) {
+  if(!input || Object.getPrototypeOf(input)!==Object.prototype ||
+     Object.keys(input).some(key=>![
+       "articulating","seed","target","maxReactions","maxCandidates","maxWordLength",
+     ].includes(key)) ||
+     Array.isArray(input.articulating))
+    throw new TypeError("source Mark reactions require a genuine Articulating, seed and target only");
+
+  const maxReactions=input.maxReactions??5;
+  const maxCandidates=input.maxCandidates??512;
+  const maxWordLength=input.maxWordLength??32;
+  if(!Number.isSafeInteger(maxReactions)||maxReactions<0||maxReactions>6||
+     !Number.isSafeInteger(maxCandidates)||maxCandidates<1||maxCandidates>4096||
+     !Number.isSafeInteger(maxWordLength)||maxWordLength<1||maxWordLength>64)
+    throw new RangeError("source reaction budgets require 0..6 steps, 1..4096 candidates and 1..64 Mark occurrences");
+
+  const substrate=spectrumOfMarkSubstitution(input.articulating);
+  if(substrate.source.kind!=="native-articulating-trace")
+    throw new TypeError("source reaction requires original performed Articulating");
+  const alphabet=substrate.source.alphabetMarkIds;
+  const index=new Map(alphabet.map((id,i)=>[id,i]));
+  const word=(marks,label)=>{
+    if(!Array.isArray(marks)||marks.length>maxWordLength)
+      throw new RangeError(label+" must be a bounded list of original Mark presentations");
+    return freeze(marks.map(markValue=>{
+      if(!isMark(markValue))throw new TypeError(label+" must contain original SignCell Marks");
+      const id=semanticId(markValue);
+      if(!index.has(id))
+        throw new TypeError(label+" includes a Mark that has no original source rule");
+      return id;
+    }));
+  };
+  const seed=word(input.seed,"seed");
+  const target=word(input.target,"target");
+  const sourceId=substrate.source.articulatingId;
+  const readoutAddress=ids=>semanticId(["mark-reaction-word/v1",sourceId,ids]);
+  const matches=ids=>ids.length===target.length&&ids.every((v,i)=>v===target[i]);
+  const root=freeze({
+    kind:"signgraph.sourceMarkReactionPath/v1",
+    pathAddress:semanticId(["mark-reaction-root/v1",sourceId,seed]),
+    wordAddress:readoutAddress(seed),
+    word:seed,depth:0,steps:freeze([]),
+  });
+  const candidates=[root], collisions=new Map([[root.wordAddress,[root.pathAddress]]]);
+  const countProjection=(candidate)=>{
+    if(!collisions.has(candidate.wordAddress))collisions.set(candidate.wordAddress,[]);
+    collisions.get(candidate.wordAddress).push(candidate.pathAddress);
+  };
+  const losses=()=>freeze([...collisions.entries()]
+    .filter(([,routes])=>routes.length>1)
+    .map(([wordAddress,routes])=>freeze({
+      wordAddress,pathAddresses:freeze(routes),
+    })));
+  const stats=()=>freeze({
+    visitedSourcePaths:candidates.length,
+    distinctWordReadouts:collisions.size,
+    pathsLostByWordProjection:candidates.length-collisions.size,
+    capacity:maxCandidates,
+    maxDepth:maxReactions,
+  });
+  const result=(status,depth,matched=[],obstructions=[])=>freeze({
+    kind:"signgraph.sourceMarkReactionSelection/v1",status,
+    source:substrate.source,
+    seed, target, minimalSourceReactions:status==="selected"?depth:null,
+    selected:freeze(matched),
+    candidates:freeze(candidates),
+    projectionCollisions:losses(),
+    obstructions:freeze(obstructions),
+    work:stats(),
+    scope:"finite actual Articulating-derived Mark rewrite paths; external target is a requirement, not a source of rules or a physical/biological fitness proof",
+  });
+
+  const words=substrate.words;
+  let frontier=[root];
+  const obstructions=[];
+  for(let depth=0;depth<=maxReactions;depth++) {
+    const matched=frontier.filter(candidate=>matches(candidate.word));
+    if(matched.length)return result("selected",depth,matched,obstructions);
+    if(depth===maxReactions)return result("depth-limited",depth,[],obstructions);
+    const next=[];
+    for(const candidate of frontier) {
+      for(let at=0;at<candidate.word.length;at++) {
+        const ruleIndex=index.get(candidate.word[at]);
+        const rule=words[ruleIndex];
+        const successorLength=candidate.word.length-1+rule.length;
+        if(successorLength>maxWordLength){
+          obstructions.push(freeze({
+            reason:"source-reaction-exceeds-word-budget",
+            parentPathAddress:candidate.pathAddress,
+            atPosition:at,requiredLength:successorLength,maxWordLength,
+          }));
+          continue;
+        }
+        // Preserve exact ordered Mark occurrences; a multiset would erase
+        // which occurrence was rewritten, and later paths can converge.
+        const successor=freeze([
+          ...candidate.word.slice(0,at),
+          ...rule.map(i=>alphabet[i]),
+          ...candidate.word.slice(at+1),
+        ]);
+        const nextAddress=readoutAddress(successor);
+        const originalUtteranceId=substrate.source.utteranceIds[ruleIndex];
+        const reaction=freeze({
+          kind:"signgraph.sourceMarkReactionStep/v1",
+          sourceUtteranceId:originalUtteranceId,
+          ruleMarkAddress:alphabet[ruleIndex],
+          atPosition:at,fromWordAddress:candidate.wordAddress,
+          toWordAddress:nextAddress,parentPathAddress:candidate.pathAddress,
+        });
+        const address=semanticId(["mark-reaction-step/v1",sourceId,reaction]);
+        const successorSteps=freeze([...candidate.steps,freeze({...reaction,address})]);
+        const following=freeze({
+          kind:"signgraph.sourceMarkReactionPath/v1",
+          pathAddress:semanticId(["mark-reaction-path/v1",sourceId,root.pathAddress,
+            successorSteps.map(step=>step.address)]),
+          wordAddress:nextAddress,word:successor,
+          depth:depth+1,steps:successorSteps,
+        });
+        // Never claim a partial frontier has a selected globally minimal
+        // path, and NEVER merge coincident words from distinct paths.
+        if(candidates.length>=maxCandidates){
+          return result("candidate-capacity-obstructed",depth+1,[],[
+            ...obstructions,freeze({
+              reason:"distinct-source-path-capacity-exceeded",
+              parentPathAddress:candidate.pathAddress,atPosition:at,
+              sourceUtteranceId:originalUtteranceId,
+            }),
+          ]);
+        }
+        candidates.push(following);
+        countProjection(following);
+        next.push(following);
+      }
+    }
+    if(!next.length)
+      return result(obstructions.length?"word-capacity-obstructed":"source-exhausted",
+        depth+1,[],obstructions);
+    frontier=next;
+  }
+  throw new Error("finite source-reaction iteration exceeded its own depth bound");
+}

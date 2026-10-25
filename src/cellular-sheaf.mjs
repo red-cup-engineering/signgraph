@@ -432,8 +432,11 @@ export function diffuse(sheaf, x0, { step, tolerance = 1e-12, maxSteps = 100000,
 /** The free heat-flow limit projects to H⁰; incompatible pinned conditions may obstruct global gluing. */
 export const harmonicProjection = (sheaf, x0, options = {}) => diffuse(sheaf, x0, options);
 
-/** The degree-0 Hodge check: for a sheaf, the diffusion limit of x₀ lies in ker L and, when H¹ = 0 (exact),
- *  is a global section (δ section ≈ 0). Returns the residuals and whether the limit is harmonic. */
+/** The degree-0 Hodge check: a free diffusion limit lies in ker L = ker δ⁰,
+ *  hence is a global section whether or not H¹ vanishes. H¹ = coker δ⁰
+ *  concerns degree-one cohomology, not an additional condition on H⁰.
+ *  Numerically this reports residual-based approximate harmonicity, not a
+ *  machine-checked proof of exact gluing. */
 export function hodgeCheck(sheaf, x0, options = {}) {
   const tolerance = options.tolerance ?? 1e-12;
   const limit = diffuse(sheaf, x0, { ...options, fixed: [] });

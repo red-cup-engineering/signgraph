@@ -16,7 +16,7 @@
  * is ◇. The object position is reached through the converse generator.
  */
 import { address, cell, cellSetAddress, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, sidesOf } from "@red-cup-engineering/signcell/cell";
-import { SPECIALIZES, cacheableTokenFrame, extent, generalizations, tokenFrame, top } from "@red-cup-engineering/signcell/token-frame";
+import { cacheableTokenFrame, extent, generalizations, tokenFrame, top } from "@red-cup-engineering/signcell/token-frame";
 import { retainedCarrier, semanticId } from "@red-cup-engineering/semiotic-content-address";
 
 const INHERITED = "signgraph.inherited-tellings";
@@ -238,7 +238,7 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   const snapshot = semanticId({
     kind: "signgraph.token-frame-reading/v1",
     sourceCells,
-    specializationPredicate: source.predicate ?? SPECIALIZES,
+    specializationPredicate: source.predicate,
   });
   return Object.freeze({
     kind: "signgraph.inherited-telling-query", version: 1,

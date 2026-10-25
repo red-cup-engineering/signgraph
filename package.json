@@ -1,16 +1,18 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.5.1-dev.0",
+  "version": "0.7.0",
   "type": "module",
   "description": "SignCell and SignChain sites, transport, relations and graph projections.",
   "files": [
     "src",
     "data/records/requirements-records",
-    "scripts/holonomy.mjs"
+    "scripts/holonomy.mjs",
+    "test/graph.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
     "./cell-graph": "./src/cell-graph.mjs",
+    "./feather-graph": "./src/feather-graph.mjs",
     "./mesh": "./src/mesh.mjs",
     "./chu-term": "./src/chu-term.mjs",
     "./graph": "./src/graph.mjs",
@@ -48,10 +50,10 @@
     "@red-cup-engineering/eavt-services-section": "0.11.0",
     "@red-cup-engineering/computer-content-engineering-services-section": "0.1.0",
     "@red-cup-engineering/xml-document-rendering-service": "0.1.7",
-    "@red-cup-engineering/computer-data-engineering-services-section": "0.3.1",
+    "@red-cup-engineering/computer-data-engineering-services-section": "0.7.1",
     "@red-cup-engineering/exact-number-data-service": "0.1.2",
-    "@red-cup-engineering/signcell": "0.13.0-dev.1",
-    "@red-cup-engineering/signchain": "0.3.1-dev.0",
+    "@red-cup-engineering/signcell": "0.13.0",
+    "@red-cup-engineering/signchain": "0.4.1",
     "@red-cup-engineering/json-schema-services-section": "0.5.0",
     "@red-cup-engineering/semiotic-content-address": "0.1.0",
     "@red-cup-engineering/computer-code-engineering-services-section": "0.1.2"

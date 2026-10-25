@@ -15,7 +15,6 @@ import { createGraph, topologicalOrder, stronglyConnectedComponents } from "@red
 import { canonical, parse as parseJson } from "@red-cup-engineering/json-services-section";
 import { define, restrict,                } from "@red-cup-engineering/computer-content-engineering-services-section/typed-resource-classification";
 import { stringProjector } from "@red-cup-engineering/computer-content-engineering-services-section/text-projector";
-import { xmlProjector } from "@red-cup-engineering/xml-document-rendering-service";
 import { eavtId, eavtRecord } from "@red-cup-engineering/eavt-services-section/row";
 
 export {

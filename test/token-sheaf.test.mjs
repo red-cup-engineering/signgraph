@@ -306,3 +306,19 @@ test("a deeply immutable transported frame may omit the canonical default predic
   assert.equal(restored.snapshot, original.snapshot,
     "omitting the declared default must not change the semantic page identity");
 });
+
+test("a null specialization predicate keeps its distinct snapshot and source reading", () => {
+  const cells = [
+    told("child", "parent"),
+    cell("parent", "reports", "available", { for: ["source"] }),
+  ];
+  const ordinary = queryInheritedTellings(tokenFrame(cells),
+    { token: "child", predicate: "reports", object: "available" });
+  const selectedNull = queryInheritedTellings(tokenFrame(cells, { predicate: null }),
+    { token: "child", predicate: "reports", object: "available" });
+  assert.equal(ordinary.sourceCells, selectedNull.sourceCells);
+  assert.equal(ordinary.total, 1);
+  assert.equal(selectedNull.total, 0);
+  assert.notEqual(ordinary.snapshot, selectedNull.snapshot,
+    "equal source cells under different specialization laws are different query cuts");
+});
