@@ -423,6 +423,138 @@ export function extendCellularSheafSection(sheaf, observations = []) {
   });
 }
 
+
+/**
+ * Construct a finite genuine LOCAL-TO-GLOBAL section from an observed cover
+ * of the same already-admitted exact cellular sheaf. A patch is a source's
+ * COMPLETE stalk reading on its stated vertex subcomplex; it cannot silently
+ * replace absent coordinates with zero or invent an unstated edge reading.
+ *
+ * The patch's source-induced subgraph has every original edge whose TWO
+ * vertices appear in the patch. Its exact restriction equations must hold
+ * before the patch counts as a section. A cover must jointly include every
+ * original vertex and edge (not merely the vertex set). Only THEN are all
+ * original local observations glued through the ONE original ratSolve-based
+ * exact global extension. Incompatible overlaps produce an actual linear
+ * combination of original equations and source observations.
+ *
+ * This is finite rational 1-skeleton descent on one fixed source-generated
+ * chart, NOT a constructed Grothendieck topology, temporal restriction
+ * functor, independently authenticated source, physical quasicrystal or
+ * generally valid H¹-vanishing theorem.
+ *
+ * patches: [{region,sourceRef,vertices:[{vertex,values:[rational,...]}]}]
+ * Source owners, CAIRN rights and NI custody qualify patches BEFORE this
+ * mathematical operation is invoked. Only original stalks/edges are used.
+ */
+export function glueCellularSheafPatches(sheaf, patches) {
+  if(sheaf?.kind!=="signgraph.cellularSheaf" || sheaf.exact!==true ||
+     !Array.isArray(sheaf.vertices) || !Array.isArray(sheaf.edges) ||
+     !Array.isArray(patches) || patches.length<1 || patches.length>16 ||
+     sheaf.c0>256 || sheaf.c1>256)
+    throw new TypeError("cellularSheaf patch gluing requires a bounded existing exact source chart and source cover");
+
+  const byVertex=new Map(sheaf.vertices.map(vertex=>[coincidenceKey(vertex.id),vertex]));
+  const ids=new Set(),coveredVertices=new Set(),coveredEdges=new Set();
+  const observations=[],localRegions=[];
+  for(const [index,patch] of patches.entries()){
+    if(!patch || typeof patch!=="object" || Array.isArray(patch) ||
+       Object.keys(patch).some(key=>!["region","sourceRef","vertices"].includes(key)) ||
+       typeof patch.region!=="string" || !/^[a-z][a-z0-9-]{0,95}$/u.test(patch.region) ||
+       typeof patch.sourceRef!=="string" || !patch.sourceRef.trim() ||
+       patch.sourceRef.length>1024 || !Array.isArray(patch.vertices) ||
+       patch.vertices.length<1 || patch.vertices.length>sheaf.vertices.length)
+      throw new TypeError("cellularSheaf patch needs named source, bounded region and actual local stalks");
+    const id=JSON.stringify([patch.sourceRef,patch.region]);
+    if(ids.has(id))throw new TypeError("cellularSheaf cover repeats one source region");
+    ids.add(id);
+    const selected=new Map(),localObservations=[];
+    for(const reading of patch.vertices){
+      if(!reading || typeof reading!=="object" || Array.isArray(reading) ||
+         Object.keys(reading).some(k=>!["vertex","values"].includes(k)))
+        throw new TypeError("cellularSheaf patch stalk needs one original vertex and its complete value vector");
+      const key=coincidenceKey(reading.vertex),vertex=byVertex.get(key);
+      if(!vertex || selected.has(key) || !Array.isArray(reading.values) ||
+         reading.values.length!==vertex.dim)
+        throw new TypeError("cellularSheaf patch repeats or omits an original stalk coordinate");
+      selected.set(key,vertex);
+      coveredVertices.add(key);
+      for(const [coordinate,value] of reading.values.entries()){
+        // The existing Data rational admission is the sole scalar validator:
+        // a decimal floating approximation is not an exact source coordinate.
+        const [numerator,denominator]=ratPairOfEntry(value);
+        localObservations.push(Object.freeze({
+          vertex:vertex.id,coordinate,
+          value:denominator===1n?numerator.toString():numerator+"/"+denominator,
+          sourceRecord:patch.sourceRef,
+        }));
+      }
+    }
+    const edges=sheaf.edges.filter(edge=>
+      selected.has(coincidenceKey(edge.from))&&selected.has(coincidenceKey(edge.to)));
+    for(const edge of edges)coveredEdges.add(coincidenceKey(edge.id));
+    const localSheaf=cellularSheaf({
+      vertices:[...selected.values()],edges,
+    });
+    if(localSheaf.c1+localObservations.length>256)
+      throw new RangeError("cellularSheaf local patch exceeds exact source equation budget");
+    const local=extendCellularSheafSection(localSheaf,localObservations);
+    const region=Object.freeze({
+      region:patch.region,sourceRef:patch.sourceRef,index,
+      sourceVertices:Object.freeze([...selected.values()].map(x=>x.id)),
+      sourceEdges:Object.freeze(edges.map(x=>x.id)),
+      status:local.status,
+      obstruction:local.status==="mathematically-obstructed"
+        ?local.obstruction:null,
+      sourceRows:local.status==="mathematically-obstructed"
+        ?local.sourceRows:Object.freeze([]),
+    });
+    localRegions.push(region);
+    observations.push(...localObservations);
+    if(local.status==="mathematically-obstructed")return Object.freeze({
+      kind:"signgraph.cellularSheaf.sourceCoverGluing.v1",
+      status:"locally-obstructed",regions:Object.freeze(localRegions),
+      failedRegion:patch.region,exactGlobalSection:null,
+      obstruction:local.obstruction,sourceRows:local.sourceRows,
+      sourceAuthority:"not independently verified",
+      mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
+    });
+  }
+  const uncoveredVertices=sheaf.vertices
+    .filter(vertex=>!coveredVertices.has(coincidenceKey(vertex.id)))
+    .map(vertex=>vertex.id);
+  const uncoveredEdges=sheaf.edges
+    .filter(edge=>!coveredEdges.has(coincidenceKey(edge.id)))
+    .map(edge=>edge.id);
+  if(uncoveredVertices.length||uncoveredEdges.length)return Object.freeze({
+    kind:"signgraph.cellularSheaf.sourceCoverGluing.v1",
+    status:"incomplete-cover",regions:Object.freeze(localRegions),
+    uncoveredVertices:Object.freeze(uncoveredVertices),
+    uncoveredEdges:Object.freeze(uncoveredEdges),
+    exactGlobalSection:null,
+    sourceAuthority:"not independently verified",
+    mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
+  });
+  if(sheaf.c1+observations.length>256)
+    throw new RangeError("cellularSheaf global patch gluing exceeds exact equation budget");
+  const global=extendCellularSheafSection(sheaf,observations);
+  return Object.freeze({
+    kind:"signgraph.cellularSheaf.sourceCoverGluing.v1",
+    status:global.status==="mathematically-liftable"?"globally-glued":"globally-obstructed",
+    regions:Object.freeze(localRegions),
+    uncoveredVertices:Object.freeze([]),uncoveredEdges:Object.freeze([]),
+    exactGlobalSection:global.status==="mathematically-liftable"?global.exactSection:null,
+    extensionDirections:global.extensionDirections,
+    globalSourceRows:global.sourceRows,
+    obstruction:global.obstruction,
+    // Original observation indices in the global obstruction retain patch
+    // source ref via sourceRecord; repeated genuine witnesses are NOT elided.
+    sourceAuthority:"not independently verified",
+    mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
+    temporalDescent:"not proved from a fixed source cover",
+  });
+}
+
 /**
  * Fiberwise rational tensor of TWO TO FOUR admitted cellular sheaves over the
  * very same source-indexed 1-skeleton. This is the genuine algebraic tensor
