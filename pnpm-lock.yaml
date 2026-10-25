@@ -42,8 +42,8 @@ importers:
         specifier: 0.13.1-dev.0
         version: 0.13.1-dev.0
       '@red-cup-engineering/signchain':
-        specifier: 0.4.2-dev.0
-        version: 0.4.2-dev.0
+        specifier: 0.4.2-dev.1
+        version: 0.4.2-dev.1
       '@red-cup-engineering/uri-services-section':
         specifier: 0.1.1
         version: 0.1.1
@@ -203,8 +203,8 @@ packages:
   '@red-cup-engineering/signcell@0.4.0':
     resolution: {integrity: sha512-VfGyU46S1y0QDlcgYLSYnKZgVbL7Ocn8oWDf2Gw3iYTI8Qgvm2IF2X+oTLu7iOJyWrwlLXnfdXqMROO1Ll4h/Q==}
 
-  '@red-cup-engineering/signchain@0.4.2-dev.0':
-    resolution: {integrity: sha512-6wDcI2jxFGrS0c/2OgV8xI1mEn+RmpqBx9Ik+Kmb4pCFW+kXrOs0GkGPSEkHWOOY0aRlkK5VD9sT/u9d8AweNA==}
+  '@red-cup-engineering/signchain@0.4.2-dev.1':
+    resolution: {integrity: sha512-bt558yvQGNwmDXTkbLGB5RBtyqaxC6MkmaAAvhBwpQ3RKJUCg09JCrn52U6lpxfyqKCoFb1skuzEu/jG406dtA==}
 
   '@red-cup-engineering/uri-services-section@0.1.1':
     resolution: {integrity: sha512-y5Ipia5hTOLT/0lzEX+DAC/qtfT7ey17jNT/2dh7r0fqromCUxUOQiJOYaapXXWqe79T1sCEmICjukFuLvizmw==}
@@ -535,12 +535,12 @@ snapshots:
       '@red-cup-engineering/computer-data-engineering-services-section': 0.2.0
       '@red-cup-engineering/json-schema-services-section': 0.5.0
 
-  '@red-cup-engineering/signchain@0.4.2-dev.0':
+  '@red-cup-engineering/signchain@0.4.2-dev.1':
     dependencies:
       '@red-cup-engineering/computer-data-engineering-services-section': 0.3.1
       '@red-cup-engineering/exact-number-data-service': 0.1.1
       '@red-cup-engineering/json-schema-services-section': 0.5.0
-      '@red-cup-engineering/metrologic': 0.13.0
+      '@red-cup-engineering/metrologic': 0.14.3-dev.3
       '@red-cup-engineering/semiotic-content-address': 0.1.1
       '@red-cup-engineering/semiotic-eavt-services-section': 0.3.2
       '@red-cup-engineering/signcell': 0.13.1-dev.0
