@@ -9,6 +9,7 @@ import {
   derivePerformedHeadShadow, derivePerformedObservationRoutes,
   composePerformedObservationRoutes, readPerformedSemioverseFiber,
   transportPerformedSemioverseClaim, assessPerformedBoundaryFactorization, readPerformedKinematicSectionSpace,
+  readPerformedCellularCover,
 } from "../src/mark-gluing.mjs";
 import { executeOperation, operations } from "../src/operations.mjs";
 
@@ -266,6 +267,66 @@ test("portable JSON Semioverse readouts retain original occurrence indices witho
   assert.throws(() => composePerformedObservationRoutes(structuredClone(source), first, second),
     /original generated observation routes/,
     "a serialized readout cannot masquerade as the live original compositional authority");
+});
+
+test("portable source readers require every original ordered pair at its canonical coordinate", () => {
+  const original = derivePerformedHeadShadow({ articulating: performedSource(), steps: 2 });
+  const rows = original.semioverse.claimEntries.map(entry => ({
+    claimIndex: entry.claimIndex, requiredClass: "portable",
+  }));
+  const region = original.kinematic.points.map((_point, index) => index);
+  const readers = [
+    view => readPerformedSemioverseFiber(view, 0),
+    view => transportPerformedSemioverseClaim(view, 0, 0, 0),
+    view => readPerformedCellularCover(view, 0, [{
+      pointIndex: 0, coveredClaimIndices: [0], selectedClaimIndices: [0],
+    }]),
+    view => readPerformedKinematicSectionSpace(view, { patches: [region] }),
+    view => assessPerformedBoundaryFactorization(view, rows),
+  ];
+  const mutations = [
+    ["a repeated pair hidden behind a different claim index", semi => {
+      semi.claimEntries[1] = { ...semi.claimEntries[0], claimIndex: 1 };
+    }],
+    ["a missing pair", semi => { semi.claimEntries.pop(); }],
+    ["a repeated claim index", semi => { semi.claimEntries[1].claimIndex = 0; }],
+    ["source pair order changed without its coordinate", semi => {
+      [semi.claimEntries[0], semi.claimEntries[1]] = [semi.claimEntries[1], semi.claimEntries[0]];
+      semi.claimEntries[0].claimIndex = 0;
+      semi.claimEntries[1].claimIndex = 1;
+    }],
+    ["an absent source occurrence", semi => {
+      semi.claimEntries[0].firstOccurrenceIndex = -1;
+      delete semi.claimEntries[0].firstOccurrenceId;
+    }],
+    ["a fractional source occurrence", semi => { semi.claimEntries[0].secondOccurrenceIndex = 0.5; }],
+    ["an occurrence identifier from a different source", semi => {
+      semi.claimEntries[0].firstOccurrenceId = "not-the-original-source";
+    }],
+    ["an incomplete source identity table", semi => { semi.sourceEventIds[1] = semi.sourceEventIds[0]; }],
+  ];
+  for (const [reason, mutate] of mutations) {
+    const transported = structuredClone(original);
+    mutate(transported.semioverse);
+    for (const read of readers)
+      assert.throws(() => read(transported), /complete original|inconsistent original/u, reason);
+  }
+  // A normal JSON readout is still admissible, including distinct source
+  // occurrences whose extensional claim addresses happen to agree.
+  const portable = JSON.parse(JSON.stringify(original));
+  assert.ok(new Set(portable.semioverse.claimEntries.map(entry => entry.claimAddress)).size
+    < portable.semioverse.claimEntries.length);
+  for (const read of readers) assert.deepEqual(read(portable), read(original));
+  assert.equal(assessPerformedBoundaryFactorization(portable, rows).authority, "none");
+});
+
+test("a previously read portable incidence is checked again after mutation", () => {
+  const portable = structuredClone(derivePerformedHeadShadow({
+    articulating: performedSource(), steps: 2,
+  }));
+  assert.equal(readPerformedSemioverseFiber(portable, 0).entries.length, 4);
+  portable.semioverse.claimEntries[1] = { ...portable.semioverse.claimEntries[0], claimIndex: 1 };
+  assert.throws(() => readPerformedSemioverseFiber(portable, 0), /inconsistent original/u);
 });
 
 

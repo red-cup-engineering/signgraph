@@ -876,15 +876,47 @@ export function derivePerformedHeadShadow(raw) {
   });
 }
 
+/**
+ * Check the complete ordered-pair incidence retained by a portable readout.
+ * Its claimIndex is the original row-major source coordinate i*N+j, not a
+ * second label under which the same performed pair may appear again. Equal
+ * claim addresses remain lawful; they never identify distinct source pairs.
+ * This checks structural correspondence, not source authenticity or authority.
+ * Portable readouts may be mutable, so every receiving call checks them anew.
+ */
+function performedSemioverseOf(shadow) {
+  const semi = shadow?.semioverse;
+  const ids = semi?.sourceEventIds, entries = semi?.claimEntries;
+  if (shadow?.kind !== "signgraph.performedHeadObservationShadow.v1" ||
+      semi?.kind !== "signgraph.performedSemioverseIncidence.v1" ||
+      typeof shadow.originalSourceId !== "string" || !shadow.originalSourceId.length ||
+      typeof shadow.continuedSourceId !== "string" || !shadow.continuedSourceId.length ||
+      semi.originalSourceId !== shadow.originalSourceId ||
+      semi.continuedSourceId !== shadow.continuedSourceId ||
+      !Array.isArray(ids) || ids.length < 1 || ids.length > 32 ||
+      new Set(ids).size !== ids.length ||
+      Array.from(ids).some(id => typeof id !== "string" || !id.length) ||
+      !Array.isArray(entries) || entries.length !== ids.length ** 2)
+    throw new TypeError("source readout requires a complete original performed Semioverse");
+  for (let index = 0; index < entries.length; index++) {
+    const entry = entries[index];
+    const first = Math.floor(index / ids.length), second = index % ids.length;
+    if (entry?.claimIndex !== index ||
+        entry.firstOccurrenceIndex !== first || entry.secondOccurrenceIndex !== second ||
+        entry.firstOccurrenceId !== ids[first] || entry.secondOccurrenceId !== ids[second] ||
+        typeof entry.claimAddress !== "string" || !entry.claimAddress.length)
+      throw new TypeError("source readout found an inconsistent original claim occurrence");
+  }
+  return semi;
+}
+
 /** A bounded observation fiber over an ORIGINAL generated kinematic point.
  * This is a readout of this source-derived object, never a new claim,
  * proof, permission, signed witness, or authority to consume private data.
  */
 export function readPerformedSemioverseFiber(shadow, pointIndex) {
-  const W = shadow?.kinematic, semi = shadow?.semioverse;
-  if (shadow?.kind !== "signgraph.performedHeadObservationShadow.v1" ||
-      semi?.kind !== "signgraph.performedSemioverseIncidence.v1" ||
-      !Array.isArray(W?.points) || !Array.isArray(semi?.claimEntries) ||
+  const semi = performedSemioverseOf(shadow), W = shadow?.kinematic;
+  if (!Array.isArray(W?.points) ||
       !Number.isSafeInteger(pointIndex) || pointIndex < 0 ||
       pointIndex >= W.points.length)
     throw new TypeError("Semioverse fiber requires a generated shadow and an existing kinematic point");
@@ -1077,15 +1109,10 @@ export function readPerformedCellularCover(shadow, targetPointIndex, localPatche
  * modal nucleus, sheaf H1, physical quasicrystal or licensed external Work.
  */
 export function readPerformedKinematicSectionSpace(shadow, { patches, sections } = {}) {
-  const W=shadow?.kinematic, semi=shadow?.semioverse;
-  if(shadow?.kind!=="signgraph.performedHeadObservationShadow.v1"||
-     W?.kind!=="signgraph.performedArticulatingKinematicReadout.v1"||
-     semi?.kind!=="signgraph.performedSemioverseIncidence.v1"||
-     shadow.continuedSourceId!==semi.continuedSourceId ||
+  const semi=performedSemioverseOf(shadow), W=shadow?.kinematic;
+  if(W?.kind!=="signgraph.performedArticulatingKinematicReadout.v1"||
      !Array.isArray(W.points)||W.points.length<1||W.points.length>120||
-     !Array.isArray(W.sequencing)||!Array.isArray(semi.claimEntries)||
-     !Array.isArray(semi.sourceEventIds)||
-     semi.claimEntries.length!==semi.sourceEventIds.length**2)
+     !Array.isArray(W.sequencing))
     throw new TypeError("source-coherent kinematic sections require the existing full performed Semioverse");
   if(!Array.isArray(patches)||patches.length<1||patches.length>8)
     throw new RangeError("kinematic cover requires 1..8 finite source-selected opens");
@@ -1117,12 +1144,6 @@ export function readPerformedKinematicSectionSpace(shadow, { patches, sections }
   const fibers=Array.from({length:pointCount},(_,p)=>
     readPerformedSemioverseFiber(shadow,p).entries.map(entry=>entry.claimIndex));
   const admitted=new Map(union.map(p=>[p,new Set(fibers[p])]));
-  for(const [i,entry] of semi.claimEntries.entries()){
-    if(entry?.claimIndex!==i||
-       entry.firstOccurrenceId!==semi.sourceEventIds[entry.firstOccurrenceIndex]||
-       entry.secondOccurrenceId!==semi.sourceEventIds[entry.secondOccurrenceIndex])
-      throw new TypeError("source kinematic sheaf lost original performed pair positions");
-  }
   const choicesOf=indices=>{
     // Do not construct a second finite reachability/section solver in this
     // sourced SignGraph consumer. The original Metrologic finite preorder
@@ -1263,30 +1284,7 @@ export function readPerformedKinematicSectionSpace(shadow, { patches, sections }
 export function assessPerformedBoundaryFactorization(shadow, requiredReadings) {
   // This is a conditional finite receiving/observation check, NOT a portal
   // implementation, source-authentication function or host/office admission.
-  const semi = shadow?.semioverse;
-  const ids = semi?.sourceEventIds, entries = semi?.claimEntries;
-  if (shadow?.kind !== "signgraph.performedHeadObservationShadow.v1" ||
-      semi?.kind !== "signgraph.performedSemioverseIncidence.v1" ||
-      semi.continuedSourceId !== shadow.continuedSourceId ||
-      semi.originalSourceId !== shadow.originalSourceId ||
-      !Array.isArray(ids) || ids.length < 1 ||
-      ids.length > 32 || new Set(ids).size !== ids.length ||
-      ids.some(id => typeof id !== "string" || !id.length) ||
-      !Array.isArray(entries) || entries.length !== ids.length ** 2)
-    throw new TypeError("boundary check requires a complete original performed Semioverse readout");
-  // Native SignCell generates one ordered pair for every pair of original
-  // Utterance occurrences. This validates structural custody of the readout,
-  // not the authenticity of a serialized source or any external permission.
-  for (let i = 0; i < entries.length; i++) {
-    const e = entries[i];
-    if (e?.claimIndex !== i ||
-        !Number.isSafeInteger(e.firstOccurrenceIndex) ||
-        !Number.isSafeInteger(e.secondOccurrenceIndex) ||
-        e.firstOccurrenceId !== ids[e.firstOccurrenceIndex] ||
-        e.secondOccurrenceId !== ids[e.secondOccurrenceIndex] ||
-        typeof e.claimAddress !== "string" || !e.claimAddress.length)
-      throw new TypeError("boundary check found an inconsistent original claim occurrence");
-  }
+  const { claimEntries: entries } = performedSemioverseOf(shadow);
   if (!Array.isArray(requiredReadings) || requiredReadings.length !== entries.length)
     throw new TypeError("boundary check requires one recipient classification for every original claim occurrence");
   const readings = new Array(entries.length);
