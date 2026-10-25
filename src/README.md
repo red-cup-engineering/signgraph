@@ -402,10 +402,16 @@ The original Mark → Utterance → **performed Articulating** route remains the
 only way to generate these kinematic source occurrences. This SignGraph
 package already exposed performed Kinematic and Semioverse source incidence,
 but its more substantial source-coded Alexandrov coherent-section space
-and exact prefix hypertensor factorization were **not reachable from the
-ordinary headless operation registry**. The same native source now exposes
-two *different*, compatible finite views through the incumbent
-signgraph-holonomy JSONL executable:
+and exact prefix hypertensor factorization had **two competing entries for
+one published operation ID**: the ordinary dispatcher silently selected its
+first matching schema and executor, while separately enumerating a redundant
+second descriptor with a weaker input contract. The original source now
+retains exactly one declared `kinematic-section-descent` operation and checks
+all operation IDs for uniqueness at module admission; dispatch uses the same
+source-pinned descriptor table. This is an interface and receiving repair,
+not a newly established mathematical theorem. The incumbent
+signgraph-holonomy JSONL executable exposes two *different*, compatible
+finite views:
 
 **Kinematic coherent sections and source hypertensor**
 
@@ -440,6 +446,12 @@ signgraph-holonomy JSONL executable:
   only if domain union covers every target source pair and all overlaps agree.
   Each selected global row keeps original source occurrence indices/IDs and
   distinct content-addressed Claim presentation.
+
+The published registry now refuses duplicate operation identifiers at startup
+instead of accepting first-match selection. The original operation test
+exercises the genuine source-performed hypertensor read using the sole
+`kinematic-section-descent` entry. This does not bypass original package
+dependency or installed host qualification.
 
 Both operations are pure source-inspection services under the existing
 64-KiB request and original work-budget context. Both are *conditional*
