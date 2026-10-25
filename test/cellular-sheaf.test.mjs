@@ -5,7 +5,7 @@ import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
   apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
-  weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection, tensorCellularSheaves,
+  weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection, tensorCellularSheaves, glueCellularSheafPatches,
 } from "../src/cellular-sheaf.mjs";
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} !~ ${b}`);
@@ -565,4 +565,38 @@ test("exact tensor composition is a productive source-indexed construction, inva
   assert.equal(conflict.status,"mathematically-obstructed");
   assert.equal(conflict.exactSection,null);
   assert.equal(conflict.sourceRows.at(-1).sourceRecord,"source:contrary");
+});
+
+test("covered source-local sheaf sections actually glue; contradictory and missing covers retain original evidence",()=>{
+ const source=cellularSheaf({
+  vertices:[{id:"odooparty",dim:1},{id:"seller",dim:1},{id:"awsresource",dim:1}],
+  edges:[{id:"crm-seller",from:"odooparty",to:"seller",dim:1,
+   restrict:{from:[[1]],to:[[1]]}},
+   {id:"seller-cloud",from:"seller",to:"awsresource",dim:1,
+   restrict:{from:[[1]],to:[[1]]}}],
+ });
+ const local=(region,sourceRef,rows)=>({region,sourceRef,
+   vertices:rows.map(([vertex,value])=>({vertex,values:[value]}))});
+ const odoo=local("odoo","source:original-odoo",
+   [["odooparty","13"],["seller","13"]]);
+ const aws=local("aws","source:original-aws",
+   [["seller","13"],["awsresource","13"]]);
+ const received=glueCellularSheafPatches(source,[odoo,aws]);
+ assert.equal(received.status,"globally-glued");
+ assert.deepEqual(received.exactGlobalSection.map(x=>x.num+"/"+x.den),["13/1","13/1","13/1"]);
+ assert.deepEqual(received.regions.map(x=>x.sourceRef),[odoo.sourceRef,aws.sourceRef]);
+ assert.equal(received.sourceAuthority,"not independently verified");
+ const uncovered=glueCellularSheafPatches(source,[odoo]);
+ assert.equal(uncovered.status,"incomplete-cover");
+ assert.deepEqual(uncovered.uncoveredEdges,["seller-cloud"]);
+ assert.equal(uncovered.exactGlobalSection,null);
+ const contested=glueCellularSheafPatches(source,[odoo,local("aws","source:contrary-aws",
+   [["seller","8"],["awsresource","8"]])]);
+ assert.equal(contested.status,"globally-obstructed");
+ assert.ok(contested.obstruction.sourceEquationWeights.length>0);
+ assert.ok(contested.globalSourceRows.some(row=>row.sourceRecord==="source:contrary-aws"));
+ const locallyBroken=glueCellularSheafPatches(source,[local("odoo","source:bad-odoo",
+   [["odooparty","13"],["seller","8"]]),aws]);
+ assert.equal(locallyBroken.status,"locally-obstructed");
+ assert.equal(locallyBroken.failedRegion,"odoo");
 });
