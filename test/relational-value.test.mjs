@@ -75,6 +75,49 @@ test("Buffer and Uint8Array values have one canonical payload identity", () => {
   );
 });
 
+test("receives historical root BigInt carriers without changing their bytes or tokens", () => {
+  const vectors = [
+    [0n, "ni:///sha-256;g70cl0Gon2riADJDMyXEBuUZd0WbNzXOGqPyEemYPdw"],
+    [1n, "ni:///sha-256;gzbLkYWcA6kAa0qSmJ9qGEsloO6NFipDiDnLidLlrvA"],
+    [-1n, "ni:///sha-256;CJ60x_EGIMa5H5tCrwXbleCtuCzaGN1459eq-D9aaNY"],
+    [BigInt(Number.MIN_SAFE_INTEGER), "ni:///sha-256;ANzkwJApOzeqawv18Lbt93TnMv7whchtuwpxSFe_x0w"],
+    [BigInt(Number.MAX_SAFE_INTEGER), "ni:///sha-256;V71n9rmwx0Rccq21h0u43aqt3dKR8uWvcYgCDASyDnU"],
+  ];
+  for (const [value, token] of vectors) {
+    const identified = identifyRelationalValuePayload(value);
+    assert.equal(identified.token, token, "preserve the already emitted source address");
+    assert.equal(verifyRelationalValuePayload(identified), true);
+    const admitted = admitRelationalValuePayload(identified);
+    assert.equal(admitted.token, token);
+    assert.deepEqual(admitted.bytes, identified.bytes);
+    assert.deepEqual(admitted.claim, identified.claim);
+    const ordinary = identifyRelationalValuePayload(Number(value));
+    assert.equal(verifyRelationalValuePayload(ordinary), true);
+    assert.notEqual(ordinary.token, token, "do not invent identity between historical carriers");
+    assert.equal(verifyRelationalValuePayload({ token, claim: ordinary.claim }), false);
+  }
+  for (const value of [9007199254740992n, -9007199254740992n, { n: 1n }, [0n, -1n]]) {
+    assert.equal(verifyRelationalValuePayload(identifyRelationalValuePayload(value)), true);
+  }
+});
+
+test("root integer compatibility still refuses arbitrary graph coordinates", () => {
+  const identified = identifyRelationalValuePayload(1n);
+  const originalRoot = identified.claim.term[1][1];
+  const unrelated = makeNiUri(new Uint8Array([99]));
+  const replaceRoot = (member) => Array.isArray(member)
+    ? member.map(replaceRoot)
+    : member === originalRoot ? unrelated : member;
+  const forged = ["ascribe", identified.claim.semanticType, replaceRoot(identified.claim.term)];
+  const bytes = semanticBytes(forged);
+  assert.equal(decodeRelationalValue(forged[1], forged[2]), 1,
+    "a well-typed integer graph alone does not prove an emitted carrier");
+  assert.throws(() => admitRelationalValuePayload({ bytes, token: makeNiUri(bytes) }),
+    /graph carrier is not canonical/u);
+  assert.equal(verifyRelationalValuePayload({ token: makeNiUri(bytes),
+    claim: { semanticType: forged[1], term: forged[2] } }), false);
+});
+
 test("typed relational SEN is canonical and round-trips without JSON", () => {
   const source = { alpha: "é", decimals: [1e-7, -2.5e-8, 1.25, 1e21], zeta: [true, null, 7] };
   const encoded = encodeRelationalValue(source);

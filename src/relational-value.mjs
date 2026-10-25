@@ -210,8 +210,18 @@ function decodeRelationalAscription(bytes) {
     fail("relational value bytes must contain one typed SEN ascription");
   }
   const value = decodeRelationalValue(ascription[1], ascription[2]);
-  const canonical = encodeRelationalValue(value);
-  const canonicalBytes = semanticBytes(["ascribe", canonical.type, canonical.term]);
+  let canonical = encodeRelationalValue(value);
+  let canonicalBytes = semanticBytes(["ascribe", canonical.type, canonical.term]);
+  // The established encoder seeds a root from its JS constructor. A safe
+  // integer encoded as BigInt therefore has a different carrier from Number,
+  // although decoding either integer lexeme returns Number. Receive both
+  // historical encodings without rewriting either token or accepting arbitrary
+  // graph coordinates: the complete transported bytes must match an encoder
+  // output. Nested integers do not have this root-constructor ambiguity.
+  if (!bytesEqual(canonicalBytes, bytes) && Number.isSafeInteger(value)) {
+    canonical = encodeRelationalValue(BigInt(value));
+    canonicalBytes = semanticBytes(["ascribe", canonical.type, canonical.term]);
+  }
   if (!bytesEqual(canonicalBytes, bytes)) fail("relational value graph carrier is not canonical");
   return { canonical, canonicalBytes };
 }

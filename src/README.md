@@ -162,6 +162,10 @@ receiving establishes parity and then a measured improvement.
   data. Cell nodes are qualified by the complete payload identity; `sourceRoot`
   and `nodeCoordinates` retain the original SEN coordinates. Shared spellings
   do not establish entity identity or publication rights.
+  Payload admission preserves the established root Number and BigInt carriers,
+  including safe integers that decode to Number. It requires complete byte
+  equality with an original encoder output; it neither rewrites prior addresses
+  nor equates the two historical source carriers.
 - `cell-graph` — `cellGraph(cells, observations)` builds the Chu
   relation of held SignCells under named, total observations
   (`{ name, evaluate(cell) }`) using metrologic's `chuSpaceOfEntries`
