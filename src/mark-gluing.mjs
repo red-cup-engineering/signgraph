@@ -10,6 +10,12 @@ import { utterance, isUtterance, formalBoundaryOfUtterance, markRoleIncidenceOfU
 import { semanticId }
   from "@red-cup-engineering/semiotic-content-address";
 import { cellular2Complex } from "./cohomology.mjs";
+import { createGraph, observedTwoStepPaths } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
+import { kinematicDiamondSpaceOf } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/causal";
+import { subset, meet, join, le } from "@red-cup-engineering/metrologic/sheaf/topology/d-frame";
+import { finitePreorder, admitUpperOpen, finiteCoherentSectionSpace, finitePrefixIncidenceFactors } from "@red-cup-engineering/metrologic/models/order/finite-preorder";
+import { articulatedPredications } from "@red-cup-engineering/signcell/predication";
+import { address as cellAddress } from "@red-cup-engineering/signcell/cell";
 import * as chain from "@red-cup-engineering/signchain/bilattice";
 
 const KIND="signgraph.markGeneratedCellGluing.v1";
@@ -680,4 +686,704 @@ export function composePerformedObservationRoutes(result,left,right) {
   if(!composite)
     throw new TypeError("source did not generate that composite observation route");
   return composite;
+}
+
+
+/**
+ * Project NATIVE performed Articulating routes through their already observed
+ * head Marks and calculate the exactly missing source path compositions.
+ *
+ * This is a finite head-shadow comparison for richer Paracosm research,
+ * NOT the existing source-realizable kinematic-past Paracosm of
+ * Obsmetrologia.GeneratedWorlds. It is made ONLY from original SignCell
+ * re-attention and introduces no arbitrary observer equality, pre-Mark
+ * world, quotient proof, actor, or executable duty.
+ *
+ * Each generated source step advances a different Articulating history even
+ * when its exposed utterance head is unchanged. An observer seeing only that
+ * head finds composable loops. Metrologic computes their complete two-edge
+ * image; the original route composer alone licenses each source composite.
+ * Thus one image composition can exist while its exact source edge pair does
+ * not compose. This is neither a fictitious original arrow nor authority to
+ * execute the observational path.
+ */
+export function derivePerformedHeadShadow(raw) {
+  const generated = derivePerformedObservationRoutes(raw);
+  // Head is read FROM the original Mark-rooted performed source, not from a
+  // supplied "observer interpretation". The performed continuation reuses it.
+  const performed = traceOfArticulating(raw.articulating, { maxLayers: 16 });
+  const originHead = semanticId(performed.trace.at(-1));
+  const imageAt = new Map(generated.nodes.map((node, index) => [
+    node, index === 0 ? originHead : generated.edges[index - 1].head,
+  ]));
+  if (generated.edges.some(edge => edge.head !== originHead))
+    throw new TypeError("re-attention observation did not retain its original Mark-rooted head");
+  const source = createGraph();
+  for (const id of generated.nodes) source.addNode(id);
+  for (const edge of generated.edges) {
+    source.addEdge({
+      from: edge.from, to: edge.to, kind: "source-performed-step",
+      data: { step: edge.step, address: edge.address },
+    });
+  }
+  const image = observedTwoStepPaths(source, node => imageAt.get(node));
+  // The complete performed prefix is retained: K(C) must not be fabricated
+  // merely from the post-observation tail, nor from a chosen coordinate grid.
+  // Each original native Articulating prefix contributes exactly one causal
+  // event; the observed re-attention steps continue that SAME source chain.
+  const eventIds = freeze([
+    ...performed.prefixes.slice(0, -1).map(prefix => semanticId(prefix)),
+    ...generated.nodes,
+  ]);
+  if (new Set(eventIds).size !== eventIds.length ||
+      eventIds[performed.prefixes.length - 1] !== generated.originalSourceId)
+    throw new TypeError("source-generated causal prefix and re-attending failed to join");
+  const causalSteps = Array.from({ length: eventIds.length - 1 }, (_, index) =>
+    freeze({ parent: index, child: index + 1 }));
+  const finiteKinematic = kinematicDiamondSpaceOf({
+    eventCount: eventIds.length, edges: causalSteps,
+  });
+  const kinematicPoints = freeze(finiteKinematic.points.map(point => freeze({
+    ...point,
+    lowerArticulatingId: eventIds[point.lowerEventIndex],
+    upperArticulatingId: eventIds[point.upperEventIndex],
+  })));
+  const kinematic = freeze({
+    kind: "signgraph.performedArticulatingKinematicReadout.v1",
+    sourceEventIds: eventIds,
+    strictCausalSteps: freeze(causalSteps),
+    points: kinematicPoints,
+    sequencing: finiteKinematic.sequencing,
+    causalFrontiers: finiteKinematic.causalFrontiers,
+    causalHeight: finiteKinematic.causalHeight,
+    scope: "derived finite causal-diamond endpoint sequencing, not a physical metric or all Kinematic Space",
+  });
+  // Lean's LSpace(W) is an original performed occurrence inhabiting a
+  // kinematic locus only when the occurrence belongs to the upper act's
+  // performed prefix. Here original Articulating is a finite constructor
+  // chain, so the precise source-admitted occurrence fiber over (a,b) is
+  // prefix indices [0..b]. Equal head Marks never merge occurrences.
+  const sourceHeadIds = freeze([
+    ...performed.trace.map(head => semanticId(head)),
+    ...generated.edges.map(edge => edge.head),
+  ]);
+  if (sourceHeadIds.length !== eventIds.length)
+    throw new TypeError("original utterance occurrence count lost its performed Articulating source");
+  // Reconstruct ONLY with SignCell's native generative operation. The
+  // existing source-observation operator generated these same steps already;
+  // every replayed predecessor/continuation/head ID must match that result.
+  // No duplicate predication constructor or new Semioverse truth valuation.
+  let continued = performed.carrier;
+  for (const edge of generated.edges) {
+    const next = reattendArticulating(continued, { maxLayers: 16 });
+    if (semanticId(continued) !== edge.from ||
+        semanticId(next.presented) !== edge.to ||
+        semanticId(next.presentedHead) !== edge.head)
+      throw new TypeError("native Articulating continuation differs from original generated source");
+    continued = next.presented;
+  }
+  if (semanticId(continued) !== generated.continuedSourceId)
+    throw new TypeError("Semioverse incidence lost the original continued source");
+  // Science's finite Semioverse core composes the seeds of two original
+  // utterance occurrences. This exact constructor is already in SignCell:
+  // (u.token, u.claim, v.token). Source indices distinguish performances
+  // even where their extensional predication cells have equal addresses.
+  const generatedClaims = articulatedPredications(continued, { maxLayers: 16 });
+  if (generatedClaims.entries.length !== eventIds.length * eventIds.length)
+    throw new TypeError("generated Semioverse pair incidence is incomplete");
+  const claimEntries = freeze(generatedClaims.entries.map((entry, claimIndex) => freeze({
+    claimIndex,
+    firstOccurrenceIndex: entry.subjectOccurrence,
+    secondOccurrenceIndex: entry.objectOccurrence,
+    firstOccurrenceId: eventIds[entry.subjectOccurrence],
+    secondOccurrenceId: eventIds[entry.objectOccurrence],
+    claimAddress: cellAddress(entry.cell),
+  })));
+  const semioverse = freeze({
+    kind: "signgraph.performedSemioverseIncidence.v1",
+    originalSourceId: generated.originalSourceId,
+    continuedSourceId: generated.continuedSourceId,
+    sourceEventIds: eventIds,
+    claimEntries,
+    loci: freeze(kinematicPoints.map((point, pointIndex) => freeze({
+      pointIndex,
+      maximumAdmittedOccurrenceIndex: point.upperEventIndex,
+      admittedClaimCount: (point.upperEventIndex + 1) ** 2,
+    }))),
+    scope: "source-ordered performed pair incidence only; not all FOAM evidence, logical truth, admitted authority or universal Semioverse",
+  });
+  const lspace = freeze({
+    kind: "signgraph.performedLocalLSpaceIncidence.v1",
+    sourceEventIds: eventIds,
+    sourceHeadIds,
+    loci: freeze(kinematicPoints.map((point, pointIndex) => freeze({
+      pointIndex,
+      occurrences: freeze(eventIds.slice(0, point.upperEventIndex + 1)
+        .map((occurrenceId, occurrenceIndex) => freeze({
+          occurrenceIndex, occurrenceId, headId: sourceHeadIds[occurrenceIndex],
+        }))),
+    }))),
+    scope: "finite source-performed incidence only; no new words, semantic identity, evidence charge or knowledge permission",
+  });
+  if (image.atomic.length !== generated.edges.length ||
+      image.sourceVertexCount !== generated.nodes.length)
+    throw new TypeError("observed head image lost a native performed source occurrence");
+  const originalRoutes = new Map(generated.paths.map(route => [
+    route.first + ":" + route.last, route,
+  ]));
+  const composable = image.composites.map(pair => {
+    const [leftIndex, rightIndex] = pair.sourceEdgeIndices;
+    const left = originalRoutes.get(leftIndex + ":" + (leftIndex + 1));
+    const right = originalRoutes.get(rightIndex + ":" + (rightIndex + 1));
+    // A shadow pair may have equal observed endpoints while its original
+    // source transitions are disjoint. Never call source composition then.
+    const licensed = pair.sourceComposable
+      ? composePerformedObservationRoutes(generated, left, right)
+      : null;
+    const exactEndpointRoute = generated.paths.find(route =>
+      route.from === pair.sourceFrom && route.to === pair.sourceTo);
+    return freeze({
+      sourceStepAddresses: freeze([generated.edges[leftIndex].address,
+        generated.edges[rightIndex].address]),
+      sourceEndpoints: freeze([pair.sourceFrom, ...pair.sourceVia, pair.sourceTo]),
+      observedHead: pair.observedVia,
+      observedFrom: pair.observedFrom,
+      observedTo: pair.observedTo,
+      sourceComposable: pair.sourceComposable,
+      licensedSourceComposite: licensed?.address ?? null,
+      originalEndpointRouteExists: exactEndpointRoute?.address ?? null,
+      ghostObservationOnly: pair.observationOnly,
+    });
+  });
+  return freeze({
+    kind: "signgraph.performedHeadObservationShadow.v1",
+    originalSourceId: generated.originalSourceId,
+    continuedSourceId: generated.continuedSourceId,
+    originalSourceNodes: generated.nodes,
+    originalSourceSteps: generated.edges,
+    originalSourceRoutes: generated.paths,
+    kinematic,
+    lspace,
+    semioverse,
+    observedHeads: image.observedVertices,
+    observedAtomicSteps: image.atomic,
+    observedTwoStepComposites: freeze(composable),
+    originalCompositions: image.liftedCount,
+    ghostCompositions: image.observationOnlyCount,
+    observationalQuotient: generated.observationalQuotient,
+    sourceAuthority: "only original generated Articulating routes compose in the source",
+    observationAuthority: "none: head coincidence cannot authorize or prove a source arrow",
+  });
+}
+
+/** A bounded observation fiber over an ORIGINAL generated kinematic point.
+ * This is a readout of this source-derived object, never a new claim,
+ * proof, permission, signed witness, or authority to consume private data.
+ */
+export function readPerformedSemioverseFiber(shadow, pointIndex) {
+  const W = shadow?.kinematic, semi = shadow?.semioverse;
+  if (shadow?.kind !== "signgraph.performedHeadObservationShadow.v1" ||
+      semi?.kind !== "signgraph.performedSemioverseIncidence.v1" ||
+      !Array.isArray(W?.points) || !Array.isArray(semi?.claimEntries) ||
+      !Number.isSafeInteger(pointIndex) || pointIndex < 0 ||
+      pointIndex >= W.points.length)
+    throw new TypeError("Semioverse fiber requires a generated shadow and an existing kinematic point");
+  const point = W.points[pointIndex];
+  const admitted = semi.claimEntries.filter(entry =>
+    entry.firstOccurrenceIndex <= point.upperEventIndex &&
+    entry.secondOccurrenceIndex <= point.upperEventIndex);
+  return freeze({
+    kind: "signgraph.performedSemioverseFiber.v1",
+    pointIndex, point,
+    entries: freeze(admitted),
+    source: semi.continuedSourceId,
+    scope: "projection of sourced utterance pairs at the kinematic upper prefix; a serialized shadow is not itself an authenticated source witness",
+  });
+}
+
+/** Unique forward lift of a SAME source pair along K(C) sequencing.
+ * Equality is the kinematic identity. No unproved backwards restriction
+ * is allowed: the future original performance is absent from its past.
+ */
+export function transportPerformedSemioverseClaim(shadow, fromPointIndex, toPointIndex, claimIndex) {
+  const from = readPerformedSemioverseFiber(shadow, fromPointIndex);
+  const target = readPerformedSemioverseFiber(shadow, toPointIndex);
+  if (!Number.isSafeInteger(claimIndex) || claimIndex < 0 ||
+      claimIndex >= shadow.semioverse.claimEntries.length)
+    throw new TypeError("Semioverse transport requires a genuine original claim occurrence");
+  const claim = shadow.semioverse.claimEntries[claimIndex];
+  if (!from.entries.includes(claim))
+    throw new TypeError("Semioverse transport cannot backdate a source-performed claim");
+  const precedes = fromPointIndex === toPointIndex ||
+    shadow.kinematic.sequencing.some(edge =>
+      edge.parent === fromPointIndex && edge.child === toPointIndex);
+  if (!precedes)
+    throw new TypeError("Semioverse transport requires original kinematic endpoint sequencing");
+  if (!target.entries.includes(claim))
+    throw new TypeError("Semioverse kinematic transport lost the original performed occurrence");
+  return freeze({
+    kind: "signgraph.performedSemioverseForwardLift.v1",
+    fromPointIndex, toPointIndex, claimIndex,
+    claimAddress: claim.claimAddress,
+    firstOccurrenceId: claim.firstOccurrenceId,
+    secondOccurrenceId: claim.secondOccurrenceId,
+    source: shadow.semioverse.continuedSourceId,
+  });
+}
+
+/**
+ * An actually queryable, finite, source-generated local-to-global fiber
+ * cover. This is the first COMPARISON of patches of the original performed
+ * Semioverse, NOT an assumed Grothendieck coverage or a sheaf theorem.
+ *
+ * Each host-selected patch has an EXPLICIT sparse domain of actually
+ * admitted original claim occurrences at an earned kinematic point, with
+ * its selected subset given SEPARATELY. K(C)'s forward lift licenses
+ * transport from each patch to the target. An inverse-image on the POWERS
+ * of supported coordinates may then restrict an observed section backwards
+ * by intersection: this does not reverse an original performed Articulating.
+ * Metrologic owns these exact finite Heyting/powerset operations.
+ *
+ * Overlaps require equal selected membership for each SAME original occurrence
+ * pair; equal extensional claimAddress does not collapse independent acts.
+ * Incompatible overlap preserves its two opposed patch statements; incomplete
+ * coverage preserves original uncovered pairs. Neither is silently completed.
+ */
+export function readPerformedCellularCover(shadow, targetPointIndex, localPatches) {
+  const target = readPerformedSemioverseFiber(shadow,targetPointIndex);
+  if(!Array.isArray(localPatches)||localPatches.length<1||localPatches.length>64)
+    throw new TypeError("cellular L-Space cover requires 1-64 source-indexed patches");
+  const targetIds=target.entries.map(entry=>String(entry.claimIndex));
+  const targetSupport=subset(targetIds);
+  const byIndex=new Map(target.entries.map(entry=>[String(entry.claimIndex),entry]));
+  const owned=localPatches.map((patch,number)=>{
+    if(!patch||typeof patch!=="object"||Array.isArray(patch)||
+       Object.keys(patch).some(k=>!["pointIndex","coveredClaimIndices","selectedClaimIndices"].includes(k))||
+       !Array.isArray(patch.coveredClaimIndices)||
+       !Array.isArray(patch.selectedClaimIndices)||
+       patch.coveredClaimIndices.length>targetIds.length||
+       patch.selectedClaimIndices.length>patch.coveredClaimIndices.length)
+      throw new TypeError("L-Space cellular patch requires real covered occurrence pairs separately from its selected ones");
+    const original=readPerformedSemioverseFiber(shadow,patch.pointIndex);
+    // No caller-supplied cover relation: the actual generated kinematic arrow
+    // must exist; source forward transport of EVERY local occurrence is read.
+    // A local chart covers a chosen source-qualified part of its earned
+    // fiber, NOT the entire fiber just because one locus was named. Without
+    // this separate domain, every complete cover would require the target
+    // whole-fiber patch and gluing would be almost tautological.
+    const sourceIds=new Set(original.entries.map(entry=>entry.claimIndex));
+    const seen=new Set();
+    for(const index of patch.coveredClaimIndices){
+      if(!Number.isSafeInteger(index)||index<0||!sourceIds.has(index)||seen.has(index))
+        throw new TypeError("L-Space cellular domain must name distinct real performed source pairs");
+      seen.add(index);
+      transportPerformedSemioverseClaim(shadow,patch.pointIndex,targetPointIndex,index);
+    }
+    const chosen=new Set();
+    for(const index of patch.selectedClaimIndices){
+      if(!Number.isSafeInteger(index)||!seen.has(index)||chosen.has(index))
+        throw new TypeError("L-Space selected source pair must occur once inside its actual patch domain");
+      chosen.add(index);
+    }
+    const support=meet(subset(patch.coveredClaimIndices.map(String)),targetSupport);
+    const selection=meet(subset(patch.selectedClaimIndices.map(String)),support);
+    return freeze({
+      patch:number,pointIndex:patch.pointIndex,
+      sourceSupport:support,
+      selected:selection,
+      witness:"caller-selected covered coordinates all verified as original performed claim pairs; selection still has no independent FOUR witness",
+    });
+  });
+  let covered=subset([]);
+  for(const patch of owned)covered=join(covered,patch.sourceSupport);
+  const uncovered=targetSupport.elements.filter(id=>!covered.elements.includes(id));
+  const opposed=[];
+  for(let left=0;left<owned.length;left++)for(let right=left+1;right<owned.length;right++){
+    const overlap=meet(owned[left].sourceSupport,owned[right].sourceSupport);
+    for(const id of overlap.elements){
+      const a=owned[left].selected.elements.includes(id);
+      const b=owned[right].selected.elements.includes(id);
+      if(a!==b){
+        const entry=byIndex.get(id);
+        opposed.push(freeze({
+          claimIndex:entry.claimIndex,claimAddress:entry.claimAddress,
+          firstOccurrenceId:entry.firstOccurrenceId,
+          secondOccurrenceId:entry.secondOccurrenceId,
+          leftPatch:left,rightPatch:right,leftSelected:a,rightSelected:b,
+        }));
+      }
+    }
+  }
+  // Construct a global section ONLY for a complete, overlap-compatible
+  // cover. Set union is lawful after this guard; it doesn't settle charge.
+  const complete=le(targetSupport,covered),compatible=opposed.length===0;
+  let selected=null;
+  if(complete&&compatible){
+    selected=subset([]);
+    for(const patch of owned)selected=join(selected,patch.selected);
+  }
+  const sourceEntries=selected===null?null:
+    freeze(target.entries.filter(entry=>selected.elements.includes(String(entry.claimIndex)))
+      .map(entry=>freeze({
+        locus:targetPointIndex,
+        claimIndex:entry.claimIndex,
+        firstOccurrenceIndex:entry.firstOccurrenceIndex,
+        secondOccurrenceIndex:entry.secondOccurrenceIndex,
+        firstOccurrenceId:entry.firstOccurrenceId,
+        secondOccurrenceId:entry.secondOccurrenceId,
+        claimAddress:entry.claimAddress,
+      })));
+  return freeze({
+    kind:"signgraph.performedCellularFiberCover.v1",
+    originalSourceId:shadow.originalSourceId,
+    continuedSourceId:shadow.continuedSourceId,
+    targetPointIndex,
+    patchCount:owned.length,
+    sourceOccurrenceCount:target.entries.length,
+    complete,compatible,
+    status:complete&&compatible?"glued-conditional-section":"obstructed",
+    patches:freeze(owned.map(p=>freeze({
+      patch:p.patch,pointIndex:p.pointIndex,
+      sourceClaimIndices:freeze(p.sourceSupport.elements.map(Number)),
+      selectedClaimIndices:freeze(p.selected.elements.map(Number)),
+    }))),
+    uncovered:freeze(uncovered.map(id=>{
+      const e=byIndex.get(id);
+      return freeze({
+        claimIndex:e.claimIndex,claimAddress:e.claimAddress,
+        firstOccurrenceId:e.firstOccurrenceId,
+        secondOccurrenceId:e.secondOccurrenceId,
+      });
+    })),
+    incompatibleOverlaps:freeze(opposed),
+    globalSection:sourceEntries,
+    geometry:"original performed kinematic interval points and ordered source-occurrence pair axes; no fabricated continuum/tensor metric",
+    variance:"source occurrences lift FORWARD; section supports compare by exact finite restriction, not backwards source acts",
+    scope:"conditional local cellular fiber chart descent with explicit original support and selected membership; not full sheafification, independently witnessed FOUR valuation, rights, settlement or global L-Space",
+  });
+}
+
+/**
+ * Actual finite Alexandrov section-space of ORIGINAL performed Semioverse
+ * occurrence pairs. The older trace-hypertensor manuscripts assert gluing
+ * of recognition fibers, but the source's performed fibers transport FORWARD
+ * and are not presheaves. A coherent section is a different object:
+ * a selection of the SAME original occurrence pair at comparable positions.
+ *
+ * Restriction is by selecting fewer source-generated positions of an
+ * already coherent section. Binary gluing requires local assignments to
+ * agree on every common position. This constructs and counts the exact
+ * source-possible finite section space, not a fabricated backward transport,
+ * modal nucleus, sheaf H1, physical quasicrystal or licensed external Work.
+ */
+export function readPerformedKinematicSectionSpace(shadow, { patches, sections } = {}) {
+  const W=shadow?.kinematic, semi=shadow?.semioverse;
+  if(shadow?.kind!=="signgraph.performedHeadObservationShadow.v1"||
+     W?.kind!=="signgraph.performedArticulatingKinematicReadout.v1"||
+     semi?.kind!=="signgraph.performedSemioverseIncidence.v1"||
+     shadow.continuedSourceId!==semi.continuedSourceId ||
+     !Array.isArray(W.points)||W.points.length<1||W.points.length>120||
+     !Array.isArray(W.sequencing)||!Array.isArray(semi.claimEntries)||
+     !Array.isArray(semi.sourceEventIds)||
+     semi.claimEntries.length!==semi.sourceEventIds.length**2)
+    throw new TypeError("source-coherent kinematic sections require the existing full performed Semioverse");
+  if(!Array.isArray(patches)||patches.length<1||patches.length>8)
+    throw new RangeError("kinematic cover requires 1..8 finite source-selected opens");
+  const pointCount=W.points.length;
+  const edges=W.sequencing.map(edge=>{
+    if(!Number.isSafeInteger(edge?.parent)||!Number.isSafeInteger(edge?.child)||
+       edge.parent<0||edge.child<0||
+       edge.parent>=pointCount||edge.child>=pointCount||
+       edge.parent===edge.child)
+      throw new TypeError("kinematic cover needs actual oriented original sequencing edges");
+    return edge;
+  });
+  const frame=finitePreorder(pointCount,edges.map(edge=>[edge.parent,edge.child]));
+  const normalized=patches.map((source,index)=>{
+    if(!Array.isArray(source)||source.length<1||source.length>pointCount||
+       source.some((point,i)=>!Number.isSafeInteger(point)||point<0||
+         point>=pointCount||(i>0&&source[i-1]>=point)))
+      throw new TypeError("kinematic cover patch "+index+" needs canonical sorted earned loci");
+    // Metrologic, not SignGraph, owns transitive Alexandrov upper-opens.
+    // Exact original Articulating emitted all these endpoint sequencing pairs.
+    try{return admitUpperOpen(frame,source);}
+    catch(error){throw new TypeError("patch "+index+" is not a source-generated upper-open region: "+error.message);}
+
+  });
+  const union=freeze([...new Set(normalized.flat())].sort((a,b)=>a-b));
+  const claimCount=semi.claimEntries.length;
+  // Exact membership comes from the ORIGINAL performed upper prefix, not an
+  // after-the-fact claim address or an arbitrary chosen valuation.
+  const fibers=Array.from({length:pointCount},(_,p)=>
+    readPerformedSemioverseFiber(shadow,p).entries.map(entry=>entry.claimIndex));
+  const admitted=new Map(union.map(p=>[p,new Set(fibers[p])]));
+  for(const [i,entry] of semi.claimEntries.entries()){
+    if(entry?.claimIndex!==i||
+       entry.firstOccurrenceId!==semi.sourceEventIds[entry.firstOccurrenceIndex]||
+       entry.secondOccurrenceId!==semi.sourceEventIds[entry.secondOccurrenceIndex])
+      throw new TypeError("source kinematic sheaf lost original performed pair positions");
+  }
+  const choicesOf=indices=>{
+    // Do not construct a second finite reachability/section solver in this
+    // sourced SignGraph consumer. The original Metrologic finite preorder
+    // now owns the transitive site, connected components and exact products.
+    const space=finiteCoherentSectionSpace(frame,fibers,indices);
+    return freeze({components:space.components,possibleSections:space.possibleSections});
+  };
+  const patchSpace=freeze(normalized.map((indices,i)=>freeze({
+    index:i,pointIndices:indices,...choicesOf(indices),
+  })));
+  const global=choicesOf(union);
+  const tensorFactors=finitePrefixIncidenceFactors(
+    union.map(p=>W.points[p].upperEventIndex),semi.sourceEventIds.length);
+  const overlaps=freeze(normalized.flatMap((left,i)=>
+    normalized.slice(i+1).map((right,index)=>freeze({
+      left:i,right:i+1+index,
+      pointIndices:freeze(left.filter(p=>right.includes(p))),
+    }))));
+  let glued=null,obstructions=[];
+  if(sections!==undefined){
+    if(!Array.isArray(sections)||sections.length!==normalized.length)
+      throw new TypeError("a local source section must be supplied for every original open");
+    const locals=normalized.map((indices,i)=>{
+      const received=sections[i];
+      if(!Array.isArray(received)||received.length!==indices.length)
+        throw new TypeError("source section requires exactly one source pair per open point");
+      const selections=new Map();
+      for(let j=0;j<indices.length;j++){
+        const row=received[j];
+        if(!row||Object.keys(row).sort().join(",")!=="claimIndex,pointIndex"||
+           row.pointIndex!==indices[j]||
+           !Number.isSafeInteger(row.claimIndex)||row.claimIndex<0||
+           row.claimIndex>=claimCount||
+           !admitted.get(row.pointIndex).has(row.claimIndex))
+          throw new TypeError("local section must select an ORIGINAL performed pair at its earned point");
+        selections.set(row.pointIndex,row.claimIndex);
+      }
+      // Coherence is a source identity constraint, NOT equality of
+      // observational addresses (distinct performed pairs may look equal).
+      for(const component of patchSpace[i].components)
+        if(new Set(component.pointIndices.map(p=>selections.get(p))).size!==1)
+          throw new TypeError("local source section does not preserve its original occurrence pair along kinematic arrows");
+      return selections;
+    });
+    obstructions=overlaps.flatMap(pair=>pair.pointIndices.flatMap(p=>{
+      const left=locals[pair.left].get(p),right=locals[pair.right].get(p);
+      if(left===right)return [];
+      const a=semi.claimEntries[left],b=semi.claimEntries[right];
+      return [freeze({kind:"non-gluable-original-source-overlap",
+        leftPatch:pair.left,rightPatch:pair.right,pointIndex:p,
+        leftClaimIndex:left,rightClaimIndex:right,
+        leftSourceOccurrences:freeze([a.firstOccurrenceId,a.secondOccurrenceId]),
+        rightSourceOccurrences:freeze([b.firstOccurrenceId,b.secondOccurrenceId]),
+        claimAddressesCoincide:a.claimAddress===b.claimAddress,
+        reason:"even equal observed claim addresses do not identify distinct performed original source pairs",
+      })];
+    }));
+    if(obstructions.length===0){
+      const byPoint=new Map();
+      for(const local of locals)for(const [p,index] of local)
+        byPoint.set(p,index);
+      // Coherence across patch boundaries follows *only* for genuinely
+      // upward-open regions: if p≤q and p is in a patch, that patch contains q.
+      const combined=[...byPoint].sort((a,b)=>a[0]-b[0]);
+      for(const component of global.components)
+        if(new Set(component.pointIndices.map(p=>byPoint.get(p))).size!==1)
+          throw new TypeError("the original open-cover local coherence did not glue globally");
+      glued=freeze(combined.map(([pointIndex,claimIndex])=>{
+        const claim=semi.claimEntries[claimIndex];
+        return freeze({pointIndex,claimIndex,
+          firstOccurrenceId:claim.firstOccurrenceId,
+          secondOccurrenceId:claim.secondOccurrenceId,
+          claimAddress:claim.claimAddress,
+        });
+      }));
+    }
+  }
+  return freeze({
+    kind:"signgraph.performedKinematicSectionSpace.v1",
+    status:sections===undefined?"unselected-source-section-space":
+      obstructions.length?"overlap-obstructed":"original-source-sections-glued",
+    originalSourceId:shadow.originalSourceId,
+    continuedSourceId:shadow.continuedSourceId,
+    kinematicOpenCriterion:"upward-closed under original endpoint sequencing",
+    patchSpaces:patchSpace,
+    unionRegion:freeze({pointIndices:union,...global}),
+    pairFiberShape:freeze({
+      sourceOccurrences:semi.sourceEventIds.length,
+      originalOrderedPairPositions:claimCount,
+      semanticAddressQuotientAuthority:"none",
+    }),
+    // Each source-performed kinematic slice is a REAL three-index Boolean
+    // incidence tensor, not an arbitrary vector invented by the caller:
+    // H[p,i,j]=[i<=upper(p)][j<=upper(p)]. Every ordered (i,j) is exactly
+    // the original SignCell generated claim at i*N+j. Equal claimAddress
+    // cells NEVER identify distinct occurrences. Exact CP factors are
+    // indexed by the original upper performed source index k:
+    // H = Σ_k [upper(p)=k] ⊗ [i<=k] ⊗ [j<=k].
+    // This is a bounded *factorization of incidence*, NOT a proved
+    // quasicrystalline diffraction spectrum, numeric physical hypertensor,
+    // universal Day convolution or independently granted compute capacity.
+    sourceIncidenceHypertensor:freeze({
+      kind:"signgraph.sourceGeneratedKinematicIncidenceHypertensor.v1",
+      axes:freeze(["earned-kinematic-locus","first-original-performance","second-original-performance"]),
+      originalOccurrenceIds:semi.sourceEventIds,
+      selectedKinematicPointIndices:union,
+      metrologicFactorReceipt:tensorFactors,
+      exactMathConsumer:"@lenticule-science/math-services-section/tensor-train:tensorTrainOfPrefixIncidence (source candidate; not installed)",
+      claimIndexFormula:"firstOccurrenceIndex * N + secondOccurrenceIndex",
+      incidenceFormula:"1[firstIndex<=upperEventIndex(point)] * 1[secondIndex<=upperEventIndex(point)]",
+      nonzeroIncidences:tensorFactors.nonzeroIncidences,
+      denseEquivalentPositions:tensorFactors.denseEquivalentPositions,
+      cpRankUpperBound:tensorFactors.cpRankUpperBound,
+      sourceIndexedFactors:freeze(tensorFactors.exactFiniteFactorization.map(term=>freeze({
+        upperEventIndex:term.upperEventIndex,
+        kinematicPointIndices:freeze(term.pointIndices.map(local=>union[local])),
+        bothOriginalAxesPrefixSize:term.sourcePrefixLength,
+        exactFactorTerm:term.factorization,
+      }))),
+      coefficientSemantics:"Boolean occurrence-incidence; numerical extension only after qualified Math-source conversion",
+      sourceStanding:"original Articulating-pair source, not physical/FOUR/economic evidence",
+    }),
+    overlaps,overlapObstructions:freeze(obstructions),
+    gluedSection:glued,
+    categoricalBoundary:"restriction of coherent sections is contravariant; performed source occurrences themselves remain forward-only opfibration",
+    mathematicalScope:"finite source-coherent binary descent, not arbitrary Grothendieck sheaf, numerical sheaf H1, modal Heyting topos or proven quasicrystalline hypertensor",
+    evidenceAuthority:"conditional mathematical readout of original performed Articulating, no independently received Lean/kernel/actor credential",
+    customerSettlement:"not-established",
+  });
+}
+
+/** Compare one proposed receiving classification with the original performed
+ * Semioverse claim-address boundary. This finite test is the factorization
+ * condition for d to descend through q, not a new authority or a universal
+ * Wood mediator. It produces an original-occurrence counterexample when
+ * two source claims share q but require different receiving treatments.
+ */
+export function assessPerformedBoundaryFactorization(shadow, requiredReadings) {
+  // This is a conditional finite receiving/observation check, NOT a portal
+  // implementation, source-authentication function or host/office admission.
+  const semi = shadow?.semioverse;
+  const ids = semi?.sourceEventIds, entries = semi?.claimEntries;
+  if (shadow?.kind !== "signgraph.performedHeadObservationShadow.v1" ||
+      semi?.kind !== "signgraph.performedSemioverseIncidence.v1" ||
+      semi.continuedSourceId !== shadow.continuedSourceId ||
+      semi.originalSourceId !== shadow.originalSourceId ||
+      !Array.isArray(ids) || ids.length < 1 ||
+      ids.length > 32 || new Set(ids).size !== ids.length ||
+      ids.some(id => typeof id !== "string" || !id.length) ||
+      !Array.isArray(entries) || entries.length !== ids.length ** 2)
+    throw new TypeError("boundary check requires a complete original performed Semioverse readout");
+  // Native SignCell generates one ordered pair for every pair of original
+  // Utterance occurrences. This validates structural custody of the readout,
+  // not the authenticity of a serialized source or any external permission.
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e?.claimIndex !== i ||
+        !Number.isSafeInteger(e.firstOccurrenceIndex) ||
+        !Number.isSafeInteger(e.secondOccurrenceIndex) ||
+        e.firstOccurrenceId !== ids[e.firstOccurrenceIndex] ||
+        e.secondOccurrenceId !== ids[e.secondOccurrenceIndex] ||
+        typeof e.claimAddress !== "string" || !e.claimAddress.length)
+      throw new TypeError("boundary check found an inconsistent original claim occurrence");
+  }
+  if (!Array.isArray(requiredReadings) || requiredReadings.length !== entries.length)
+    throw new TypeError("boundary check requires one recipient classification for every original claim occurrence");
+  const readings = new Array(entries.length);
+  for (const supplied of requiredReadings) {
+    if (!supplied || typeof supplied !== "object" || Array.isArray(supplied) ||
+        Object.keys(supplied).sort().join(",") !== "claimIndex,requiredClass" ||
+        !Number.isSafeInteger(supplied.claimIndex) ||
+        supplied.claimIndex < 0 || supplied.claimIndex >= entries.length ||
+        typeof supplied.requiredClass !== "string" ||
+        !/^[a-z][a-z0-9._:-]{0,127}$/u.test(supplied.requiredClass) ||
+        readings[supplied.claimIndex] !== undefined)
+      throw new TypeError("boundary check requires unique, canonical, complete recipient classifications");
+    readings[supplied.claimIndex] = supplied.requiredClass;
+  }
+  const image = new Map(), obstructions = [];
+  const sourceCase = (entry, requiredClass) => freeze({
+    claimIndex: entry.claimIndex,
+    firstOccurrenceId: entry.firstOccurrenceId,
+    secondOccurrenceId: entry.secondOccurrenceId,
+    requiredClass,
+  });
+  for (const entry of entries) {
+    const demanded = readings[entry.claimIndex];
+    const held = image.get(entry.claimAddress);
+    if (held === undefined) {
+      image.set(entry.claimAddress, {
+        first: entry, requiredClass: demanded, indices: [entry.claimIndex],
+        hasObstruction: false,
+      });
+    } else {
+      held.indices.push(entry.claimIndex);
+      if (held.requiredClass !== demanded && !held.hasObstruction) {
+        obstructions.push(freeze({
+          kind: "source-distinction-lost-at-boundary",
+          claimAddress: entry.claimAddress,
+          first: sourceCase(held.first, held.requiredClass),
+          second: sourceCase(entry, demanded),
+        }));
+        held.hasObstruction = true;
+      }
+    }
+  }
+  // Finite descent criterion: d factors through q on the complete original
+  // source exactly when d is constant on every fiber of q. Here q is the
+  // original SignCell claimAddress readout, never arbitrary user-named edges.
+  const factorable = obstructions.length === 0;
+  // The coarsest recipient-sufficient refinement of this ORIGINAL q source
+  // groups exactly (original claimAddress, recipient-required class).
+  // Never refine a source via a caller-invented alias or imply consent to
+  // disclose any class. Group index is local to a boundary: not a global ID.
+  const byBoundary = new Map();
+  for (const entry of entries) {
+    const observed = entry.claimAddress, requirement = readings[entry.claimIndex];
+    let classes = byBoundary.get(observed);
+    if (classes === undefined) { classes = new Map(); byBoundary.set(observed, classes); }
+    let group = classes.get(requirement);
+    if (group === undefined) {
+      group = { claimAddress: observed, requiredClass: requirement,
+        classIndexWithinBoundary: classes.size, sourceClaimIndices: [] };
+      classes.set(requirement, group);
+    }
+    group.sourceClaimIndices.push(entry.claimIndex);
+  }
+  const groups = freeze([...byBoundary.values()].flatMap(classes =>
+    [...classes.values()].map(group => freeze({
+      ...group, sourceClaimIndices: freeze(group.sourceClaimIndices),
+    }))));
+  const maxClassesPerBoundary = Math.max(1,
+    ...[...byBoundary.values()].map(classes => classes.size));
+  const necessaryRefinement = freeze({
+    kind: "signgraph.conditionalReceivingBoundaryRefinement.v1",
+    groups, extraClasses: groups.length - byBoundary.size,
+    maxClassesPerBoundary,
+    // A finite fixed-width sidecar can reuse tags in different q fibers.
+    // This bound says nothing about source secrecy or permitted disclosure.
+    minimumAdditionalTagBits: Math.ceil(Math.log2(maxClassesPerBoundary)),
+    standing: "proposed-minimal-distinction-only-not-disclosed-or-authorized",
+  });
+  return freeze({
+    kind: "signgraph.performedBoundaryFactorization.v1",
+    originalSourceId: shadow.originalSourceId,
+    continuedSourceId: shadow.continuedSourceId,
+    sourceClaimCount: entries.length,
+    observedBoundaryCount: image.size,
+    necessaryRefinement,
+    status: factorable ? "conditional-factorization-on-finite-source" : "source-distinction-obstructed",
+    inducedBoundaryReadings: factorable
+      ? freeze([...image].map(([claimAddress, held]) => freeze({
+          claimAddress, requiredClass: held.requiredClass,
+          sourceClaimIndices: freeze([...held.indices]),
+        })))
+      : null,
+    obstructions: freeze(obstructions),
+    sourceStanding: "original-performed-source-readout-not-issuer-authentication",
+    recipientStanding: "caller-supplied-classifications-not-independent-acceptance",
+    authority: "none",
+    execution: "not-performed",
+    settlement: "not-established",
+  });
 }

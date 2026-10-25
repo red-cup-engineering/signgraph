@@ -14,13 +14,17 @@ const triangle = () => ({
   faces: [{ id: "f", boundary: ["ab", "bc", "ca"].map(edge => ({ edge, direction: 1 })) }],
 });
 
-test("three reusable operations share one structural admission, with machine-readable schemas", () => {
+test("published operations retain their exact catalog and machine-readable schemas", () => {
   assert.deepEqual(Object.values(operations).map(op => op.id), [
     "signgraph.holonomy.topology",
     "signgraph.holonomy.burgers",
     "signgraph.holonomy.geometry",
     "signgraph.holonomy.affine",
     "signgraph.mark-incidence.observed-head-gluing",
+    "signgraph.mark-incidence.performed-head-shadow",
+    "signgraph.mark-incidence.kinematic-section-descent",
+    "signgraph.mark-incidence.performed-cellular-cover",
+    "signgraph.mark-incidence.boundary-factorization",
     "signgraph.mark-incidence.articulating-tower",
   ]);
   for (const op of Object.values(operations).filter(op =>
