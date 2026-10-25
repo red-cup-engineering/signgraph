@@ -1153,7 +1153,7 @@ export function pullbackCellularSheaf(source, {base, map}={}) {
     return {id:vertex,dim:original.dim};
   });
   const edges=base.edges.map(edge=>{
-    const original=srcEdges.get(id(edgeImages.get(id(edge))));
+    const original=srcEdges.get(id(edgeImages.get(id(edge.id))));
     const mappedFrom=vertexImages.get(id(edge.from));
     const mappedTo=vertexImages.get(id(edge.to));
     if(id(mappedFrom)!==id(original.from) || id(mappedTo)!==id(original.to))
