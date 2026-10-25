@@ -7,7 +7,8 @@
     "src",
     "data/records/requirements-records",
     "scripts/holonomy.mjs",
-    "test/graph.test.mjs"
+    "test/graph.test.mjs",
+    "test/cellular-sheaf.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -72,6 +73,7 @@
     "signgraph-holonomy": "scripts/holonomy.mjs"
   },
   "receivingTests": [
-    "test/graph.test.mjs"
+    "test/graph.test.mjs",
+    "test/cellular-sheaf.test.mjs"
   ]
 }
