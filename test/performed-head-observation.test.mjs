@@ -460,6 +460,16 @@ test("actual source-generated cellular L-Space cover operation returns source oc
 });
 
 
+test("one source-published kinematic operation has one actual schema and executor",()=>{
+  const ids=Object.values(operations).map(op=>op.id);
+  assert.equal(new Set(ids).size,ids.length,
+    "an operation name cannot select two incompatible schema/dispatch implementations");
+  assert.equal(ids.filter(id=>id==="signgraph.mark-incidence.kinematic-section-descent").length,1);
+  assert.ok(operations.performedKinematicSections?.inputSchema?.properties?.patches);
+  assert.equal("generatedKinematicSections" in operations,false,
+    "do not expose an unreachable duplicate registry entry");
+});
+
 test("the original performed source yields a genuine gluable coherent kinematic hypertensor",()=>{
   // Not a freely authored graph/trace: the actual original SignCell
   // constructor is used by the owning SignGraph source generator.
