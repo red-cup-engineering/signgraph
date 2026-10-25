@@ -1079,3 +1079,101 @@ export function bodyBarReceipt(bodyIds, constraints, options = {}) {
     rigid: mechanisms === 0, maxwell: Object.freeze({ ...maxwell, holds: maxwell.lhs === maxwell.rhs }), cohomology,
   });
 }
+
+
+/**
+ * Exact pullback of an ORIGINAL cellular sheaf along an explicitly supplied,
+ * incidence-preserving map of oriented 1-skeleta f : B -> G. This is the
+ * pointwise cellular-sheaf inverse image f*F, not a claim that a Source/Mark
+ * transition generated f, nor proof of a Grothendieck cover or effective
+ * Articulating transport.
+ *
+ * base={vertices:[id,...],edges:[{id,from,to},...]};
+ * map={vertices:[{id,source},...],edges:[{id,source},...]};
+ * Each original base cell has exactly one image of the SAME cell dimension.
+ * Maps need not be injective; original source cell IDs never get rewritten.
+ * An edge image must preserve both incident vertex images and orientation.
+ *
+ * This bridges genuinely DIFFERENT source cell presentations to one
+ * source-declared comparison base, before the EXISTING fiberwise tensor and
+ * exact rational section/gluing operations. All equality/authority between
+ * vendor identities must be externally witnessed by the custodian that
+ * selected the map; no string similarities or automatic joins are used.
+ */
+export function pullbackCellularSheaf(source, {base, map}={}) {
+  if (source?.kind!=="signgraph.cellularSheaf" || source.exact!==true ||
+      !base || typeof base!=="object" || Array.isArray(base) ||
+      Object.keys(base).some(key=>!["vertices","edges"].includes(key)) ||
+      !Array.isArray(base.vertices) || !Array.isArray(base.edges) ||
+      base.vertices.length<1 || base.vertices.length>128 ||
+      base.edges.length>256 || !map || typeof map!=="object" ||
+      Array.isArray(map) || Object.keys(map).some(key=>!["vertices","edges"].includes(key)) ||
+      !Array.isArray(map.vertices) || !Array.isArray(map.edges) ||
+      map.vertices.length!==base.vertices.length ||
+      map.edges.length!==base.edges.length)
+    throw new TypeError("cellularSheaf pullback requires an exact source and bounded complete base-to-source cell map");
+
+  const id=coincidenceKey;
+  const srcVertices=new Map(source.vertices.map(v=>[id(v.id),v]));
+  const srcEdges=new Map(source.edges.map(e=>[id(e.id),e]));
+  const baseVertices=new Set(),baseEdges=new Set();
+  for(const vertex of base.vertices) {
+    const key=id(vertex);
+    if(baseVertices.has(key))throw new TypeError("cellularSheaf pullback repeats a base vertex");
+    baseVertices.add(key);
+  }
+  for(const edge of base.edges) {
+    if(!edge || typeof edge!=="object" || Array.isArray(edge) ||
+       Object.keys(edge).sort().join(",")!=="from,id,to" ||
+       !baseVertices.has(id(edge.from)) || !baseVertices.has(id(edge.to)) ||
+       baseEdges.has(id(edge.id)))
+      throw new TypeError("cellularSheaf pullback needs one oriented original base edge and its endpoints");
+    baseEdges.add(id(edge.id));
+  }
+
+  const admitted=(entries,baseKeys,sourceKeys,label)=>{
+    const result=new Map();
+    for(const row of entries) {
+      if(!row || typeof row!=="object" || Array.isArray(row) ||
+         Object.keys(row).sort().join(",")!=="id,source")
+        throw new TypeError("cellularSheaf pullback needs exact "+label+" source cell images");
+      const key=id(row.id), image=id(row.source);
+      if(!baseKeys.has(key) || result.has(key) || !sourceKeys.has(image))
+        throw new TypeError("cellularSheaf pullback has an unknown, duplicate, or missing "+label+" cell image");
+      result.set(key,row.source);
+    }
+    if(result.size!==baseKeys.size)
+      throw new TypeError("cellularSheaf pullback omits an original "+label+" cell image");
+    return result;
+  };
+  const vertexImages=admitted(map.vertices,baseVertices,new Set(srcVertices.keys()),"vertex");
+  const edgeImages=admitted(map.edges,baseEdges,new Set(srcEdges.keys()),"edge");
+  const vertices=base.vertices.map(vertex=>{
+    const original=srcVertices.get(id(vertexImages.get(id(vertex))));
+    return {id:vertex,dim:original.dim};
+  });
+  const edges=base.edges.map(edge=>{
+    const original=srcEdges.get(id(edgeImages.get(id(edge))));
+    const mappedFrom=vertexImages.get(id(edge.from));
+    const mappedTo=vertexImages.get(id(edge.to));
+    if(id(mappedFrom)!==id(original.from) || id(mappedTo)!==id(original.to))
+      throw new TypeError("cellularSheaf pullback edge must preserve exact oriented incidence of both source endpoints");
+    return {id:edge.id,from:edge.from,to:edge.to,dim:original.dim,
+      restrict:{from:original.restrict.from,to:original.restrict.to}};
+  });
+  const sheaf=cellularSheaf({vertices,edges});
+  if(sheaf.c0>256||sheaf.c1>256)
+    throw new RangeError("cellularSheaf pullback exceeds the bounded exact section dimension");
+  return Object.freeze({
+    kind:"signgraph.cellularSheaf.pullback.v1",
+    sheaf,
+    baseVertices:Object.freeze([...base.vertices]),
+    baseEdges:Object.freeze(base.edges.map(e=>e.id)),
+    vertexImages:Object.freeze(base.vertices.map(vertex=>
+      Object.freeze({id:vertex,source:vertexImages.get(id(vertex))}))),
+    edgeImages:Object.freeze(base.edges.map(edge=>
+      Object.freeze({id:edge.id,source:edgeImages.get(id(edge.id))}))),
+    sourceMapAuthority:"caller-declared map; source custodian must independently qualify cell correspondences",
+    mathematicalScope:"strict oriented cellular 1-skeleton inverse image; no source-generated opfibration proved",
+  });
+}
