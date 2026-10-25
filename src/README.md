@@ -153,6 +153,19 @@ receiving establishes parity and then a measured improvement.
   Claim by claim it is SignChain's possibilizing of the told fiber. Heyting
   algebra (SignCell), fiber algebra (SignChain), sheaf (here): the
   dependencies run that way only.
+  `inheritedClaim` selects one exact predicate/object coordinate;
+  `queryInheritedTellings` pages witnessed claims with their source tokens,
+  opposed evidence and frame identity. Source access is supplied by the host.
+- `relational-value` — canonical records, sequences, scalars and bytes become
+  source/revision-witnessed structural cells through `relationalValuePredications`.
+  Its `edges` preserve directed structure; `attributes` preserve kind and lexical
+  data. Cell nodes are qualified by the complete payload identity; `sourceRoot`
+  and `nodeCoordinates` retain the original SEN coordinates. Shared spellings
+  do not establish entity identity or publication rights.
+  Payload admission preserves the established root Number and BigInt carriers,
+  including safe integers that decode to Number. It requires complete byte
+  equality with an original encoder output; it neither rewrites prior addresses
+  nor equates the two historical source carriers.
 - `cell-graph` — `cellGraph(cells, observations)` builds the Chu
   relation of held SignCells under named, total observations
   (`{ name, evaluate(cell) }`) using metrologic's `chuSpaceOfEntries`
@@ -425,6 +438,6 @@ obstructions use the canonical semiotic-content-address owner's NFC-aware UTF-8
 byte ordering, not host `localeCompare`. This does not assert that matching
 Mark presentations establish observational equality or external evidence:
 SignCell continues to own typed source identity and SignChain owns the actual
-tellings. The SignGraph source edition 0.5.0 selects exact SignCell 0.10.0,
+tellings. The SignGraph source edition 0.7.0 selects exact SignCell 0.13.0,
 whose concept address ordering is defined by the same canonical byte comparator.
 This needs genuine package/lock selection before a running consumer can claim it.
