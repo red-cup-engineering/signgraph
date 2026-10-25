@@ -33,11 +33,11 @@ importers:
         specifier: 0.4.0
         version: 0.4.0
       '@red-cup-engineering/metrologic':
-        specifier: 0.13.0
-        version: 0.13.0
+        specifier: 0.14.3-dev.3
+        version: 0.14.3-dev.3
       '@red-cup-engineering/semiotic-content-address':
-        specifier: 0.1.0
-        version: 0.1.0
+        specifier: 0.1.1
+        version: 0.1.1
       '@red-cup-engineering/signcell':
         specifier: 0.13.0
         version: 0.13.0
@@ -163,6 +163,10 @@ packages:
 
   '@red-cup-engineering/metrologic@0.13.0':
     resolution: {integrity: sha512-JDL+tHet8nelmUENKnpHzHxe6xirVowOyK4owG4RzyI+/jFUpr5bj/TBmnZxAGCfU1njkAC+gY9gyrDTJWwHzw==}
+    engines: {node: '>=22'}
+
+  '@red-cup-engineering/metrologic@0.14.3-dev.3':
+    resolution: {integrity: sha512-WfG3k21DwhgxO81GoZV3I/7fIFbjevB7Oo9H/pRWE1SoHBnRmssXHYsWZSzBf0BKku/ExCuxLqd0JZY/Te7VRg==}
     engines: {node: '>=22'}
 
   '@red-cup-engineering/metrologic@0.4.0':
@@ -451,6 +455,12 @@ snapshots:
       '@red-cup-engineering/json-services-section': 0.4.0
 
   '@red-cup-engineering/metrologic@0.13.0':
+    dependencies:
+      '@red-cup-engineering/computer-data-engineering-services-section': 0.2.0
+      '@red-cup-engineering/exact-number-data-service': 0.1.1
+      '@red-cup-engineering/json-services-section': 0.4.0
+
+  '@red-cup-engineering/metrologic@0.14.3-dev.3':
     dependencies:
       '@red-cup-engineering/computer-data-engineering-services-section': 0.2.0
       '@red-cup-engineering/exact-number-data-service': 0.1.1
