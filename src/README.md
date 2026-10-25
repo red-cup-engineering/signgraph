@@ -428,3 +428,40 @@ SignCell continues to own typed source identity and SignChain owns the actual
 tellings. The SignGraph source edition 0.5.0 selects exact SignCell 0.10.0,
 whose concept address ordering is defined by the same canonical byte comparator.
 This needs genuine package/lock selection before a running consumer can claim it.
+
+
+### Exact cellular inverse image before source-fiber tensoring
+
+The current original `./cellular-sheaf` export also admits
+`pullbackCellularSheaf(original, {base,map})`: a real finite oriented
+1-skeleton morphism `map : base → original`, declaring **one original
+source cell for every selected base vertex and edge**, and preserving
+incidence direction. The exact original vertex and edge stalk dimensions
+and their restriction maps are copied along that morphism; original
+source identities are not renamed or erased. Failure to preserve both
+mapped endpoints is an actual mathematical refusal, not a permitted
+approximate match. No input observations or claims of identity equality
+are synthesized.
+
+The resulting `pullback.sheaf` is a genuine source-labelled **comparison
+base** on which the existing `tensorCellularSheaves`,
+`extendCellularSheafSection` and `glueCellularSheafPatches` now operate.
+For example, two differently identified original source edges with
+restrictions `1,1` and `2,3`, explicitly mapped onto the same *witnessed*
+comparison edge, give a tensor restriction `2x = 3y`. A real admitted local
+reading `x=3` then yields the exact rational section `(3,2)` or, if a
+contrary source reading is present, a linear obstruction certificate from
+the original Data rational solver. A syntactically well-typed graph map
+**does not prove** a cross-enterprise Party join, AWS ownership, source
+Ancestry, consent, or physical equivalence: those facts must be received
+by the original competent observation and governance owners separately.
+
+This is the concrete finite base-change edge missing between Obsmetrologia's
+generated source-indexed masked-descent **proof candidates** and the
+earlier SignGraph exact cellular patches. It does not establish the full
+historical Quasicrystalline Hypertensor Topos, global temporal fiber
+transport, any genuine quasicrystalline diffraction or a universal
+sheaf theorem. The original CAIRN L-Space reader can retain each source
+graph and independent map NI with per-Actor rights rather than relying
+on equal text names. Native package, Lean kernel, actual source-map
+qualification and installed customer receiving remain separate.
