@@ -5,7 +5,7 @@ import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
   apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
-  weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection, tensorCellularSheaves, glueCellularSheafPatches,
+  weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection, tensorCellularSheaves, pullbackCellularSheaf, glueCellularSheafPatches,
 } from "../src/cellular-sheaf.mjs";
 
 const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} !~ ${b}`);
@@ -599,4 +599,62 @@ test("covered source-local sheaf sections actually glue; contradictory and missi
    [["odooparty","13"],["seller","8"]]),aws]);
  assert.equal(locallyBroken.status,"locally-obstructed");
  assert.equal(locallyBroken.failedRegion,"odoo");
+});
+
+
+test("different original enterprise/cloud stalks pull back to one witnessed base and tensor before exact gluing",()=>{
+  const O=cellularSheaf({
+    vertices:[{id:"odoo:company",dim:1},{id:"odoo:invoice",dim:1}],
+    edges:[{id:"odoo:order",from:"odoo:company",to:"odoo:invoice",
+      dim:1,restrict:{from:[[1]],to:[[1]]}}],
+  });
+  const A=cellularSheaf({
+    vertices:[{id:"aws:tenant",dim:1},{id:"aws:capacity",dim:1}],
+    edges:[{id:"aws:resource",from:"aws:tenant",to:"aws:capacity",
+      dim:1,restrict:{from:[[2]],to:[[3]]}}],
+  });
+  const base={vertices:["buyer","resource"],
+    edges:[{id:"buyer-resource",from:"buyer",to:"resource"}]};
+  const morphism=(from,to,edge)=>({
+    vertices:[{id:"buyer",source:from},{id:"resource",source:to}],
+    edges:[{id:"buyer-resource",source:edge}],
+  });
+  const odoo=pullbackCellularSheaf(O,{base,
+    map:morphism("odoo:company","odoo:invoice","odoo:order")});
+  const aws=pullbackCellularSheaf(A,{base,
+    map:morphism("aws:tenant","aws:capacity","aws:resource")});
+  const comparison=tensorCellularSheaves([
+    {sourceRef:"source:odoo",sheaf:odoo.sheaf},
+    {sourceRef:"source:aws",sheaf:aws.sheaf},
+  ]);
+  assert.deepEqual(comparison.vertices.map(x=>x.id),["buyer","resource"]);
+  assert.deepEqual(comparison.edges.map(x=>x.id),["buyer-resource"]);
+  assert.deepEqual(comparison.edges[0].restrict.from.map(row=>row.map(x=>x.num+"/"+x.den)),
+    [["2/1"]]);
+  assert.deepEqual(comparison.edges[0].restrict.to.map(row=>row.map(x=>x.num+"/"+x.den)),
+    [["3/1"]]);
+  // The partial source reader now computes a genuine missing coordinate,
+  // rather than requiring providers to rename their original resource IDs.
+  const received=extendCellularSheafSection(comparison,[
+    {vertex:"buyer",coordinate:0,value:"3",sourceRecord:"source:customer-window"}
+  ]);
+  assert.equal(received.status,"mathematically-liftable");
+  assert.deepEqual(received.exactSection.map(x=>x.num+"/"+x.den),["3/1","2/1"]);
+  const covered=glueCellularSheafPatches(comparison,[{
+    region:"joint-confirmed",sourceRef:"source:joint-patch",
+    vertices:[{vertex:"buyer",values:["3"]},{vertex:"resource",values:["2"]}]
+  }]);
+  assert.equal(covered.status,"globally-glued");
+  const disputed=glueCellularSheafPatches(comparison,[{
+    region:"joint-contrary",sourceRef:"source:disagreed",
+    vertices:[{vertex:"buyer",values:["3"]},{vertex:"resource",values:["5"]}]
+  }]);
+  assert.equal(disputed.status,"locally-obstructed");
+  assert.ok(disputed.obstruction.sourceEquationWeights.length>0);
+  assert.throws(()=>pullbackCellularSheaf(A,{base,
+    map:morphism("aws:capacity","aws:tenant","aws:resource")}),
+    /exact oriented incidence/u);
+  assert.deepEqual(A.vertices.map(x=>x.id),["aws:tenant","aws:capacity"],
+    "pullback cannot rename original cloud resource identities");
+  assert.equal(aws.sourceMapAuthority.startsWith("caller-declared"),true);
 });
