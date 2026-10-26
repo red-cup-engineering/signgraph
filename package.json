@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.7.1-dev.3",
+  "version": "0.7.1-dev.4",
   "type": "module",
   "description": "SignCell and SignChain sites, transport, relations and graph projections.",
   "files": [
@@ -11,7 +11,8 @@
     "test/token-sheaf.test.mjs",
     "test/holonomy-operations.test.mjs",
     "test/performed-head-observation.test.mjs",
-    "test/relational-value.test.mjs"
+    "test/relational-value.test.mjs",
+    "test/cellular-sheaf.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -55,7 +56,7 @@
     "@red-cup-engineering/computer-content-engineering-services-section": "0.1.0",
     "@red-cup-engineering/xml-document-rendering-service": "0.1.7",
     "@red-cup-engineering/computer-data-engineering-services-section": "0.7.1",
-    "@red-cup-engineering/exact-number-data-service": "0.1.2",
+    "@red-cup-engineering/exact-number-data-service": "0.1.7",
     "@red-cup-engineering/signcell": "0.13.1-dev.0",
     "@red-cup-engineering/signchain": "0.4.2-dev.1",
     "@red-cup-engineering/json-schema-services-section": "0.5.0",
@@ -80,6 +81,7 @@
     "test/token-sheaf.test.mjs",
     "test/holonomy-operations.test.mjs",
     "test/performed-head-observation.test.mjs",
-    "test/relational-value.test.mjs"
+    "test/relational-value.test.mjs",
+    "test/cellular-sheaf.test.mjs"
   ]
 }

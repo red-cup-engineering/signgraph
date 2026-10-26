@@ -636,3 +636,36 @@ Original typed-Mark admission canonicalizes unit text to NFC before its content 
 
 `possibilities` are strictly `source-offered-only-not-authorized`; `obstructions` explain refused source cases; `capacitySources` is a unique read-only shared-source projection. These are neither autonomous Physarum dynamics nor a reserved amount. See [SignCraft #11](https://github.com/red-cup-engineering/signcraft/issues/11), [SignGraph #26](https://github.com/red-cup-engineering/signgraph/issues/26) and [AOE government #99](https://github.com/red-cup-engineering/agent-organization-engine/issues/99) for distinct receiver and authorization obligations. Native tests are authored in original `test/graph.test.mjs`; source-modeled tests are not immutable/pinned/native installation qualification.
 
+### Exact cellular sections, gluing, tensoring and inverse images
+
+The `./cellular-sheaf` export computes exact finite sections using the
+original Data rational solver. `extendCellularSheafSection(sheaf,
+observations)` combines the sheaf's restriction equations with the supplied
+vertex coordinates. Missing coordinates remain free. A consistent system
+returns a particular section and a basis for its free directions; an
+inconsistent system returns an exact linear combination of the original
+equations witnessing the obstruction.
+
+`glueCellularSheafPatches(sheaf, patches)` checks each local section on its
+declared vertices and edges, retains repeated observations, and checks that
+the patches jointly cover the original vertices and edges. Compatible local
+sections over a complete cover are glued by the same exact solver. The
+result retains the source rows, patch identities, cover and local residuals.
+
+`tensorCellularSheaves(factors)` aligns the original vertex and oriented edge
+identities of two to four factors and forms exact Kronecker restriction
+matrices. Differently ordered presentations of the same cells align by their
+actual identities. The dimension bound is checked before allocation.
+
+`pullbackCellularSheaf(original, {base, map})` forms the inverse image along
+an explicit oriented cellular map. Every base vertex and edge selects an
+original cell; both edge endpoints must agree with the vertex map. The
+original stalk dimensions and restriction matrices are copied along this
+map, retaining the original identities. The resulting `pullback.sheaf` can
+then be tensored, extended or glued on the common base.
+
+For example, two source edges with restrictions `(1, 1)` and `(2, 3)`, mapped
+to one comparison edge, yield the tensor equation `2x = 3y`. An observation
+`x = 3` extends to the exact section `(3, 2)`. A conflicting observation
+produces the corresponding exact obstruction. Each operation retains its
+input cell identities and the equations used in the result.

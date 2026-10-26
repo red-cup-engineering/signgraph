@@ -24,8 +24,8 @@ importers:
         specifier: 0.11.0
         version: 0.11.0
       '@red-cup-engineering/exact-number-data-service':
-        specifier: 0.1.2
-        version: 0.1.2
+        specifier: 0.1.7
+        version: 0.1.7
       '@red-cup-engineering/json-schema-services-section':
         specifier: 0.5.0
         version: 0.5.0
@@ -147,8 +147,9 @@ packages:
   '@red-cup-engineering/exact-number-data-service@0.1.1':
     resolution: {integrity: sha512-D54dcxY7eqK23lktqbv0HjjNNroY2clDJ1K5TW7pWN2NBeDOGbS53yGv7sAYfToPn3YH8pKrpBVAB1URg8kcuA==}
 
-  '@red-cup-engineering/exact-number-data-service@0.1.2':
-    resolution: {integrity: sha512-324aBhzrMKTu7Pupr79MmyosKmtG30xR7stHapRqklFtXbhijeAWF1sLQdJMAgB1xwRfEIbpElPbzMu7Zx3q+A==}
+  '@red-cup-engineering/exact-number-data-service@0.1.7':
+    resolution: {integrity: sha512-9z8xczUFBMeV5iv1q98XTzWCF4VwPZ5PoDjLVlzZxOIkk6prgxef2VB6JEOi1U7lFgcSYDE1elGqL0+NB/VCLA==}
+    hasBin: true
 
   '@red-cup-engineering/json-schema-services-section@0.5.0':
     resolution: {integrity: sha512-kqq0KOLrbORJ0sGInJJn1rV22tqsu3FOMg5mi0RsARDYUH8O8S+LUCIW9NZwX79OLASBtTYKjOq5Zk22tv3kbw==}
@@ -435,7 +436,7 @@ snapshots:
 
   '@red-cup-engineering/exact-number-data-service@0.1.1': {}
 
-  '@red-cup-engineering/exact-number-data-service@0.1.2': {}
+  '@red-cup-engineering/exact-number-data-service@0.1.7': {}
 
   '@red-cup-engineering/json-schema-services-section@0.5.0':
     dependencies:
