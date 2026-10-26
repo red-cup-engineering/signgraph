@@ -1,7 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { operations, LIMITS, executeOperation } from "../src/operations.mjs";
 
 const triangle = () => ({
@@ -143,66 +141,6 @@ test("trusted hosts can select higher finite capacity without weakening default 
   }).betti.h0, 1);
 });
 
-const bin = fileURLToPath(new URL("../scripts/holonomy.mjs", import.meta.url));
-
-test("installed CLI batches successful and rejected JSONL requests without side effects", () => {
-  const input = triangle();
-  const messages = [
-    { operation: "signgraph.holonomy.topology", input },
-    { operation: "signgraph.holonomy.affine", input: {
-      ...input, edgeMotions: [
-        { rotation: 0, translation: [1, 0] },
-        { rotation: 0, translation: [0, 1] },
-        { rotation: 0, translation: [-1, -1] },
-      ],
-    }},
-    { operation: "signgraph.holonomy.unknown", input },
-    { operation: "signgraph.holonomy.topology", input },
-  ].map(x => JSON.stringify(x)).join("\n") + "\n";
-  const child = spawnSync(process.execPath, [bin], {
-    input: messages, encoding: "utf8", timeout: 10000,
-  });
-  assert.equal(child.status, 1, child.stderr);
-  const receipts = child.stdout.trim().split("\n").map(x => JSON.parse(x));
-  assert.equal(receipts.length, 4);
-  assert.deepEqual(receipts.map(x => x.ok), [true, true, false, true]);
-  assert.equal(receipts[0].receipt.graphOnlyH1, 1);
-  assert.equal(receipts[1].receipt.classification, "affine-flat");
-  assert.match(receipts[2].error, /not installed/);
-  assert.equal(receipts[3].receipt.betti.h1, 0);
-  assert.equal(child.stderr, "");
-  const help = spawnSync(process.execPath, [bin, "--help"], { encoding: "utf8" });
-  assert.equal(help.status, 0);
-  assert.match(help.stdout, /signgraph\.holonomy\.affine/);
-});
-
-test("CLI input budget produces a failure receipt and still receives subsequent work", () => {
-  const child = spawnSync(process.execPath, [bin], {
-    input: JSON.stringify({ operation: "signgraph.holonomy.topology", input: { typo: "x".repeat(300000) } }) +
-      "\n" + JSON.stringify({ operation: "signgraph.holonomy.topology", input: triangle() }),
-    encoding: "utf8", timeout: 10000,
-  });
-  assert.equal(child.status, 1, child.stderr);
-  const receipts = child.stdout.trim().split("\n").map(x => JSON.parse(x));
-  assert.equal(receipts.length, 2);
-  assert.match(receipts[0].error, /64KiB/);
-  assert.equal(receipts[1].ok, true);
-});
-
-test("CLI enforces its 1024-request batch limit with a failing exit code", () => {
-  const request = JSON.stringify({ operation: "signgraph.holonomy.topology", input: triangle() });
-  const child = spawnSync(process.execPath, [bin], {
-    input: Array(1025).fill(request).join("\n") + "\n",
-    encoding: "utf8", timeout: 20000, maxBuffer: 6 * 1024 * 1024,
-  });
-  assert.equal(child.status, 1, child.stderr);
-  const lines = child.stdout.trim().split("\n").map(line => JSON.parse(line));
-  assert.equal(lines.length, 1025);
-  assert.ok(lines.slice(0, 1024).every(line => line.ok));
-  assert.equal(lines[1024].ok, false);
-  assert.match(lines[1024].error, /1024 requests/);
-});
-
 /** A tetrahedral closed exterior plus its one three-cell.
  * The face orientations represent ∂[a,b,c,d].
  */
@@ -286,24 +224,3 @@ test("volume operations refuse unclosed shells, oversized volumes and excess fac
   }), /array of volumes/);
 });
 
-test("installed CLI returns the 3D Stokes and homology receipts in JSONL", () => {
-  const solid = tetrahedron();
-  const input = [
-    { operation: "signgraph.holonomy.topology", input: solid },
-    { operation: "signgraph.holonomy.burgers", input: {
-      ...solid, edgeDisplacements: solid.edges.map((_, i) =>
-        i === 0 ? [1, 0, -3] : [0, 0, 0]),
-    }},
-  ].map(JSON.stringify).join("\n") + "\n";
-  const child = spawnSync(process.execPath, [bin], {
-    input, encoding: "utf8", timeout: 10000,
-  });
-  assert.equal(child.status, 0, child.stderr);
-  const [topology, burgers] = child.stdout.trim().split("\n").map(JSON.parse);
-  assert.equal(topology.ok, true);
-  assert.equal(burgers.ok, true);
-  assert.deepEqual(topology.receipt.betti, { h0: 1, h1: 0, h2: 0, h3: 0 });
-  assert.equal(burgers.receipt.dimension, 3);
-  assert.equal(burgers.receipt.volumeConservation.holds, true);
-  assert.deepEqual(burgers.receipt.volumeResidues[0].burgers, [0, 0, 0]);
-});

@@ -268,11 +268,12 @@ native sign structures through evidence-sensitive generative transformations.
 A graph metric, even with a specialized example, does not acquire the
 authority to synthesize or fabricate its consuming domain.
 
-The four preexisting holonomy JSONL operations are retained as legacy
-compatibility surfaces for already selected consumers. They should be
-extracted to their competent engineering operations owner without changing
-their mathematical core; new application-specific dispatch operations are
-not admitted to this library.
+The existing `./operations` catalog remains a pure computation interface.
+Graph ships no executable, stdin/stdout loop or process transport. CAIRN owns
+the bounded JSONL command through SignCraft's `./graph-operations` composition;
+the original mathematical functions and operation IDs remain in Graph. The
+package receiving test inspects public export targets as well as `src` and
+refuses command payloads in this library.
 
 ## Operational holonomy receiving
 
@@ -288,38 +289,45 @@ additional exact scaled Cartesian metric, spatial positions, and a signed
 single-volume boundary from a source-owned carrier. No physical
 thermometry, hidden material instance, or remote execution is invented.
 
-The limits below are **default host/JSONL work budgets**, not an algebraic
+The limits below are **default operation work budgets**, not an algebraic
 upper bound on admissible finite complexes. A trusted in-process caller can
 explicitly select a larger finite resource allowance through
 `executeOperation(id, input, {workBudget: {vertices: 256, edges: 512}})`.
 Omitted dimensions retain the conservative default; unrecognized or invalid
 budget entries refuse, as do budget fields smuggled into an operation input.
 This does not promise physical host capacity or permission for a public
-request to grant itself more work. The JSONL executable retains its defaults.
+request to grant itself more work. A hosting command owns its transport and
+retains its independently qualified input and batch limits.
 
-An installed package also exposes the executable `signgraph-holonomy`
-for newline-delimited JSON requests and receipts. For example:
+Use the pure operation interface directly:
 
-```sh
-printf '%s\\n' '{"operation":"signgraph.holonomy.affine","input":{"vertices":["p"],"edges":[{"id":"a","from":"p","to":"p"}],"faces":[{"id":"disk","boundary":[{"edge":"a","direction":1},{"edge":"a","direction":1}]}],"edgeMotions":[{"rotation":3,"translation":[0,0]}]}}' | signgraph-holonomy
+```js
+import { executeOperation } from "@red-cup-engineering/signgraph/operations";
+
+const receipt = executeOperation("signgraph.holonomy.affine", {
+  vertices: ["p"],
+  edges: [{ id: "a", from: "p", to: "p" }],
+  faces: [{ id: "disk", boundary: [
+    { edge: "a", direction: 1 }, { edge: "a", direction: 1 },
+  ] }],
+  edgeMotions: [{ rotation: 3, translation: [0, 0] }],
+});
 ```
 
 This one-cell projective-plane carrier has **rational** first Betti
 number zero yet has order-two, globally nontrivial sixfold rotational
-monodromy. The CLI must not suppress that result merely because the
+monodromy. The receipt must retain that result even though the
 rational rank vanishes: ordinary linear cohomology and finite-order
 nonabelian holonomy are different invariants.
 
-The CLI emits one JSON receipt for each request, continues after individual
-refusals, and exits nonzero if any request fails. A single request is
-at most 64 KiB, a batch at most 1024 requests; the operation admits
-at most 64 vertices, 128 edges, 64 faces and 2048 oriented steps.
+The operation's default input allowance is 64 KiB; it admits at most
+64 vertices, 128 edges, 64 faces and 2048 oriented steps.
 These bounded estimates precede exact rational elimination. Receipts
 report the input shape, rational ranks, local face residues, and
 nonabelian monodromy when requested—not installation/qualification claims.
 
 `npm run check:holonomy` checks syntax and `npm run test:holonomy`
-runs the existing cellular/affine regressions plus operation and CLI
+runs the existing cellular/affine regressions plus pure operation
 receiving. A published artifact and running MetroPlat instance must
 be independently received; committing this source does not cause
 automatic installation. This is a planar sixfold lattice model, not
@@ -351,8 +359,7 @@ volume conservation receipt and remains covariant under consistent
 face-orientation changes. Prior 2-complex-only inputs and 2D outputs
 remain admitted and retain their original meaning.
 
-All three public operations now also admit optional `volumes`, with the
-existing JSONL executable unchanged. Admission budgets bound the added
+All three public operations also admit optional `volumes`. Admission budgets bound the added
 work to 32 volumes and 2,048 oriented volume-face steps, as well as the
 existing graph/face budget. An explicit `volumes: []` is not the same
 as inventing a J26 interior; a volume is never inferred from a closed
@@ -399,7 +406,7 @@ Wrong physical orientation is a failed geometric receipt, not
 automatically a topological chain error.
 
 `signgraph.holonomy.geometry` receives the declared geometric carrier
-through the same admitted operations registry and JSONL executable.
+through the same pure operations catalog.
 Optional **3-coordinate Burgers readings** are measured using the
 same spatial diagonal metric: their facewise physical squared lengths
 are exact rationals and their total charge obeys the admitted 3-cell
@@ -441,7 +448,7 @@ world-state, permission, job reservation, connection, payment, or settled
 consumer obligation. Serialized observations are read-only claims, not
 authenticated original source.
 
-The existing bounded JSONL operation
+The existing bounded pure operation
 `signgraph.mark-incidence.boundary-factorization` accepts only the same
 original Articulating and bounded source-derived steps as
 `performed-head-shadow`, together with the complete recipient classes.
@@ -535,9 +542,8 @@ second descriptor with a weaker input contract. The original source now
 retains exactly one declared `kinematic-section-descent` operation and checks
 all operation IDs for uniqueness at module admission; dispatch uses the same
 source-pinned descriptor table. This is an interface and receiving repair,
-not a newly established mathematical theorem. The incumbent
-signgraph-holonomy JSONL executable exposes two *different*, compatible
-finite views:
+not a newly established mathematical theorem. The `./operations` catalog
+exposes two *different*, compatible finite views:
 
 **Kinematic coherent sections and source hypertensor**
 
@@ -590,14 +596,14 @@ candidate](https://github.com/lenticule-science/obsmetrologia-science-services-s
 proposes source-bounded sparse Patch/Section restriction and conditional
 cover gluing, but has not received a Lean kernel run.
 
-Call the **existing** signgraph-holonomy binary with JSON lines shaped as
-{operation, input}; source Articulating must be obtained from the original
-SignCell constructor, not invented in a demo JSON. The command returns
-{ok, line, operation, receipt} and explicit refusing errors without
-filesystem, network, account or host effects. The original recorded-source
-test exercises both actual performed-source operations when the selected
-Metrologic and SignCell package versions are installed. The source-only
-mathematical assays are not an installed CLI or accepted customer workload.
+Call `executeOperation(operation, input)` with source Articulating obtained
+from the original SignCell constructor. The pure dispatcher returns its
+computed receipt or throws the original admission error. CAIRN owns JSONL
+framing, per-line success/refusal receipts, batch limits and process exit
+status through the SignCraft composition. The original recorded-source test
+exercises both performed-source operations with the selected Metrologic and
+SignCell packages. Source qualification does not establish an installed host
+or accepted customer workload.
 
 **Economic/policy user:** an externally authorized Odoo/Salesforce or AWS
 source may *later* be admitted as original SignCell/EAVT evidence and lawfully

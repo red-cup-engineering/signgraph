@@ -2,6 +2,8 @@
 # Keep the release-age policy for all other versions and suppliers.
 minimumReleaseAgeExclude:
   - '@red-cup-engineering/signcell@0.13.1-dev.0'
+  - '@red-cup-engineering/signcell@0.13.1-dev.185'
   - '@red-cup-engineering/signchain@0.4.2-dev.1'
+  - '@red-cup-engineering/signchain@0.4.2-dev.64'
   - '@red-cup-engineering/metrologic@0.14.3-dev.3'
   - '@red-cup-engineering/exact-number-data-service@0.1.7'

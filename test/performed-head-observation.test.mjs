@@ -1,7 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { utterance, articulatingUtter, articulatingPair, reattendArticulating } from "@red-cup-engineering/signcell/utterance";
 import { articulatedPredications } from "@red-cup-engineering/signcell/predication";
 import { address as cellAddress } from "@red-cup-engineering/signcell/cell";
@@ -90,23 +88,12 @@ test("zero generated steps create neither ghost paths nor invented observed move
   assert.equal(shadow.ghostCompositions, 0);
 });
 
-test("same native operation is externally callable through the existing bounded JSONL interface", () => {
+test("native performed-shadow operation preserves original source counts", () => {
   const input = { articulating: performedSource(), steps: 2 };
   const result = executeOperation(operation, input);
   assert.equal(operations.performedHeadShadow.id, operation);
   assert.equal(result.ghostCompositions, 3);
   assert.equal(result.originalCompositions, 1);
-  const runner = fileURLToPath(new URL("../scripts/holonomy.mjs", import.meta.url));
-  const invoked = spawnSync(process.execPath, [runner], {
-    input: JSON.stringify({ operation, input }) + "\n",
-    encoding: "utf8", maxBuffer: 1024 * 1024,
-  });
-  assert.equal(invoked.status, 0, invoked.stderr);
-  const line = JSON.parse(invoked.stdout.trim());
-  assert.equal(line.ok, true);
-  assert.equal(line.operation, operation);
-  assert.equal(line.receipt.ghostCompositions, 3);
-  assert.equal(line.receipt.originalCompositions, 1);
 });
 
 test("no user can supply a shadow map, forged source graph or fake authorization", () => {
@@ -416,7 +403,7 @@ test("boundary factorization refuses partial, duplicated, forged and noncanonica
     assessPerformedBoundaryFactorization(view, rows));
 });
 
-test("native boundary classification and bounded JSONL use the exact same performed source", () => {
+test("native boundary classification uses the exact performed source", () => {
   const input = { articulating: performedSource(), steps: 3 };
   const shadow = derivePerformedHeadShadow(input);
   const requiredReadings = shadow.semioverse.claimEntries.map(entry => ({
@@ -427,16 +414,6 @@ test("native boundary classification and bounded JSONL use the exact same perfor
   assert.deepEqual(direct, assessPerformedBoundaryFactorization(shadow, requiredReadings));
   assert.equal(direct.authority, "none");
   assert.equal(direct.status, "conditional-factorization-on-finite-source");
-  const runner = fileURLToPath(new URL("../scripts/holonomy.mjs", import.meta.url));
-  const invoked = spawnSync(process.execPath, [runner], {
-    input: JSON.stringify({ operation: id, input: { ...input, requiredReadings } }) + "\n",
-    encoding: "utf8", maxBuffer: 1024 * 1024,
-  });
-  assert.equal(invoked.status, 0, invoked.stderr);
-  const result = JSON.parse(invoked.stdout.trim());
-  assert.equal(result.ok, true);
-  assert.equal(result.operation, id);
-  assert.deepEqual(result.receipt, direct);
   assert.throws(() => executeOperation(id, {
     ...input, requiredReadings: requiredReadings.slice(1),
   }), /one recipient classification/);
