@@ -1,13 +1,13 @@
 // A JSON value as a canonical Entity/Ground graph: its nodes and grounding
 // edges as one SEN term of RELATIONAL_VALUE_TYPE, identified by the semantic
 // content address of its ascription.
-import { base64ToBytes, bytesCompare, bytesEqual, bytesToBase64, canonicalizeSemioticJson, concatBytes, decodeSemantic as decodeCanonical, ownedBytes, semanticBytes, semanticId, utf8Bytes } from "@red-cup-engineering/semiotic-content-address";
+import { base64ToBytes, bytesCompare, bytesEqual, bytesToBase64, concatBytes, decodeSemantic as decodeCanonical, ownedBytes, utf8Bytes } from "@red-cup-engineering/semiotic-content-address";
 import { makeNiUri } from "@red-cup-engineering/uri-services-section/ni-uri";
 import { validateSenTerm, validateSenType } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation";
 import { judgeSen } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation/typing";
 import { typedListItems, typedListTerm } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation/json-codec";
 import { NI_URI_PATTERN } from "@red-cup-engineering/uri-services-section/ni-uri";
-import { cell as predicationCell, cellSet } from "@red-cup-engineering/signcell/cell";
+import { canonicalizeSemioticJson, cell as predicationCell, cellSet, semanticBytes, semanticId } from "@red-cup-engineering/signcell/cell";
 
 // A mark is a textual term; it does not introduce a nominal type.
 const MARK = ["base"];

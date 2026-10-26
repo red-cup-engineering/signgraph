@@ -15,9 +15,8 @@
  * claim at a time, the inherited section is the fiber SignChain's possibilizing gives: gluing over ↑t
  * is ◇. The object position is reached through the converse generator.
  */
-import { address, cell, cellSetAddress, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, sidesOf } from "@red-cup-engineering/signcell/cell";
+import { address, cell, cellSetAddress, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, retainedCarrier, semanticId, sidesOf } from "@red-cup-engineering/signcell/cell";
 import { cacheableTokenFrame, extent, generalizations, tokenFrame, top } from "@red-cup-engineering/signcell/token-frame";
-import { retainedCarrier, semanticId } from "@red-cup-engineering/semiotic-content-address";
 
 const INHERITED = "signgraph.inherited-tellings";
 const frozen = (values) => Object.freeze([...values]);

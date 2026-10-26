@@ -1,9 +1,8 @@
 
 import { canonicalJson } from "@red-cup-engineering/json-services-section/canonical-json";
-import { cell, knowledgeReading, triple, witnessAgainst, witnessFor } from "@red-cup-engineering/signcell/cell";
+import { cell, knowledgeReading, semanticId, triple, witnessAgainst, witnessFor } from "@red-cup-engineering/signcell/cell";
 
 import { createRelationWeb, immutableJson } from "@red-cup-engineering/eavt-services-section/relation-web";
-import { semanticId } from "@red-cup-engineering/semiotic-content-address";
 
 const freezeList = (values) => Object.freeze([...values]);
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
