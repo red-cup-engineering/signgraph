@@ -272,6 +272,43 @@ test("paged source claims retain immutable original testimony across wire edits"
   }).total, 1);
 });
 
+test("small query windows preserve the full source total and original witnesses beyond one page", () => {
+  const cells = Array.from({ length: 257 }, (_, index) => cell(
+    `consumer-${String(index).padStart(3, "0")}`, "reports", "service",
+    { for: [{ source: `provider-${index}`, revision: index }],
+      against: index % 3 === 0 ? [{ source: `receiver-${index}`, revision: index }] : [] },
+  ));
+  cells.push(cell("uninspected", "reports", "service"));
+  const frame = tokenFrame(cells);
+  const selection = { predicate: "reports", object: "service" };
+  // Independent native gluing supplies the oracle, including the bottom-valued
+  // source cell. Page totals/order must not be inferred from an earlier page.
+  const names = { "false,false": "absurd", "true,false": "potential", "false,true": "active", "true,true": "stable" };
+  const expected = frame.tokens.flatMap(token => {
+    const section = inheritedClaim(frame, token, "reports", "service");
+    return section.cells.map((at, index) => ({
+      token, cell: at, reading: names[sidesOf(at).join()],
+      sources: section.sources[index], contested: section.contested[0] ?? null,
+    }));
+  });
+  assert.equal(expected.length, 258);
+  const initial = queryInheritedTellings(frame, selection, { limit: 1 });
+  for (const [offset, limit] of [[0, 1], [1, 128], [128, 1], [129, 128], [257, 128], [258, 1]]) {
+    const page = queryInheritedTellings(frame, selection, { offset, limit });
+    assert.equal(page.total, expected.length);
+    assert.deepEqual(page.entries, expected.slice(offset, offset + limit));
+    assert.equal(page.next, offset + page.entries.length < expected.length ? offset + page.entries.length : null);
+    assert.equal(page.snapshot, initial.snapshot);
+    assert.equal(page.sourceCells, initial.sourceCells);
+    assert.equal(Object.isFrozen(page.entries), true);
+  }
+  const contested = expected.filter(entry => entry.reading === "stable");
+  const filtered = queryInheritedTellings(frame, { ...selection, reading: "stable" }, { offset: 17, limit: 3 });
+  assert.equal(filtered.total, contested.length);
+  assert.deepEqual(filtered.entries, contested.slice(17, 20));
+  assert.throws(() => queryInheritedTellings(frame, selection, { offset: expected.length + 1 }), /outside admitted source/u);
+});
+
 test("page snapshots bind the measured specialization interpretation, not only an equal cell cut", () => {
   const cells = [
     cell("child", SPECIALIZES, "parent", { for: ["observed-hierarchy"] }),
