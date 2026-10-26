@@ -1,0 +1,724 @@
+TAP version 13
+# Subtest: cochain: finite numeric vertex readings admit idempotent repetition, not false gluing
+ok 1 - cochain: finite numeric vertex readings admit idempotent repetition, not false gluing
+  ---
+  duration_ms: 5.073246
+  type: 'test'
+  ...
+# Subtest: cellularSheaf: validates shapes, ids and endpoints
+ok 2 - cellularSheaf: validates shapes, ids and endpoints
+  ---
+  duration_ms: 1.3458
+  type: 'test'
+  ...
+# Subtest: coboundary and Laplacian: (δx)_e = F_to x_to − F_from x_from, L = δᵀδ
+ok 3 - coboundary and Laplacian: (δx)_e = F_to x_to − F_from x_from, L = δᵀδ
+  ---
+  duration_ms: 1.600513
+  type: 'test'
+  ...
+# Subtest: exact cohomology: agrees with cohomologyOfCells on the integer incidence
+ok 4 - exact cohomology: agrees with cohomologyOfCells on the integer incidence
+  ---
+  duration_ms: 4.657292
+  type: 'test'
+  ...
+# Subtest: exact cohomology: rational restrictions and a twisted cycle
+ok 5 - exact cohomology: rational restrictions and a twisted cycle
+  ---
+  duration_ms: 0.998819
+  type: 'test'
+  ...
+# Subtest: diffusion: converges to the harmonic section (component means) and lies in ker L
+ok 6 - diffusion: converges to the harmonic section (component means) and lies in ker L
+  ---
+  duration_ms: 4.334918
+  type: 'test'
+  ...
+# Subtest: Hodge degree 0: tree and rotated stalks admit globally harmonic sections
+ok 7 - Hodge degree 0: tree and rotated stalks admit globally harmonic sections
+  ---
+  duration_ms: 3.41015
+  type: 'test'
+  ...
+# Subtest: Hodge degree 0: a balanced cycle has nonzero H⁰ and H¹ at once
+ok 8 - Hodge degree 0: a balanced cycle has nonzero H⁰ and H¹ at once
+  ---
+  duration_ms: 0.80594
+  type: 'test'
+  ...
+# Subtest: Hodge degree 0: frustrated signed cycle has H⁰ = H¹ = 0 and only the zero harmonic
+ok 9 - Hodge degree 0: frustrated signed cycle has H⁰ = H¹ = 0 and only the zero harmonic
+  ---
+  duration_ms: 0.762655
+  type: 'test'
+  ...
+# Subtest: diffuse: pinned testimony is order-independent, identical repetition is idempotent, and incompatibility remains visible
+ok 10 - diffuse: pinned testimony is order-independent, identical repetition is idempotent, and incompatibility remains visible
+  ---
+  duration_ms: 1.502536
+  type: 'test'
+  ...
+# Subtest: diffuse: rejects unstable steps and non-finite inputs instead of certifying numeric settlement
+ok 11 - diffuse: rejects unstable steps and non-finite inputs instead of certifying numeric settlement
+  ---
+  duration_ms: 1.053021
+  type: 'test'
+  ...
+# Subtest: diffusion with pinned vertices: boundary conditions are admitted evidence
+ok 12 - diffusion with pinned vertices: boundary conditions are admitted evidence
+  ---
+  duration_ms: 0.948574
+  type: 'test'
+  ...
+# Subtest: rigidity: triangle rigid, open square flexes, braced square has a self-stress, tetrahedron rigid
+ok 13 - rigidity: triangle rigid, open square flexes, braced square has a self-stress, tetrahedron rigid
+  ---
+  duration_ms: 2.604219
+  type: 'test'
+  ...
+# Subtest: fixed-count embedded exchange can change rigidity without changing the Euler index
+ok 14 - fixed-count embedded exchange can change rigidity without changing the Euler index
+  ---
+  duration_ms: 5.359516
+  type: 'test'
+  ...
+# Subtest: rigidity numerics: normalized (unit direction) sheaf diffuses to a rigid motion
+ok 15 - rigidity numerics: normalized (unit direction) sheaf diffuses to a rigid motion
+  ---
+  duration_ms: 2.054945
+  type: 'test'
+  ...
+# Subtest: solveNormal: min-norm solution of δᵀf = rhs; over-braced picks the harmonic representative
+ok 16 - solveNormal: min-norm solution of δᵀf = rhs; over-braced picks the harmonic representative
+  ---
+  duration_ms: 0.961233
+  type: 'test'
+  ...
+# Subtest: solveNormal: an unresolvable load is an obstruction in ker δ, not NaN
+ok 17 - solveNormal: an unresolvable load is an obstruction in ker δ, not NaN
+  ---
+  duration_ms: 0.387903
+  type: 'test'
+  ...
+# Subtest: body-bar: a rigid pair joined by six generic bars is rigid; five leave one mechanism; collinear clusters are fine
+ok 18 - body-bar: a rigid pair joined by six generic bars is rigid; five leave one mechanism; collinear clusters are fine
+  ---
+  duration_ms: 5.88175
+  type: 'test'
+  ...
+# Subtest: body-bar: equilibrium of a loaded rigid pair via solveNormal (unit rows are forces)
+ok 19 - body-bar: equilibrium of a loaded rigid pair via solveNormal (unit rows are forces)
+  ---
+  duration_ms: 0.59953
+  type: 'test'
+  ...
+# Subtest: connected bar exchange actually fabricates a minimal count-preserving rigidity trajectory
+ok 20 - connected bar exchange actually fabricates a minimal count-preserving rigidity trajectory
+  ---
+  duration_ms: 7.446619
+  type: 'test'
+  ...
+# Subtest: huge but finite exact sheaf restrictions now project faithfully through Data
+ok 21 - huge but finite exact sheaf restrictions now project faithfully through Data
+  ---
+  duration_ms: 0.880332
+  type: 'test'
+  ...
+# Subtest: numeric sheaf and weighted Dirichlet receipts reject overflow instead of fabricating Infinity
+ok 22 - numeric sheaf and weighted Dirichlet receipts reject overflow instead of fabricating Infinity
+  ---
+  duration_ms: 1.839531
+  type: 'test'
+  ...
+# Subtest: tiny exact restrictions stay exact but cannot silently project to zero incidence
+ok 23 - tiny exact restrictions stay exact but cannot silently project to zero incidence
+  ---
+  duration_ms: 0.534272
+  type: 'test'
+  ...
+# Subtest: nonzero numerical sheaf products refuse host underflow rather than fabricate zero energy
+ok 24 - nonzero numerical sheaf products refuse host underflow rather than fabricate zero energy
+  ---
+  duration_ms: 0.699961
+  type: 'test'
+  ...
+# Subtest: source-partial rational stalk readings construct a real global section rather than zero filling
+ok 25 - source-partial rational stalk readings construct a real global section rather than zero filling
+  ---
+  duration_ms: 1.788074
+  type: 'test'
+  ...
+# Subtest: two irreconcilable source-local stalk readings return a witnessed no-extension equation
+ok 26 - two irreconcilable source-local stalk readings return a witnessed no-extension equation
+  ---
+  duration_ms: 0.715655
+  type: 'test'
+  ...
+# Subtest: a nontrivial source restriction admits compatible partial vectors with genuine free stalk directions
+ok 27 - a nontrivial source restriction admits compatible partial vectors with genuine free stalk directions
+  ---
+  duration_ms: 1.119881
+  type: 'test'
+  ...
+# Subtest: exact tensor composition is a productive source-indexed construction, invariant under separate source enumeration
+ok 28 - exact tensor composition is a productive source-indexed construction, invariant under separate source enumeration
+  ---
+  duration_ms: 2.756928
+  type: 'test'
+  ...
+# Subtest: covered source-local sheaf sections actually glue; contradictory and missing covers retain original evidence
+ok 29 - covered source-local sheaf sections actually glue; contradictory and missing covers retain original evidence
+  ---
+  duration_ms: 3.366594
+  type: 'test'
+  ...
+# Subtest: different original enterprise/cloud stalks pull back to one witnessed base and tensor before exact gluing
+ok 30 - different original enterprise/cloud stalks pull back to one witnessed base and tensor before exact gluing
+  ---
+  duration_ms: 2.655387
+  type: 'test'
+  ...
+# Subtest: an unwitnessed classification value cannot transmit a customer requirement
+ok 31 - an unwitnessed classification value cannot transmit a customer requirement
+  ---
+  duration_ms: 8.54624
+  type: 'test'
+  ...
+# Subtest: a lowered classification value cannot erase a witnessed requirement path
+ok 32 - a lowered classification value cannot erase a witnessed requirement path
+  ---
+  duration_ms: 4.40349
+  type: 'test'
+  ...
+# Subtest: a positive written value does not overturn an explicit negative classification
+ok 33 - a positive written value does not overturn an explicit negative classification
+  ---
+  duration_ms: 2.281485
+  type: 'test'
+  ...
+# Subtest: the original SignCell source, not an independent graph parser, licenses every topology edge
+ok 34 - the original SignCell source, not an independent graph parser, licenses every topology edge
+  ---
+  duration_ms: 27.444317
+  type: 'test'
+  ...
+# Subtest: projected graph has no mutable builder powers and can be read repeatedly
+ok 35 - projected graph has no mutable builder powers and can be read repeatedly
+  ---
+  duration_ms: 8.891719
+  type: 'test'
+  ...
+# Subtest: forged addresses, nonmembers, tampered types and stale graph cuts cannot manufacture topology
+ok 36 - forged addresses, nonmembers, tampered types and stale graph cuts cannot manufacture topology
+  ---
+  duration_ms: 11.249699
+  type: 'test'
+  ...
+# Subtest: a structural route retains both parallel witnesses without promoting transitivity to truth
+ok 37 - a structural route retains both parallel witnesses without promoting transitivity to truth
+  ---
+  duration_ms: 21.785296
+  type: 'test'
+  ...
+# Subtest: a different valid graph admits zero-length and unreachable routes without invented evidence
+ok 38 - a different valid graph admits zero-length and unreachable routes without invented evidence
+  ---
+  duration_ms: 18.151381
+  type: 'test'
+  ...
+# Subtest: typed route boundaries refuse forged cuts, untyped targets and malformed selectors
+ok 39 - typed route boundaries refuse forged cuts, untyped targets and malformed selectors
+  ---
+  duration_ms: 15.158086
+  type: 'test'
+  ...
+# Subtest: witnessed channels keep reports distinct but count each source exchange only once
+ok 40 - witnessed channels keep reports distinct but count each source exchange only once
+  ---
+  duration_ms: 71.374254
+  type: 'test'
+  ...
+# Subtest: channel-resource incidence reports ambiguous endpoints instead of inventing source-target pairings
+ok 41 - channel-resource incidence reports ambiguous endpoints instead of inventing source-target pairings
+  ---
+  duration_ms: 118.634751
+  type: 'test'
+  ...
+# Subtest: contested quantities obstruct only their source exchange and retain all original witnesses
+ok 42 - contested quantities obstruct only their source exchange and retain all original witnesses
+  ---
+  duration_ms: 71.64615
+  type: 'test'
+  ...
+# Subtest: parallel witnesses of one quantity identity do not fabricate a conflict or second transfer
+ok 43 - parallel witnesses of one quantity identity do not fabricate a conflict or second transfer
+  ---
+  duration_ms: 39.864078
+  type: 'test'
+  ...
+# Subtest: channel-resource reading re-admits original graph and refuses forged or unlicensed coordinates
+ok 44 - channel-resource reading re-admits original graph and refuses forged or unlicensed coordinates
+  ---
+  duration_ms: 217.162614
+  type: 'test'
+  ...
+# Subtest: multicellular lineage preserves witnessed local crossings and common outer compartments
+ok 45 - multicellular lineage preserves witnessed local crossings and common outer compartments
+  ---
+  duration_ms: 35.827107
+  type: 'test'
+  ...
+# Subtest: uncertain ancestors, plural parentage and cycles are not fabricated geometry
+ok 46 - uncertain ancestors, plural parentage and cycles are not fabricated geometry
+  ---
+  duration_ms: 109.667132
+  type: 'test'
+  ...
+# Subtest: typed Resource Things specialize channels, messages, exchanges and stock without role confusion
+ok 47 - typed Resource Things specialize channels, messages, exchanges and stock without role confusion
+  ---
+  duration_ms: 32.602546
+  type: 'test'
+  ...
+# Subtest: source-witnessed unused offers preserve both alternatives and one shared capacity identity
+ok 48 - source-witnessed unused offers preserve both alternatives and one shared capacity identity
+  ---
+  duration_ms: 131.384386
+  type: 'test'
+  ...
+# Subtest: contrary and revoked testimony obstruct individual candidates and retain source evidence
+ok 49 - contrary and revoked testimony obstruct individual candidates and retain source evidence
+  ---
+  duration_ms: 110.847364
+  type: 'test'
+  ...
+# Subtest: missing, ambiguous or malformed capacity cannot silently become zero or authorization
+ok 50 - missing, ambiguous or malformed capacity cannot silently become zero or authorization
+  ---
+  duration_ms: 577.641897
+  type: 'test'
+  ...
+# Subtest: native typed Marks canonicalize unit text before transport retains source identity
+ok 51 - native typed Marks canonicalize unit text before transport retains source identity
+  ---
+  duration_ms: 187.331575
+  type: 'test'
+  ...
+# Subtest: expired, future or unclocked source claims cannot impersonate presently admissible routes
+ok 52 - expired, future or unclocked source claims cannot impersonate presently admissible routes
+  ---
+  duration_ms: 169.815404
+  type: 'test'
+  ...
+# Subtest: dated capacity and dated cost without expiry refuse clockless evaluation
+ok 53 - dated capacity and dated cost without expiry refuse clockless evaluation
+  ---
+  duration_ms: 210.141095
+  type: 'test'
+  ...
+# Subtest: shared-bottleneck experiment rejects 15 false independent-route admissions across 49 demand pairs
+ok 54 - shared-bottleneck experiment rejects 15 false independent-route admissions across 49 demand pairs
+  ---
+  duration_ms: 54.661104
+  type: 'test'
+  ...
+# Subtest: source-refusal, relation spoofing, and finite budget protect the graph boundary
+ok 55 - source-refusal, relation spoofing, and finite budget protect the graph boundary
+  ---
+  duration_ms: 293.158466
+  type: 'test'
+  ...
+# Subtest: published operations retain their exact catalog and machine-readable schemas
+ok 56 - published operations retain their exact catalog and machine-readable schemas
+  ---
+  duration_ms: 1.34509
+  type: 'test'
+  ...
+# Subtest: operator receives actionable local Burgers charges and a constructive exactness witness
+ok 57 - operator receives actionable local Burgers charges and a constructive exactness witness
+  ---
+  duration_ms: 0.96602
+  type: 'test'
+  ...
+# Subtest: rational b1=0 does not suppress finite-order global affine holonomy
+ok 58 - rational b1=0 does not suppress finite-order global affine holonomy
+  ---
+  duration_ms: 0.843116
+  type: 'test'
+  ...
+# Subtest: operation work limits and undeclared data fail before expensive rank elimination
+ok 59 - operation work limits and undeclared data fail before expensive rank elimination
+  ---
+  duration_ms: 0.600972
+  type: 'test'
+  ...
+# Subtest: trusted hosts can select higher finite capacity without weakening default admission
+ok 60 - trusted hosts can select higher finite capacity without weakening default admission
+  ---
+  duration_ms: 1.629607
+  type: 'test'
+  ...
+# Subtest: the same operational input distinguishes exterior sphere from solid 3-cell
+ok 61 - the same operational input distinguishes exterior sphere from solid 3-cell
+  ---
+  duration_ms: 2.627084
+  type: 'test'
+  ...
+# Subtest: volume operations refuse unclosed shells, oversized volumes and excess face steps
+ok 62 - volume operations refuse unclosed shells, oversized volumes and excess face steps
+  ---
+  duration_ms: 0.883697
+  type: 'test'
+  ...
+# Subtest: one native re-attention creates one visible loop but not a repeated original move
+ok 63 - one native re-attention creates one visible loop but not a repeated original move
+  ---
+  duration_ms: 12.764414
+  type: 'test'
+  ...
+# Subtest: three source steps create exactly two permitted length-two source paths, plus seven ghost image paths
+ok 64 - three source steps create exactly two permitted length-two source paths, plus seven ghost image paths
+  ---
+  duration_ms: 35.19578
+  type: 'test'
+  ...
+# Subtest: the original source route and associativity remain preserved, not overridden by the shadow
+ok 65 - the original source route and associativity remain preserved, not overridden by the shadow
+  ---
+  duration_ms: 48.966013
+  type: 'test'
+  ...
+# Subtest: zero generated steps create neither ghost paths nor invented observed moves
+ok 66 - zero generated steps create neither ghost paths nor invented observed moves
+  ---
+  duration_ms: 8.269856
+  type: 'test'
+  ...
+# Subtest: native performed-shadow operation preserves original source counts
+ok 67 - native performed-shadow operation preserves original source counts
+  ---
+  duration_ms: 14.376293
+  type: 'test'
+  ...
+# Subtest: no user can supply a shadow map, forged source graph or fake authorization
+ok 68 - no user can supply a shadow map, forged source graph or fake authorization
+  ---
+  duration_ms: 0.585339
+  type: 'test'
+  ...
+# Subtest: the SAME performed Articulating generates kinematic diamond points by endpoint sequencing, not nested intervals
+ok 69 - the SAME performed Articulating generates kinematic diamond points by endpoint sequencing, not nested intervals
+  ---
+  duration_ms: 33.21023
+  type: 'test'
+  ...
+# Subtest: finite Semioverse draws all ordered occurrence pairs from the existing SignCell generator
+ok 70 - finite Semioverse draws all ordered occurrence pairs from the existing SignCell generator
+  ---
+  duration_ms: 26.33625
+  type: 'test'
+  ...
+# Subtest: Semioverse source-paired claims lift forward only along original K(C) endpoint sequencing
+ok 71 - Semioverse source-paired claims lift forward only along original K(C) endpoint sequencing
+  ---
+  duration_ms: 31.873672
+  type: 'test'
+  ...
+# Subtest: equal head presentations do not collapse repeated performed Semioverse occurrences
+ok 72 - equal head presentations do not collapse repeated performed Semioverse occurrences
+  ---
+  duration_ms: 24.379632
+  type: 'test'
+  ...
+# Subtest: an index cannot fabricate a kinematic locus or Semioverse source claim
+ok 73 - an index cannot fabricate a kinematic locus or Semioverse source claim
+  ---
+  duration_ms: 13.98794
+  type: 'test'
+  ...
+# Subtest: SignGraph finite Semioverse is an exact projection of SignCell's original full source pair composition
+ok 74 - SignGraph finite Semioverse is an exact projection of SignCell's original full source pair composition
+  ---
+  duration_ms: 37.223875
+  type: 'test'
+  ...
+# Subtest: portable JSON Semioverse readouts retain original occurrence indices without granting composition authority
+ok 75 - portable JSON Semioverse readouts retain original occurrence indices without granting composition authority
+  ---
+  duration_ms: 44.161661
+  type: 'test'
+  ...
+# Subtest: portable source readers require every original ordered pair at its canonical coordinate
+ok 76 - portable source readers require every original ordered pair at its canonical coordinate
+  ---
+  duration_ms: 15.122293
+  type: 'test'
+  ...
+# Subtest: a previously read portable incidence is checked again after mutation
+ok 77 - a previously read portable incidence is checked again after mutation
+  ---
+  duration_ms: 22.785648
+  type: 'test'
+  ...
+# Subtest: source-generated re-attention chain obeys finite fiber law without licensing ghost moves
+ok 78 - source-generated re-attention chain obeys finite fiber law without licensing ghost moves
+  ---
+  duration_ms: 209.899346
+  type: 'test'
+  ...
+# Subtest: source-indexed receiving requirements descend through a boundary only when all its fibers agree
+ok 79 - source-indexed receiving requirements descend through a boundary only when all its fibers agree
+  ---
+  duration_ms: 30.37347
+  type: 'test'
+  ...
+# Subtest: boundary factorization refuses partial, duplicated, forged and noncanonical recipient readings
+ok 80 - boundary factorization refuses partial, duplicated, forged and noncanonical recipient readings
+  ---
+  duration_ms: 21.875883
+  type: 'test'
+  ...
+# Subtest: native boundary classification uses the exact performed source
+ok 81 - native boundary classification uses the exact performed source
+  ---
+  duration_ms: 73.165334
+  type: 'test'
+  ...
+# Subtest: three distinct original performances behind one observed head require two local sidecar bits
+ok 82 - three distinct original performances behind one observed head require two local sidecar bits
+  ---
+  duration_ms: 25.59719
+  type: 'test'
+  ...
+# Subtest: actual source-generated cellular L-Space cover operation returns source occurrence triples, not a fictional backward witness
+ok 83 - actual source-generated cellular L-Space cover operation returns source occurrence triples, not a fictional backward witness
+  ---
+  duration_ms: 69.460042
+  type: 'test'
+  ...
+# Subtest: one source-published kinematic operation has one actual schema and executor
+ok 84 - one source-published kinematic operation has one actual schema and executor
+  ---
+  duration_ms: 0.2799
+  type: 'test'
+  ...
+# Subtest: the original performed source yields a genuine gluable coherent kinematic hypertensor
+ok 85 - the original performed source yields a genuine gluable coherent kinematic hypertensor
+  ---
+  duration_ms: 32.437379
+  type: 'test'
+  ...
+# Subtest: the published SignGraph surface contains pure library entries and no command payload
+ok 86 - the published SignGraph surface contains pure library entries and no command payload
+  ---
+  duration_ms: 0.205619
+  type: 'test'
+  ...
+# Subtest: the Sign-family source is a pure functional substrate, not an effects provider
+ok 87 - the Sign-family source is a pure functional substrate, not an effects provider
+  ---
+  duration_ms: 3.83039
+  type: 'test'
+  ...
+# Subtest: identifies and admits one canonical token/claim relational payload
+ok 88 - identifies and admits one canonical token/claim relational payload
+  ---
+  duration_ms: 6.23431
+  type: 'test'
+  ...
+# Subtest: refuses token mismatch and a reordered but graph-equivalent carrier
+ok 89 - refuses token mismatch and a reordered but graph-equivalent carrier
+  ---
+  duration_ms: 3.825053
+  type: 'test'
+  ...
+# Subtest: Buffer and Uint8Array values have one canonical payload identity
+ok 90 - Buffer and Uint8Array values have one canonical payload identity
+  ---
+  duration_ms: 1.774484
+  type: 'test'
+  ...
+# Subtest: receives historical root BigInt carriers without changing their bytes or tokens
+ok 91 - receives historical root BigInt carriers without changing their bytes or tokens
+  ---
+  duration_ms: 14.383735
+  type: 'test'
+  ...
+# Subtest: root integer compatibility still refuses arbitrary graph coordinates
+ok 92 - root integer compatibility still refuses arbitrary graph coordinates
+  ---
+  duration_ms: 1.300813
+  type: 'test'
+  ...
+# Subtest: typed relational SEN is canonical and round-trips without JSON
+ok 93 - typed relational SEN is canonical and round-trips without JSON
+  ---
+  duration_ms: 3.111201
+  type: 'test'
+  ...
+# Subtest: opaque addressed nomenclature and work values become witnessed, oriented SignCells and a selected 1-skeleton
+ok 94 - opaque addressed nomenclature and work values become witnessed, oriented SignCells and a selected 1-skeleton
+  ---
+  duration_ms: 41.275938
+  type: 'test'
+  ...
+# Subtest: opaque hostile-looking JSON field names remain data on encode, decode and SignCell projection
+ok 95 - opaque hostile-looking JSON field names remain data on encode, decode and SignCell projection
+  ---
+  duration_ms: 2.889698
+  type: 'test'
+  ...
+# Subtest: different payloads with a colliding legacy structural lexeme retain disjoint cell nodes
+ok 96 - different payloads with a colliding legacy structural lexeme retain disjoint cell nodes
+  ---
+  duration_ms: 2.185021
+  type: 'test'
+  ...
+# Subtest: arbitrary source bytes retain bit coordinates and a separate explicitly decoded relational view
+ok 97 - arbitrary source bytes retain bit coordinates and a separate explicitly decoded relational view
+  ---
+  duration_ms: 5.063953
+  type: 'test'
+  ...
+# Subtest: workbench geometry: an opaque record is a structural tree until a separately witnessed relation changes its graph-only H1
+ok 98 - workbench geometry: an opaque record is a structural tree until a separately witnessed relation changes its graph-only H1
+  ---
+  duration_ms: 1.782556
+  type: 'test'
+  ...
+# Subtest: whatever is told of a type is told of everything of that type
+ok 99 - whatever is told of a type is told of everything of that type
+  ---
+  duration_ms: 1.460513
+  type: 'test'
+  ...
+# Subtest: disagreeing generalizations leave the inherited cell contested, whichever is nearer
+ok 100 - disagreeing generalizations leave the inherited cell contested, whichever is nearer
+  ---
+  duration_ms: 1.229916
+  type: 'test'
+  ...
+# Subtest: a token's own tellings join what it inherits, and tokens outside every order keep only their own
+ok 101 - a token's own tellings join what it inherits, and tokens outside every order keep only their own
+  ---
+  duration_ms: 1.14569
+  type: 'test'
+  ...
+# Subtest: gluing over a token's generalizations is possibilizing, claim by claim
+ok 102 - gluing over a token's generalizations is possibilizing, claim by claim
+  ---
+  duration_ms: 14.29462
+  type: 'test'
+  ...
+# Subtest: one token/claim fiber equals the corresponding FULL source-preserving gluing cut
+ok 103 - one token/claim fiber equals the corresponding FULL source-preserving gluing cut
+  ---
+  duration_ms: 10.780995
+  type: 'test'
+  ...
+# Subtest: one claim preserves opposing original witnesses and refuses foreign tokens
+ok 104 - one claim preserves opposing original witnesses and refuses foreign tokens
+  ---
+  duration_ms: 1.047403
+  type: 'test'
+  ...
+# Subtest: indexed claim coordinates coincide across representational key order
+ok 105 - indexed claim coordinates coincide across representational key order
+  ---
+  duration_ms: 0.82601
+  type: 'test'
+  ...
+# Subtest: mutable wire token-frame presentations cannot retain stale claim-fiber indices
+ok 106 - mutable wire token-frame presentations cannot retain stale claim-fiber indices
+  ---
+  duration_ms: 1.613222
+  type: 'test'
+  ...
+# Subtest: nested claim mutation under a shallow-frozen wire frame cannot reuse stale Graph indexes
+ok 107 - nested claim mutation under a shallow-frozen wire frame cannot reuse stale Graph indexes
+  ---
+  duration_ms: 2.240123
+  type: 'test'
+  ...
+# Subtest: one source-told sheaf supports cross-token typed queries and stable local pagination
+ok 108 - one source-told sheaf supports cross-token typed queries and stable local pagination
+  ---
+  duration_ms: 14.657726
+  type: 'test'
+  ...
+# Subtest: paged source claims retain immutable original testimony across wire edits
+ok 109 - paged source claims retain immutable original testimony across wire edits
+  ---
+  duration_ms: 1.369426
+  type: 'test'
+  ...
+# Subtest: page snapshots bind the measured specialization interpretation, not only an equal cell cut
+ok 110 - page snapshots bind the measured specialization interpretation, not only an equal cell cut
+  ---
+  duration_ms: 1.240052
+  type: 'test'
+  ...
+# Subtest: a deeply immutable transported frame may omit the canonical default predicate
+ok 111 - a deeply immutable transported frame may omit the canonical default predicate
+  ---
+  duration_ms: 0.771578
+  type: 'test'
+  ...
+# Subtest: a null specialization predicate keeps its distinct snapshot and source reading
+ok 112 - a null specialization predicate keeps its distinct snapshot and source reading
+  ---
+  duration_ms: 0.86541
+  type: 'test'
+  ...
+# Subtest: later evidence remains on the same original site and source history persists
+ok 113 - later evidence remains on the same original site and source history persists
+  ---
+  duration_ms: 0.795304
+  type: 'test'
+  ...
+# Subtest: withTrace refuses an unrelated site before it can fabricate a sheaf section
+ok 114 - withTrace refuses an unrelated site before it can fabricate a sheaf section
+  ---
+  duration_ms: 0.425469
+  type: 'test'
+  ...
+# Subtest: an empty second reading is lawful and an invalid carrier cannot become a trace
+ok 115 - an empty second reading is lawful and an invalid carrier cannot become a trace
+  ---
+  duration_ms: 0.548023
+  type: 'test'
+  ...
+# Subtest: posit retains every witness/value combination, including untold and unmeasured source cells
+ok 116 - posit retains every witness/value combination, including untold and unmeasured source cells
+  ---
+  duration_ms: 7.960581
+  type: 'test'
+  ...
+# Subtest: posit uses opaque triple coincidence after transport and keeps duplicate witnesses joined natively
+ok 117 - posit uses opaque triple coincidence after transport and keeps duplicate witnesses joined natively
+  ---
+  duration_ms: 1.8718
+  type: 'test'
+  ...
+# Subtest: every foreign triple coordinate is refused even when untold or carrying a written value
+ok 118 - every foreign triple coordinate is refused even when untold or carrying a written value
+  ---
+  duration_ms: 2.752162
+  type: 'test'
+  ...
+# Subtest: membership reads a native site's source cells linearly for a complete valuation
+ok 119 - membership reads a native site's source cells linearly for a complete valuation
+  ---
+  duration_ms: 18.268857
+  type: 'test'
+  ...
+1..119
+# tests 119
+# suites 0
+# pass 119
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3797.923236
