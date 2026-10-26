@@ -459,12 +459,12 @@ const optionRoles = Object.freeze({offers:"offers",resource:"resource",from:"fro
   cost:"cost",opposes:"opposes",revokes:"revokes"});
 const atTime = "2026-10-21T15:00:00.000Z";
 function transportFixture({opposed=false,revoked=false,sharedCapMissing=false,
-  sharedCapInvalidUnit=false,sharedCapNonNfcUnit=false,sharedCapZero=false,sharedCapExpired=false,
+  sharedCapInvalidUnit=false,sharedCapNonStringUnit=false,sharedCapNonNfcUnit=false,sharedCapZero=false,sharedCapExpired=false,
   sharedCapFuture=false,sharedCapNoExpiry=false,sharedCapUndated=false,
   dualCapacity=false,foreignResource=false,noUses=false,costZero=false,
   priceDated=false,priceNonNfcUnit=false,noCompartments=false,ambiguousCompartments=false}={}) {
   const shared = {atoms:sharedCapZero?"0":"5",
-    unit:sharedCapInvalidUnit?"":sharedCapNonNfcUnit?"litre\u0301s":"liters",
+    unit:sharedCapInvalidUnit?"":sharedCapNonStringUnit?42:sharedCapNonNfcUnit?"litre\u0301s":"liters",
     ...(!sharedCapUndated ? {
       observedAt:sharedCapFuture?"2026-10-22T00:00:00.000Z":"2026-10-20T00:00:00.000Z",
     } : {}),
@@ -524,7 +524,10 @@ function transportFixture({opposed=false,revoked=false,sharedCapMissing=false,
     link("exchange","resource","water"),link("exchange","from","alice"),
     link("exchange","to","bob"),link("exchange","quantity","capA"),
   ];
-  return {graph:accepted(createSignGraph({cells:Object.values(cells),relations,edges})),at};
+  // Equal original typed Marks have one content address, even when two
+  // distinct capacity sources point to the same exact quantity value.
+  const uniqueCells = [...new Map(Object.values(cells).map(cell=>[cell.id,cell])).values()];
+  return {graph:accepted(createSignGraph({cells:uniqueCells,relations,edges})),at};
 }
 const readOptions=(fixture,extra={})=>channelTransportPossibilities(fixture.graph,{
   channel:fixture.at.channel,relations:optionRoles,quantityType:optionKinds.quantity.id,
@@ -537,7 +540,8 @@ test("source-witnessed unused offers preserve both alternatives and one shared c
   assert.equal(reading.possibilities.length,2);
   assert.deepEqual(reading.obstructions,[]);
   assert.equal(reading.capacitySources.length,3,"the same shared source is not cloned per route");
-  const [a,b]=reading.possibilities;
+  const a=reading.possibilities.find(option=>option.option.id===fixture.at.a.id);
+  const b=reading.possibilities.find(option=>option.option.id===fixture.at.b.id);
   assert.equal(a.evidence.offers.length,2,"two report witnesses do not double the offer");
   const sharedA=a.capacitySources.find(x=>x.source.id===fixture.at.shared.id);
   const sharedB=b.capacitySources.find(x=>x.source.id===fixture.at.shared.id);
@@ -580,7 +584,7 @@ test("contrary and revoked testimony obstruct individual candidates and retain s
 test("missing, ambiguous or malformed capacity cannot silently become zero or authorization",()=>{
   for (const [modifier,kind] of [
     ["sharedCapMissing","missing"],["sharedCapInvalidUnit","unqualified-exact-quantity"],
-    ["sharedCapNonNfcUnit","unqualified-exact-quantity"],
+    ["sharedCapNonStringUnit","unqualified-exact-quantity"],
     ["dualCapacity","ambiguous"],["foreignResource","resource-mismatch"],
     ["noUses","missing"],["sharedCapZero","reported-zero-capacity"],
     ["noCompartments","missing"],["ambiguousCompartments","ambiguous"],
@@ -595,25 +599,30 @@ test("missing, ambiguous or malformed capacity cannot silently become zero or au
   const f=transportFixture({costZero:true});
   const r=readOptions(f);
   assert.equal(r.possibilities.length,2,"zero exact cost is valid, unlike zero capacity");
-  assert.equal(r.possibilities[0].cost.atoms,"0");
+  assert.equal(r.possibilities.find(option=>option.option.id===f.at.a.id).cost.atoms,"0");
 });
 
-test("source units must be NFC before conditional transport feasibility",()=>{
+test("native typed Marks canonicalize unit text before transport retains source identity",()=>{
   const decomposition = transportFixture({sharedCapNonNfcUnit:true});
   const source = readOptions(decomposition);
-  assert.equal(source.possibilities.length,0);
-  assert.equal(source.obstructions.length,2);
-  assert.ok(source.obstructions.every(option => option.failures.some(problem =>
-    problem.role==="capacity" && problem.kind==="unqualified-exact-quantity")));
+  assert.equal(source.possibilities.length,2);
+  assert.equal(source.obstructions.length,0);
+  const shared=source.capacitySources.find(entry=>entry.source.id===decomposition.at.shared.id);
+  assert.equal(shared.capacity.unit,"litre\u0301s".normalize("NFC"));
+  const sameQuantity=accepted(createTypedMark(optionKinds.quantity,{
+    atoms:"5",unit:"litre\u0301s".normalize("NFC"),
+    observedAt:"2026-10-20T00:00:00.000Z",expiresAt:"2026-10-22T00:00:00.000Z",
+  }));
+  assert.equal(shared.quantity.id,sameQuantity.id,
+    "canonical Unicode is the original typed Mark identity, not a new capacity source");
   assert.equal(source.effects,"not-performed");
 
   const costFixture = transportFixture({priceNonNfcUnit:true});
   const cost = readOptions(costFixture);
-  assert.equal(cost.possibilities.length,1,
-    "a noncanonical cost blocks only the affected option, not an unrelated offered route");
-  assert.equal(cost.obstructions.length,1);
-  assert.ok(cost.obstructions[0].failures.some(problem =>
-    problem.role==="cost" && problem.kind==="unqualified-exact-quantity"));
+  assert.equal(cost.possibilities.length,2);
+  assert.equal(cost.obstructions.length,0);
+  assert.equal(cost.possibilities.find(option=>option.option.id===costFixture.at.a.id).cost.unit,
+    "cre\u0301dits".normalize("NFC"));
   assert.equal(readOptions(transportFixture()).possibilities.length,2,
     "ordinary canonical units remain source-eligible without inventing conversion");
 });

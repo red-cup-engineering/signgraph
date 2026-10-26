@@ -102,19 +102,19 @@ reference baselines are SQLite **3.54.1** (2026-10-16) and CouchDB
 SignGraph owns source-qualified predication/query geometry and the identity
 of original relation routes. Its actual downstream flat-file database substrate
 already exists: the original
-[SEAVT store](https://github.com/red-cup-engineering/semiotic-eavt-services-section/blob/main/content/text/documents/specifications/store.md)
+[SEAVT store](https://github.com/red-cup-engineering/semiotic-eavt-engineering-services-section/blob/main/content/text/documents/specifications/store.md)
 holds NI-addressed immutable JSONL records, named heads, day logs and causal
 links with existing `put/get/has/walk/extend/heads/pull` operations. Its
 source-owned design requires **formula-derivable locations rather than
 load-bearing hot/cold indexes**, and currently supports strict individual
 head durability, not general SQL multi-record transactions; its causal-head
 peer exchange is distinct from CouchDB HTTP/MVCC replication. The actual
-cross-owner receiving Work is [SEAVT #17](https://github.com/red-cup-engineering/semiotic-eavt-services-section/issues/17).
+cross-owner receiving Work is [SEAVT #17](https://github.com/red-cup-engineering/semiotic-eavt-engineering-services-section/issues/17).
 
 The existing
 [proof-path-structuration-service](https://github.com/red-cup-engineering/proof-path-structuration-service)
 derives canonical relative POSIX paths from original generator witnesses, and
-[proof-pathing-services-section](https://github.com/red-cup-engineering/proof-pathing-services-section)
+[proof-pathing-services-section](https://github.com/red-cup-engineering/proof-pathing-engineering-services-section)
 owns the filesystem admission leg and coordinate settlement. Correct
 **durable transactions, crash consistency, indexes, MVCC, backups, HTTP
 interfaces and replication** must be realized through their competent
@@ -153,6 +153,28 @@ receiving establishes parity and then a measured improvement.
   Claim by claim it is SignChain's possibilizing of the told fiber. Heyting
   algebra (SignCell), fiber algebra (SignChain), sheaf (here): the
   dependencies run that way only.
+  `inheritedClaim(frame, token, predicate, object)` selects one exact claim
+  through SignCell's shared `claimCoordinate`, retaining the same cells,
+  both witness sides, source tokens and obstruction as the full section.
+  `queryInheritedTellings(frame, selection, page)` selects optional token,
+  predicate, object and FOUR reading with a bounded 1–128-row page. Missing
+  claims remain absent; foreign tokens refuse. Its `sourceCells` identifies
+  the evidence-bearing source cut, while `snapshot` also binds the actual
+  specialization predicate. A changed interpretation cannot reuse the old
+  page identity. Mutable transported frames are read into an owned cut;
+  cached indexes apply only to the original immutable frame contract.
+  Hosts bind reader authority and source revision before exposing these
+  pure queries; content identity itself does not supply either.
+- `relational-value` — canonical records, sequences, scalars and bytes become
+  source/revision-witnessed structural cells through `relationalValuePredications`.
+  Its `edges` preserve directed structure; `attributes` preserve kind and lexical
+  data. Cell nodes are qualified by the complete payload identity; `sourceRoot`
+  and `nodeCoordinates` retain the original SEN coordinates. Shared spellings
+  do not establish entity identity or publication rights.
+  Payload admission preserves the established root Number and BigInt carriers,
+  including safe integers that decode to Number. It requires complete byte
+  equality with an original encoder output; it neither rewrites prior addresses
+  nor equates the two historical source carriers.
 - `cell-graph` — `cellGraph(cells, observations)` builds the Chu
   relation of held SignCells under named, total observations
   (`{ name, evaluate(cell) }`) using metrologic's `chuSpaceOfEntries`
@@ -396,6 +418,49 @@ nor a stress/strain law, temperature scale, or thermodynamic free-energy
 identification. Those remain genuine theorem and qualification targets;
 the new geometry data is a concrete carrier on which to attempt them.
 
+## Finite receiving-boundary factorization (Wood Between the Worlds research)
+
+The original `mark-gluing` module can now check a **necessary condition for
+a proposed cross-dimensional receiving portal**, on the source-generated
+Semioverse incidence it already computes. The original performed source
+generates `claimEntries`, each with a distinct `claimIndex` and
+source-occurrence identifiers. Its coarse observed boundary reads
+`claimAddress`. A caller may supply one explicitly *conditional*
+`{claimIndex, requiredClass}` for **every original occurrence**, where the
+class is a proposed receiving requirement, not verified source truth.
+
+`assessPerformedBoundaryFactorization(view, requiredReadings)` checks
+whether the proposed receiving classification is constant on every
+fiber of the original claim-address readout. In finite set terms,
+`d = r ∘ q` for a uniquely induced `r` on the observed image exactly
+when `q(a) = q(b)` implies `d(a) = d(b)` for every pair of *performed*
+source positions. If any fiber disagrees, the response identifies two
+original claim indices and performed-source occurrence IDs which the portal
+would wrongly collapse. It never manufactures a missing original lift,
+world-state, permission, job reservation, connection, payment, or settled
+consumer obligation. Serialized observations are read-only claims, not
+authenticated original source.
+
+The existing bounded JSONL operation
+`signgraph.mark-incidence.boundary-factorization` accepts only the same
+original Articulating and bounded source-derived steps as
+`performed-head-shadow`, together with the complete recipient classes.
+It invokes this exact function: no second solver, registry or ontology.
+A positive read means only **conditional factorability of that particular
+classification through that particular observation**. Any real receiving
+dimension must additionally prove its own admission, compatible transport,
+local settlement, source-preserving return and independent original consumer
+acceptance. Missing classifications refuse rather than meaning unknown or
+zero. Different candidate dimensions can be checked independently without
+merging their resource pools or authority.
+
+This implements one finite negative-control instrument for
+[Obsmetrologia's original Semioverse/Paracosm research](https://github.com/lenticule-science/obsmetrologia/blob/main/docs/research/2026-10-19-semioverse-paracosm-obstructed-shadow-categories.md)
+and the [historic Wood paper](https://drive.google.com/file/d/1jRAssyV4r1EnzwX-FzoLpBmp4yf9LzIz/view).
+It is neither the proof of the historic Wood's universal mediator nor a
+replacement for original SignGraph resource offers, SignCraft pressure,
+Organizing authority, or execution-owner Work.
+
 ## Depends on
 
 ### Data-owned resource composition
@@ -413,7 +478,7 @@ Separate module instances remain foreign even when their versions match.
 `@red-cup-engineering/metrologic` for mathematics, SignCell for cells, and
 SignChain for cell order and FOUR evidence profiles. Canonical carrier snapshots,
 semantic addresses and portable byte operations come directly from
-`@red-cup-engineering/semiotic-content-address` 0.1.0, the same owner selected by
+`@red-cup-engineering/semiotic-content-address` 0.1.1, the same owner selected by
 Data, Cell, Chain and Craft. The shipped `chu-term` module also receives its
 declared runtime dependency on Computer Code 0.1.2. Nothing here imports
 SignCraft; SignCraft imports this.
@@ -425,9 +490,123 @@ obstructions use the canonical semiotic-content-address owner's NFC-aware UTF-8
 byte ordering, not host `localeCompare`. This does not assert that matching
 Mark presentations establish observational equality or external evidence:
 SignCell continues to own typed source identity and SignChain owns the actual
-tellings. The SignGraph source edition 0.5.0 selects exact SignCell 0.10.0,
-whose concept address ordering is defined by the same canonical byte comparator.
-This needs genuine package/lock selection before a running consumer can claim it.
+tellings. The current source candidate selects SignCell 0.13.1-dev.0 and SignChain
+0.4.2-dev.1, including their shared canonical claim coordinate and transported-cell evidence join. The earlier
+0.5.0 edition selected SignCell 0.10.0. Source-qualified package receiving
+does not establish registry publication or an installed application upgrade.
+
+This composition preserves main `fd1b613fca7c3cadae7816904c16bcfba1b890cd`,
+including the original Number/BigInt payload-admission correction. Its PNPM
+lock is regenerated by the ordinary package manager from the published
+Metrologic `0.14.3-dev.3`, SignCell `0.13.1-dev.0`, SignChain `0.4.2-dev.1`
+and SCA `0.1.1` selections. The workspace's release-age exceptions name only
+the independently received new Metrologic/Cell/Chain editions; all other
+supplier versions remain subject to the ordinary policy. A locked source
+release still requires receiving by each installed consuming host.
+
+Portable performed-source readouts retain every ordered source pair at its
+canonical `firstOccurrenceIndex * N + secondOccurrenceIndex` coordinate.
+The shared reader admission refuses missing, duplicate, reordered or foreign
+occurrences and checks mutable transported readouts on each call. Equal
+claim addresses remain lawful for distinct performances. This is structural
+correspondence, not authentication of a serialized source or a new proof.
+
+The governing [Sign stack computation and Dimension requirement](https://github.com/red-cup-engineering/computer-engineering-services-section/blob/main/content/requirements/feltos-dimensions-over-sign-stack.json)
+allocates graph composition here. File owns complete selected filesystem
+observations; Cell retains exact byte resources and witnessed claims; Chain
+retains tellings; this graph reads their source-qualified relationships;
+SignCraft consumes the same identities for source queries and settlement.
+The source-told token frame and the performed Articulating geometry below
+have distinct admission contracts. Merely assigning a byte NI does not
+manufacture a performed source, a causal edge, a shared custody store or
+permission to disclose a file.
+
+
+## Performed L-Space: real executable finite fiber/sheaf and hypertensor operators
+
+The original Mark → Utterance → **performed Articulating** route remains the
+only way to generate these kinematic source occurrences. This SignGraph
+package already exposed performed Kinematic and Semioverse source incidence,
+but its more substantial source-coded Alexandrov coherent-section space
+and exact prefix hypertensor factorization had **two competing entries for
+one published operation ID**: the ordinary dispatcher silently selected its
+first matching schema and executor, while separately enumerating a redundant
+second descriptor with a weaker input contract. The original source now
+retains exactly one declared `kinematic-section-descent` operation and checks
+all operation IDs for uniqueness at module admission; dispatch uses the same
+source-pinned descriptor table. This is an interface and receiving repair,
+not a newly established mathematical theorem. The incumbent
+signgraph-holonomy JSONL executable exposes two *different*, compatible
+finite views:
+
+**Kinematic coherent sections and source hypertensor**
+
+- operation: signgraph.mark-incidence.kinematic-section-descent
+- input: original typed Articulating, source reattention step count (0–6),
+  **patches** as canonical arrays of already-generated kinematic point
+  indices forming Alexandrov upper-open regions; optional local **sections**
+  with exactly one original claimIndex per point in each patch. Local sections
+  must remain source-coordinate-coherent along original Kinematic arrows.
+- output: exact finite Metrologic component intersection and compatible
+  section count, patch overlaps, original source claim-pair obstructions,
+  conditionally glued source-preserving global section, and Boolean
+  **incidence hypertensor** with three source axes
+  (kinematic point × first performed occurrence × second performed occurrence).
+  The original Metrologic prefix-factor producer supplies a sparse exact
+  CP-style upper-bound decomposition (not a minimal CP rank or measured
+  physical tensor). No dense fake 3-array is built.
+- only original performed source support licenses each indexed coordinate.
+  Shared extensional Claim address never fuses different source acts.
+
+**Cellular partial charts inside a single fiber**
+
+- operation: signgraph.mark-incidence.performed-cellular-cover
+- input: original typed Articulating, step count, target kinematic point, and
+  1–64 partial source charts. Each chart supplies an earned pointIndex,
+  **coveredClaimIndices** naming the real source-supported cell coordinates
+  actually in its domain, and **selectedClaimIndices** as its separately
+  selected subset. A future or duplicate claim source refuses. Local chart
+  domains are NOT automatically equal to a whole fiber.
+- output: source-specific coverage, overlaps, missing original pairs and
+  contradictory selected membership, with a conditional global section
+  only if domain union covers every target source pair and all overlaps agree.
+  Each selected global row keeps original source occurrence indices/IDs and
+  distinct content-addressed Claim presentation.
+
+The published registry now refuses duplicate operation identifiers at startup
+instead of accepting first-match selection. The original operation test
+exercises the genuine source-performed hypertensor read using the sole
+`kinematic-section-descent` entry. This does not bypass original package
+dependency or installed host qualification.
+
+Both operations are pure source-inspection services under the existing
+64-KiB request and original work-budget context. Both are *conditional*
+finite sheaf-like computations, not free Grothendieck sheafification,
+FOUR truth charge, backward Articulating, material quasicrystal behavior,
+client permission, live L-Space web service or accepted revenue. In
+particular: a user-supplied selected membership is never rebranded as
+independently witnessed evidence. The exact [Obsmetrologia GeneratedWorlds
+candidate](https://github.com/lenticule-science/obsmetrologia-science-services-section/pull/68)
+proposes source-bounded sparse Patch/Section restriction and conditional
+cover gluing, but has not received a Lean kernel run.
+
+Call the **existing** signgraph-holonomy binary with JSON lines shaped as
+{operation, input}; source Articulating must be obtained from the original
+SignCell constructor, not invented in a demo JSON. The command returns
+{ok, line, operation, receipt} and explicit refusing errors without
+filesystem, network, account or host effects. The original recorded-source
+test exercises both actual performed-source operations when the selected
+Metrologic and SignCell package versions are installed. The source-only
+mathematical assays are not an installed CLI or accepted customer workload.
+
+**Economic/policy user:** an externally authorized Odoo/Salesforce or AWS
+source may *later* be admitted as original SignCell/EAVT evidence and lawfully
+performed Articulating, then the same operations can expose source-local
+agreement/obstruction for a paid provenance audit. This bridge is not
+automatically performed by SignGraph, and an AWS Resource Explorer View
+permission is not permission to publish tenant resource names or conduct
+resource changes. Buyer contracts, source-to-Mark conformance, settlement
+and original Group commercial receiving stay separate.
 
 ## Typed Channel → Message → Resource Exchange incidence
 
@@ -441,9 +620,9 @@ Caller-supplied role names `contains`, `reports`, `resource`, `from`, `to` **mus
 - Does **not** infer ordering from an unordered graph, resolve SignChain FOUR testimony, calculate monetary/material quantities, authenticate a settlement claim, perform ActivityPub++ delivery, mutate a cell's stock or grant any actor authority. The return explicitly marks those effects unperformed.
 - Refuses wrong types, unknown relations and source-forged graphs through existing SignCell admission, plus finite budgets (default 256 messages, 1024 exchanges and 16,384 witnessed edges). The receiver tests positive exchange sharing, independent resources, parallel witnesses, ambiguous/missing roles, foreign marks, stale carriers and serialization.
 
-This is **graph geometry downstream of source language**, not a new algebra, typed vocabulary, host or fundamental mathematical genesis. Upstream SignCell [Thing→Resource source PR #13](https://github.com/red-cup-engineering/signcell/pull/13) and [relational-value PR #20](https://github.com/red-cup-engineering/signgraph/pull/20), existing SignGraph [cellular sheaf PR #17](https://github.com/red-cup-engineering/signgraph/pull/17), and native Obsmetrologia [kinetic source #24](https://github.com/lenticule-science/obsmetrologia/issues/24) remain distinct open dependencies. Compare ActivityStreams 2.0 and PROV-O with source-received mappings where relevant, not by relabeling a graph: <https://www.w3.org/TR/activitystreams-core/> and <https://www.w3.org/TR/prov-primer/>.
+This is **graph geometry downstream of source language**, not a new algebra, typed vocabulary, host or fundamental mathematical genesis. Historical source work includes SignCell [Thing→Resource PR #13](https://github.com/red-cup-engineering/signcell/pull/13), SignGraph [relational-value PR #20](https://github.com/red-cup-engineering/signgraph/pull/20) and [cellular sheaf PR #17](https://github.com/red-cup-engineering/signgraph/pull/17); each has its own receiving obligations. This reader consumes the actual selected SignCell type and graph admission APIs without claiming that every historical proposal is a prerequisite or has been received. Native Obsmetrologia [kinetic source #24](https://github.com/lenticule-science/obsmetrologia-science-services-section/issues/24) owns the generating theorem. Compare ActivityStreams 2.0 and PROV-O only through separately received mappings: <https://www.w3.org/TR/activitystreams-core/> and <https://www.w3.org/TR/prov-primer/>.
 
-**Receiving:** source tests are in the original `test/graph.test.mjs`; run them with actual exact installed upstream packages. The published/current SignCraft `signgraph@0.5.0` does not yet contain this method; do not claim this source alone installed, transported, billed, or conserved any resource.
+**Receiving:** source tests are in the original `test/graph.test.mjs` and its package receiving list; run them with actual exact installed upstream packages. At the 2026-10-25 reconciliation, published SignCraft `0.6.1-dev.3` selected SignGraph `0.7.1-dev.2`, which lacks these new methods. A consumer must select and receive an immutable release containing this change. Native source qualification is separate from publication, installation, transportation, billing or conservation of a resource.
 
 ## Offered Channel → Transport Option → shared Capacity Source (SignGraph #26)
 
@@ -452,6 +631,8 @@ This is **graph geometry downstream of source language**, not a new algebra, typ
 Each capacity source retains its **one original typed source identity and all EAVT edge/witness addresses**, even when two different Options both use it. This is the consequential [shared-bottleneck discriminator](https://github.com/red-cup-engineering/signgraph/issues/26): two separate demands of four atoms each can both pass route-local tests against one capacity of five, yet aggregate demand eight exceeds the SAME source capacity. **A copied source capacity is not a new endowment.** SignGraph returns the identities and exact source-reported quantities, and its SignCraft receiver conditionally compares summed proposed demand; original AOE/FeltOS Work, office competence, reservations, transport effects and assayer acceptance remain separate.
 
 A source reported Quantity Mark must have the caller-identified original `quantityType` and canonical `{atoms,unit,observedAt?,expiresAt?}` with exact nonnegative integer atoms (maximum 80 decimal digits), an explicit nonempty unit, and optional UTC observations. Unwitnessed, plural, malformed, zero, unclocked dated, future or expired capacity is an **obstruction**, never a presumed zero or a presently available balance. Missing `observedAt` does not silently reuse a scheduled wake. Distinct units are retained as named; no automatic conversion or evidence of actual stock is inferred. Multiple witnesses on one original offered option are one option with multiple original reports. Missing `opposes` testimony in one finite graph does NOT independently establish universal FOUR positivity or legal eligibility.
+
+Original typed-Mark admission canonicalizes unit text to NFC before its content identity is formed. Equivalent Unicode input therefore names the same admitted quantity Mark; this is not a unit conversion or a fresh capacity source. Native fixtures retain one cell per original identity, retain each distinct source relation and select offers by their original typed references rather than assuming a human-name order for content addresses.
 
 `possibilities` are strictly `source-offered-only-not-authorized`; `obstructions` explain refused source cases; `capacitySources` is a unique read-only shared-source projection. These are neither autonomous Physarum dynamics nor a reserved amount. See [SignCraft #11](https://github.com/red-cup-engineering/signcraft/issues/11), [SignGraph #26](https://github.com/red-cup-engineering/signgraph/issues/26) and [AOE government #99](https://github.com/red-cup-engineering/agent-organization-engine/issues/99) for distinct receiver and authorization obligations. Native tests are authored in original `test/graph.test.mjs`; source-modeled tests are not immutable/pinned/native installation qualification.
 

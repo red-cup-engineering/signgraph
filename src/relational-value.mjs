@@ -7,6 +7,7 @@ import { validateSenTerm, validateSenType } from "@red-cup-engineering/computer-
 import { judgeSen } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation/typing";
 import { typedListItems, typedListTerm } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation/json-codec";
 import { NI_URI_PATTERN } from "@red-cup-engineering/uri-services-section/ni-uri";
+import { cell as predicationCell, cellSet } from "@red-cup-engineering/signcell/cell";
 
 // A mark is a textual term; it does not introduce a nominal type.
 const MARK = ["base"];
@@ -60,7 +61,9 @@ function normalizeValue(source) {
     const result = {};
     for (const key of Object.keys(source)) {
       const name = key.normalize("NFC"); if (Object.hasOwn(result, name)) fail(`relational field names collide after NFC normalization: ${name}`);
-      result[name] = normalizeValue(source[key]);
+      // An opaque field named __proto__ must remain a field; bracket assignment
+      // instead mutates the receiving object's prototype and silently loses data.
+      Object.defineProperty(result, name, { value: normalizeValue(source[key]), enumerable: true, writable: true, configurable: true });
     }
     return result;
   }
@@ -168,7 +171,8 @@ export function decodeRelationalValue(type, term) {
       const result = {};
       for (const { label, object } of outgoing.sort((left, right) => bytesCompare(utf8Bytes(left.label), utf8Bytes(right.label)))) {
         if (!label.startsWith("field:")) fail("record edge lacks a field predicate");
-        const key = label.slice("field:".length); if (Object.hasOwn(result, key)) fail(`duplicate relational field ${key}`); result[key] = build(object);
+        const key = label.slice("field:".length); if (Object.hasOwn(result, key)) fail(`duplicate relational field ${key}`);
+        Object.defineProperty(result, key, { value: build(object), enumerable: true, writable: true, configurable: true });
       }
       return result;
     }
@@ -206,8 +210,18 @@ function decodeRelationalAscription(bytes) {
     fail("relational value bytes must contain one typed SEN ascription");
   }
   const value = decodeRelationalValue(ascription[1], ascription[2]);
-  const canonical = encodeRelationalValue(value);
-  const canonicalBytes = semanticBytes(["ascribe", canonical.type, canonical.term]);
+  let canonical = encodeRelationalValue(value);
+  let canonicalBytes = semanticBytes(["ascribe", canonical.type, canonical.term]);
+  // The established encoder seeds a root from its JS constructor. A safe
+  // integer encoded as BigInt therefore has a different carrier from Number,
+  // although decoding either integer lexeme returns Number. Receive both
+  // historical encodings without rewriting either token or accepting arbitrary
+  // graph coordinates: the complete transported bytes must match an encoder
+  // output. Nested integers do not have this root-constructor ambiguity.
+  if (!bytesEqual(canonicalBytes, bytes) && Number.isSafeInteger(value)) {
+    canonical = encodeRelationalValue(BigInt(value));
+    canonicalBytes = semanticBytes(["ascribe", canonical.type, canonical.term]);
+  }
   if (!bytesEqual(canonicalBytes, bytes)) fail("relational value graph carrier is not canonical");
   return { canonical, canonicalBytes };
 }
@@ -224,6 +238,79 @@ export function identifyRelationalValuePayload(source) {
     bytes,
     token: makeNiUri(bytes),
     claim: canonicalClaim(encoded.type, encoded.term),
+  });
+}
+
+/**
+ * Project the ALREADY CANONICAL relational-value SEN term into original
+ * SignCell predications, without a second JSON graph/serialization format.
+ *
+ * The caller DECLARES a source resource and revision. This pure function can
+ * verify the encoded structure but cannot authenticate the caller, source,
+ * observation time, content custody, or permission to disclose its values.
+ * The witnessed proposition is only "this source's encoded *structure* has
+ * these nodes, types, lexemes and directed grounding links". It is NOT an
+ * assertion that e.g. a field named "owner" confers ownership, a field named
+ * "synonym" establishes lexical identity, or the record's values are true.
+ *
+ * Distinguish grounding edges (eligible as a directed 1-skeleton) from node
+ * annotations: a shared lexical value or kind is NOT a topological edge.
+ * Higher-dimensional incidence, metrics and dynamics need further admitted
+ * interpretations; never infer them from the occurrence of a JSON object.
+ */
+export function relationalValuePredications(value, { resource, revision } = {}) {
+  if (typeof resource !== "string" || resource.length === 0 ||
+      typeof revision !== "string" || revision.length === 0)
+    fail("source resource and revision must identify one declared record cut");
+  const payload = identifyRelationalValuePayload(value);
+  const [rootTerm, nodeTerms, edgeTerms] = fields(payload.claim.term, 3);
+  const sourceRoot = constantId(rootTerm);
+  const witness = Object.freeze({
+    kind: "signgraph.relational-value-structural-derivation/v1",
+    resource, revision, payload: payload.token,
+  });
+  // Include the actual canonical payload. A caller can reuse a revision label with
+  // incompatible bytes; doing so must not merge two source occurrences.
+  const sourceOccurrence = semanticId(["signgraph.relational-value-source/v1", resource, revision, payload.token]);
+  const evidenced = { for: [witness] };
+  // The legacy SEN encoder's structural lexeme is not injective. Preserve
+  // its established payload bytes, but qualify each graph coordinate by the
+  // complete canonical payload so different values cannot share a node.
+  const coordinates = new Map();
+  const nodes = [], nodeCoordinates = [], annotations = [], grounding = [];
+  for (const term of vectorItems(nodeTerms)) {
+    const [idTerm, kindTermValue, lexicalTerm] = fields(term, 3);
+    const sourceNode = constantId(idTerm);
+    const id = semanticId({ kind: "signgraph.relational-value-node/v1", payload: payload.token, node: sourceNode });
+    const kind = kindOf(kindTermValue), lexical = marked(lexicalTerm);
+    coordinates.set(sourceNode, id);
+    nodes.push(id);
+    nodeCoordinates.push(Object.freeze({ node: id, sourceNode }));
+    // Both kind and lexeme are necessary to distinguish string "7" from number
+    // 7, an empty record from null, or two labels with the same spelling.
+    annotations.push(predicationCell(id, "relational-value:kind", kind, evidenced));
+    annotations.push(predicationCell(id, "relational-value:lexical", lexical, evidenced));
+  }
+  if (!coordinates.has(sourceRoot)) fail("relational value root is not a canonical node");
+  const root = coordinates.get(sourceRoot);
+  for (const term of vectorItems(edgeTerms)) {
+    const [subjectTerm, predicateTerm, objectTerm] = fields(term, 3);
+    const sourceSubject = constantId(subjectTerm), predicate = marked(predicateTerm), sourceObject = constantId(objectTerm);
+    if (!coordinates.has(sourceSubject) || !coordinates.has(sourceObject) ||
+        !(/^(?:field:|index:)/u.test(predicate)))
+      fail("relational value grounding edge is malformed");
+    grounding.push(predicationCell(coordinates.get(sourceSubject), predicate, coordinates.get(sourceObject), evidenced));
+  }
+  // One resource may retain many distinguishable revisions. Do not conflate
+  // their occurrence just because their normalized value is the same.
+  annotations.push(predicationCell(sourceOccurrence, "relational-value:root", root, evidenced));
+  const edges = cellSet(grounding), attributes = cellSet(annotations);
+  return Object.freeze({
+    kind: "signgraph.relational-value-predications/v1",
+    source: Object.freeze({ resource, revision, occurrence: sourceOccurrence }),
+    payload: payload.token, root, sourceRoot, nodes: Object.freeze(nodes),
+    nodeCoordinates: Object.freeze(nodeCoordinates),
+    edges, attributes, cells: cellSet([...edges, ...attributes]),
   });
 }
 
