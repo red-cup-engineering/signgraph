@@ -206,7 +206,11 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
     }
     tokens = scopedTokens.filter((known) => candidateKeys.has(coincidenceKey(known)));
   }
+  // Count the complete source selection, but retain only the requested page.
+  // A small page must not keep every off-page gluing and witness carrier live.
+  // This bounds the retained result window, not the source frame or scan work.
   const entries = [];
+  let total = 0;
   for (const selectedToken of tokens) {
     const section = exact
       ? inheritedClaim(source, selectedToken, predicate, object)
@@ -218,6 +222,8 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
           (Object.hasOwn(selection, "object") && !coincides(at.object, object))) continue;
       const value = knowledgeReading(at);
       if (reading !== undefined && value !== reading) continue;
+      const position = total++;
+      if (position < offset || entries.length === limit) continue;
       entries.push(Object.freeze({
         token: selectedToken, cell: at, reading: value,
         sources: section.sources[i],
@@ -225,9 +231,9 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
       }));
     }
   }
-  if (offset > entries.length)
+  if (offset > total)
     throw new RangeError("signgraph claim query: page outside admitted source readings");
-  const window = Object.freeze(entries.slice(offset, offset + limit));
+  const window = Object.freeze(entries);
   // A cut of original cells is NOT itself the identity of its interpreted
   // token frame: the declared specialization predicate determines which
   // source relations generate inheritance. Bind BOTH to the query snapshot,
@@ -244,8 +250,8 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
     kind: "signgraph.inherited-telling-query", version: 1,
     snapshot, sourceCells,
     selection: retainedCarrier(selection),
-    total: entries.length, offset, limit,
-    next: offset + window.length < entries.length ? offset + window.length : null,
+    total, offset, limit,
+    next: offset + window.length < total ? offset + window.length : null,
     entries: window,
   });
 }
