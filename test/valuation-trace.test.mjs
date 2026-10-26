@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cell, cellSet, knowledgeReading, measured } from "@red-cup-engineering/signcell/cell";
-import { semanticId } from "@red-cup-engineering/semiotic-content-address";
+import { cell, cellSet, knowledgeReading, measured, semanticId } from "@red-cup-engineering/signcell/cell";
 import { site } from "../src/site.mjs";
 import {
   posit, withTrace, lastValuation, evidenceAt,
