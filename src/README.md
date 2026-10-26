@@ -175,6 +175,15 @@ receiving establishes parity and then a measured improvement.
   including safe integers that decode to Number. It requires complete byte
   equality with an original encoder output; it neither rewrites prior addresses
   nor equates the two historical source carriers.
+  Source normalization delegates to the selected semiotic-content-address
+  supplier before graph construction. Record and array-index accessors and
+  cyclic carriers refuse without invoking getters or overflowing a recursive
+  local copier; repeated references to the same value remain valid separate
+  structural occurrences. NFC text/key normalization, opaque `__proto__` keys
+  and omitted `undefined` record members follow that supplier's carrier
+  contract. Sparse arrays refuse. Root byte ownership preserves existing
+  Buffer/Uint8Array payload identities. This is a carrier interpretation,
+  not execution or authentication of arbitrary JavaScript objects or Proxies.
 - `cell-graph` — `cellGraph(cells, observations)` builds the Chu
   relation of held SignCells under named, total observations
   (`{ name, evaluate(cell) }`) using metrologic's `chuSpaceOfEntries`

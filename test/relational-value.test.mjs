@@ -221,7 +221,7 @@ test("opaque hostile-looking JSON field names remain data on encode, decode and 
   assert.ok(projected.nodes.length > 3);
   const nominal = JSON.parse('{"e\\u0301":1,"é":2}');
   assert.throws(() => encodeRelationalValue(nominal),
-    /field names collide after NFC normalization/u,
+    /map keys collide after NFC normalization/u,
     "distinct original source keys cannot be silently merged by Unicode normalization");
 });
 

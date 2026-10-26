@@ -50,24 +50,15 @@ const GROUND = ["prod", ENTITY, ["prod", MARK, ENTITY]];
 export const RELATIONAL_VALUE_TYPE = ["prod", ENTITY, ["prod", ["list", NODE], ["list", GROUND]]];
 
 function normalizeValue(source) {
-  if (typeof source === "string") return source.normalize("NFC");
-  if (source instanceof Uint8Array) return ownedBytes(source);
-  if (typeof source === "number" && !Number.isSafeInteger(source)) {
-    canonicalDecimal(source);
-    return source;
-  }
-  if (Array.isArray(source)) return source.map(normalizeValue);
-  if (source && Object.getPrototypeOf(source) === Object.prototype) {
-    const result = {};
-    for (const key of Object.keys(source)) {
-      const name = key.normalize("NFC"); if (Object.hasOwn(result, name)) fail(`relational field names collide after NFC normalization: ${name}`);
-      // An opaque field named __proto__ must remain a field; bracket assignment
-      // instead mutates the receiving object's prototype and silently loses data.
-      Object.defineProperty(result, name, { value: normalizeValue(source[key]), enumerable: true, writable: true, configurable: true });
-    }
-    return result;
-  }
-  return canonicalizeSemioticJson(source);
+  // The content-address owner admits and copies the complete carrier before
+  // any graph traversal: NFC keys/text, cycle and accessor refusal, preserved
+  // opaque __proto__ fields, and shared values all have one normalization.
+  // Calling source.map or source[key] here used to execute source accessors
+  // before this upstream boundary could refuse them.
+  const value = canonicalizeSemioticJson(source);
+  // The established root-byte seed uses the host-owned byte constructor.
+  // Keep existing Buffer/Uint8Array tokens while delegating carrier semantics.
+  return value instanceof Uint8Array ? ownedBytes(value) : value;
 }
 
 function scalar(value) {
