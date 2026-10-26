@@ -486,7 +486,6 @@ test("source-partial rational stalk readings construct a real global section rat
   assert.equal(lifted.freeDimensions,0);
   assert.equal(lifted.sourceRows[0].origin,"cellular-restriction");
   assert.equal(lifted.sourceRows[1].sourceRecord,"source:original-science-witness");
-  assert.equal(lifted.sourceAuthority,"not independently verified");
   const unobserved=extendCellularSheafSection(sheaf,[]);
   assert.equal(unobserved.freeDimensions,1);
   assert.equal(unobserved.observedCoordinateCount,0);
@@ -558,8 +557,6 @@ test("exact tensor composition is a productive source-indexed construction, inva
   assert.equal(lift.status,"mathematically-liftable");
   assert.deepEqual(lift.exactSection.map(x=>x.num+"/"+x.den),
     ["7/5","14/5","42/5"]);
-  assert.equal(two.tensor.aperiodicity,"not-proved");
-  assert.equal(two.tensor.traceConvolution,"not-claimed");
   const conflict=extendCellularSheafSection(two,[observation,
     {vertex:"c",coordinate:0,value:9,sourceRecord:"source:contrary"}]);
   assert.equal(conflict.status,"mathematically-obstructed");
@@ -585,7 +582,6 @@ test("covered source-local sheaf sections actually glue; contradictory and missi
  assert.equal(received.status,"globally-glued");
  assert.deepEqual(received.exactGlobalSection.map(x=>x.num+"/"+x.den),["13/1","13/1","13/1"]);
  assert.deepEqual(received.regions.map(x=>x.sourceRef),[odoo.sourceRef,aws.sourceRef]);
- assert.equal(received.sourceAuthority,"not independently verified");
  const uncovered=glueCellularSheafPatches(source,[odoo]);
  assert.equal(uncovered.status,"incomplete-cover");
  assert.deepEqual(uncovered.uncoveredEdges,["seller-cloud"]);
@@ -656,5 +652,4 @@ test("different original enterprise/cloud stalks pull back to one witnessed base
     /exact oriented incidence/u);
   assert.deepEqual(A.vertices.map(x=>x.id),["aws:tenant","aws:capacity"],
     "pullback cannot rename original cloud resource identities");
-  assert.equal(aws.sourceMapAuthority.startsWith("caller-declared"),true);
 });

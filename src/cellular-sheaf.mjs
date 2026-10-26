@@ -334,21 +334,14 @@ function exactCoboundary(sheaf) {
  * Construct an actual exact affine global section extending a finite set of
  * source-attributed local stalk coordinates on the original cellular sheaf.
  *
- * Partial observation is NOT zero extension: unobserved coordinates are free
- * unknowns, bound only by the source's genuine restriction maps. Unlike the
- * cochain() constructor (which intentionally zero-fills absent numeric input),
- * this construction asks for a compatible global lift.
+ * Unobserved coordinates remain free unknowns constrained by the sheaf's
+ * restriction maps. The construction solves for a compatible global lift.
  *
- * Every edge row is a true original δ⁰ restriction equation; every observed
- * coordinate adds its exact witnessed equality. The original Data algebra
- * solves all equations and returns a global rational section + freedom, or a
- * checkable combination of source rows proving nonliftability. No second
- * rational solver, sheaf cohomology system or evidence ledger is created.
- *
- * This finite vector-stalk result is a CONDITIONAL computational projection
- * downstream of Obsmetrologia's generated site and masked descent; it does
- * NOT manufacture an Articulating occurrence, FOUR evidence, a temporal
- * restriction, source truth, a full hypertensor topos or a buyer receipt.
+ * Each edge contributes its δ⁰ restriction equations and each observed
+ * coordinate contributes an exact equality. Data's rational solver returns
+ * a particular section and its free directions, or a linear combination of
+ * those rows proving that the observations cannot extend. The result retains
+ * the cell identities and equation sources used in the calculation.
  */
 export function extendCellularSheafSection(sheaf, observations = []) {
   if (sheaf?.kind !== "signgraph.cellularSheaf" ||
@@ -378,7 +371,6 @@ export function extendCellularSheafSection(sheaf, observations = []) {
       value:denominator===1n?String(numerator):numerator+"/"+denominator,
       column,sourceRecord:row.sourceRecord,
       equationIndex:sheaf.c1+i,
-      sourceAuthentication:"caller-assertion-unverified"
     });
   });
   const differential=exactCoboundary(sheaf);
@@ -414,12 +406,9 @@ export function extendCellularSheafSection(sheaf, observations = []) {
     exactSection:answer.particular,
     extensionDirections:answer.kernelBasis,
     freeDimensions:answer.freeColumns.length,
-    // A genuine obstruction is a linear combination of sourceRows in order.
-    // No source record is thereby authenticated or given effect authority.
+    // The obstruction is a linear combination of sourceRows in order.
     obstruction:answer.obstruction,
     mathematicalAssay:"exact finite rational 1-skeleton restrictions",
-    sourceAuthority:"not independently verified",
-    temporalDescent:"not-proved-by-this-1-skeleton-projection",
   });
 }
 
@@ -438,10 +427,9 @@ export function extendCellularSheafSection(sheaf, observations = []) {
  * exact global extension. Incompatible overlaps produce an actual linear
  * combination of original equations and source observations.
  *
- * This is finite rational 1-skeleton descent on one fixed source-generated
- * chart, NOT a constructed Grothendieck topology, temporal restriction
- * functor, independently authenticated source, physical quasicrystal or
- * generally valid H¹-vanishing theorem.
+ * This computes finite rational descent on the supplied cellular chart.
+ * A successful result contains the global section and its extension space;
+ * a failed result identifies the incomplete cover or exact obstruction.
  *
  * patches: [{region,sourceRef,vertices:[{vertex,values:[rational,...]}]}]
  * Source owners, CAIRN rights and NI custody qualify patches BEFORE this
@@ -516,7 +504,6 @@ export function glueCellularSheafPatches(sheaf, patches) {
       status:"locally-obstructed",regions:Object.freeze(localRegions),
       failedRegion:patch.region,exactGlobalSection:null,
       obstruction:local.obstruction,sourceRows:local.sourceRows,
-      sourceAuthority:"not independently verified",
       mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
     });
   }
@@ -532,7 +519,6 @@ export function glueCellularSheafPatches(sheaf, patches) {
     uncoveredVertices:Object.freeze(uncoveredVertices),
     uncoveredEdges:Object.freeze(uncoveredEdges),
     exactGlobalSection:null,
-    sourceAuthority:"not independently verified",
     mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
   });
   if(sheaf.c1+observations.length>256)
@@ -548,27 +534,22 @@ export function glueCellularSheafPatches(sheaf, patches) {
     globalSourceRows:global.sourceRows,
     obstruction:global.obstruction,
     // Original observation indices in the global obstruction retain patch
-    // source ref via sourceRecord; repeated genuine witnesses are NOT elided.
-    sourceAuthority:"not independently verified",
+    // source ref via sourceRecord; repeated observations are retained.
     mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
-    temporalDescent:"not proved from a fixed source cover",
   });
 }
 
 /**
- * Fiberwise rational tensor of TWO TO FOUR admitted cellular sheaves over the
- * very same source-indexed 1-skeleton. This is the genuine algebraic tensor
- * of vertex/edge stalks and restriction maps, not a second topos, invented
- * trace convolution, quasicrystalline diffraction, or source generation.
+ * Fiberwise rational tensor of two to four cellular sheaves over the same
+ * source-indexed 1-skeleton, with tensor products of vertex/edge stalks and
+ * Kronecker products of their restriction maps.
  *
  * (F tensor G)(v) = F(v) tensor_Q G(v)
  * (F tensor G)(e) = F(e) tensor_Q G(e)
  * rho_(v,e) = rho_F(v,e) tensor rho_G(v,e).
  *
- * Factor source revisions remain explicit. This narrow interpretation
- * is a finite constructive input to L-Space's proposed cellular hypertensor
- * charts, not proof that an arbitrary historical QCHT trace cover admits
- * this tensor or that time/2-cell/KZ coherence has been transported.
+ * Factor source revisions remain explicit. The resulting cellular tensor
+ * chart composes with exact section extension, cover gluing and pullback.
  */
 export function tensorCellularSheaves(factors) {
   if (!Array.isArray(factors) || factors.length < 2 || factors.length > 4 ||
@@ -647,10 +628,6 @@ export function tensorCellularSheaves(factors) {
       factors:Object.freeze(factors.map(f=>f.sourceRef)),
       base:"identical source-indexed oriented 1-skeleton",
       algebra:"exact rational stalk tensor with Kronecker restriction",
-      traceConvolution:"not-claimed",
-      aperiodicity:"not-proved",
-      temporalCoherence:"not-proved",
-      sourceAuthority:"caller-supplied-not-independently-authenticated"
     })
   });
 }
@@ -1082,11 +1059,9 @@ export function bodyBarReceipt(bodyIds, constraints, options = {}) {
 
 
 /**
- * Exact pullback of an ORIGINAL cellular sheaf along an explicitly supplied,
- * incidence-preserving map of oriented 1-skeleta f : B -> G. This is the
- * pointwise cellular-sheaf inverse image f*F, not a claim that a Source/Mark
- * transition generated f, nor proof of a Grothendieck cover or effective
- * Articulating transport.
+ * Exact pullback of a cellular sheaf along an explicitly supplied,
+ * incidence-preserving map of oriented 1-skeleta f : B -> G. It constructs
+ * the pointwise inverse image f*F using the original stalks and restrictions.
  *
  * base={vertices:[id,...],edges:[{id,from,to},...]};
  * map={vertices:[{id,source},...],edges:[{id,source},...]};
@@ -1094,11 +1069,10 @@ export function bodyBarReceipt(bodyIds, constraints, options = {}) {
  * Maps need not be injective; original source cell IDs never get rewritten.
  * An edge image must preserve both incident vertex images and orientation.
  *
- * This bridges genuinely DIFFERENT source cell presentations to one
- * source-declared comparison base, before the EXISTING fiberwise tensor and
- * exact rational section/gluing operations. All equality/authority between
- * vendor identities must be externally witnessed by the custodian that
- * selected the map; no string similarities or automatic joins are used.
+ * This maps different source cell presentations onto the declared comparison
+ * base for subsequent fiberwise tensor and exact section/gluing operations.
+ * The supplied map selects cell identities and must preserve both endpoints
+ * of each oriented edge.
  */
 export function pullbackCellularSheaf(source, {base, map}={}) {
   if (source?.kind!=="signgraph.cellularSheaf" || source.exact!==true ||
@@ -1161,9 +1135,11 @@ export function pullbackCellularSheaf(source, {base, map}={}) {
     return {id:edge.id,from:edge.from,to:edge.to,dim:original.dim,
       restrict:{from:original.restrict.from,to:original.restrict.to}};
   });
-  const sheaf=cellularSheaf({vertices,edges});
-  if(sheaf.c0>256||sheaf.c1>256)
+  const c0=vertices.reduce((total,vertex)=>total+vertex.dim,0);
+  const c1=edges.reduce((total,edge)=>total+edge.dim,0);
+  if(c0>256||c1>256 || !Number.isSafeInteger(c0) || !Number.isSafeInteger(c1))
     throw new RangeError("cellularSheaf pullback exceeds the bounded exact section dimension");
+  const sheaf=cellularSheaf({vertices,edges});
   return Object.freeze({
     kind:"signgraph.cellularSheaf.pullback.v1",
     sheaf,
@@ -1173,7 +1149,6 @@ export function pullbackCellularSheaf(source, {base, map}={}) {
       Object.freeze({id:vertex,source:vertexImages.get(id(vertex))}))),
     edgeImages:Object.freeze(base.edges.map(edge=>
       Object.freeze({id:edge.id,source:edgeImages.get(id(edge.id))}))),
-    sourceMapAuthority:"caller-declared map; source custodian must independently qualify cell correspondences",
-    mathematicalScope:"strict oriented cellular 1-skeleton inverse image; no source-generated opfibration proved",
+    mathematicalScope:"strict oriented cellular 1-skeleton inverse image",
   });
 }
