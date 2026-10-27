@@ -21,7 +21,10 @@
     "test/fiber-adjoints.test.mjs",
     "test/cellular-sheaf-complex.test.mjs",
     "test/keratin-graph.test.mjs",
-    "examples/keratin-hole-workbench.mjs"
+    "examples/keratin-hole-workbench.mjs",
+    "test/source-record-tower-flow.test.mjs",
+    "test/cell-graph.test.mjs",
+    "test/cohomology-canonical-incidence.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -102,6 +105,9 @@
     "test/fiber.test.mjs",
     "test/fiber-adjoints.test.mjs",
     "test/cellular-sheaf-complex.test.mjs",
-    "test/keratin-graph.test.mjs"
+    "test/keratin-graph.test.mjs",
+    "test/source-record-tower-flow.test.mjs",
+    "test/cell-graph.test.mjs",
+    "test/cohomology-canonical-incidence.test.mjs"
   ]
 }

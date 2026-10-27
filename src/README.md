@@ -855,3 +855,30 @@ tests from either PR over the other. Distinct features—2-complex Matrix Market
 on #17 versus hole/fiber Keratin views on #31—and their package exports
 still require independent installed receiving and eventual manifest
 reconciliation. Identical source bytes are not native CI qualification.
+
+## Source-ordered FOUR-Record tower reception
+
+The original `./cell-graph` now receives source-qualified
+`chargeRecordTowerOfCell` from the actual SignCell `./charge-spin`
+producer through `sourceRecordTowerFlowOfCells(cells, towerOfCell)`.
+The caller supplies the producer so this library does not pretend that
+a historical pinned SignCell package contains the newly merged export.
+The receiver keeps all original source presentation positions and every
+told-for/told-against witness, including repeated equal triples. The
+original oriented `flowNetworkOfCells` and original Chu `cellGraph`
+are retained; the Chu states separately project evidence presence
+and posited charge, which can disagree without asserting a measurement.
+
+Source terms are indexed with SignCell's original canonical coincidence
+instead of host object identity. Directed graph incidence and cohomology
+retain nontrivial self-loop/parallel-edge identities and finite
+signed boundaries. Source-tower claims are rechecked at reception;
+a foreign changed tally, missing address or invented evidence refuses.
+
+The `test/source-record-tower-flow.test.mjs`, `test/cell-graph.test.mjs`
+and `test/cohomology-canonical-incidence.test.mjs` are enrolled in
+package receiving. An independent receiving run must use a pinned
+published SignCell producer, the native Metrologic/Exact Number packages,
+and an actual authorized downstream consumer before publication. Raw
+Record counts are not a universal invertible FOUR regime tower,
+physical C4 flux, source authentication or a sheaf-gluing theorem.
