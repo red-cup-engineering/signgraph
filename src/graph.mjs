@@ -289,6 +289,100 @@ export function channelResourceIncidence(graph, {
 }
 
 /**
+ * Find one source-addressed directed cycle of POSSIBLE same-resource
+ * exchange incidence. No stock reading, execution, accounting or authorization
+ * is asserted here. This is the bounded witness of a nonnegative null-vector
+ * of the oriented incidence matrix if the reported arcs are feasible.
+ */
+function firstSourceDirectedCycle(transfers) {
+  const outgoing = new Map(), nodes = new Set();
+  for (const transfer of transfers) {
+    const from = transfer.from.id, to = transfer.to.id;
+    nodes.add(from); nodes.add(to);
+    if (!outgoing.has(from)) outgoing.set(from, []);
+    outgoing.get(from).push(transfer);
+  }
+  for (const arcs of outgoing.values())
+    arcs.sort((a,b) => a.exchange.id < b.exchange.id ? -1 : a.exchange.id > b.exchange.id ? 1 : 0);
+  const seen = new Set(), active = new Map();
+  for (const start of [...nodes].sort()) {
+    if (seen.has(start)) continue;
+    const stack = [{node:start,next:0,via:null}];
+    seen.add(start); active.set(start,0);
+    while (stack.length) {
+      const frame = stack[stack.length-1];
+      const arcs = outgoing.get(frame.node) ?? [];
+      if (frame.next === arcs.length) {
+        active.delete(frame.node);
+        stack.pop();
+        continue;
+      }
+      const edge = arcs[frame.next++];
+      const target = edge.to.id, index = active.get(target);
+      if (index !== undefined) {
+        // Original typed exchange/endpoint/evidence objects survive unchanged.
+        return Object.freeze([...stack.slice(index+1).map(f => f.via),edge]);
+      }
+      if (!seen.has(target)) {
+        seen.add(target);
+        stack.push({node:target,next:0,via:edge});
+        active.set(target,stack.length-1);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Qualify the LIMIT of a stock-only circulation inference over the original
+ * authenticated, channel-scoped SignGraph incidence reader. A witnessed,
+ * same-resource, directed exchange cycle supplies a nonzero nonnegative
+ * incidence-kernel vector: zero edge flux and flux around that cycle would
+ * have identical vertex-stock deltas under the SAME boundary injections.
+ *
+ * This does NOT show either history occurred. Without a witnessed directed
+ * cycle, this projection also cannot prove uniqueness: unobserved exchange
+ * edges, source obstructions, constitutive laws, port effects and measurement
+ * coverage remain outside SignGraph. It never decodes a Quantity into units,
+ * invents flows, books money, asserts clock phases, or grants effects.
+ */
+export function channelStockFlowAmbiguity(graph, options = {}) {
+  const reading = channelResourceIncidence(graph, options);
+  const grouped = new Map();
+  for (const transfer of reading.transfers) {
+    const id = transfer.resource.id;
+    if (!grouped.has(id))
+      grouped.set(id,{resource:transfer.resource,transfers:[]});
+    grouped.get(id).transfers.push(transfer);
+  }
+  const resources = [...grouped.values()]
+    .sort((a,b) => a.resource.id < b.resource.id ? -1 : a.resource.id > b.resource.id ? 1 : 0)
+    .map(({resource,transfers}) => {
+      const cycle = firstSourceDirectedCycle(transfers);
+      return Object.freeze({
+        resource, exchangeCount:transfers.length,
+        cycleTransfers:cycle,
+        stockOnlyIdentifiability:cycle ?
+          "not-identifiable-if-these-cyclic-arcs-are-feasible" :
+          "undetermined-without-complete-source-and-effect-law",
+        realizedFlux:"not-observed",
+        transferStanding:"source-witnessed-incidence-not-executed",
+      });
+    });
+  return Object.freeze({
+    kind:"signgraph.channelStockFlowAmbiguity.v1",
+    graph:reading.graph, channel:reading.channel,
+    resources:Object.freeze(resources),
+    obstructions:reading.obstructions,
+    stockObservations:"not-supplied",
+    independentEdgeFlux:"not-supplied",
+    boundaryEffects:"not-supplied",
+    actualCirculation:"not-established",
+    endogenousClock:"not-established",
+  });
+}
+
+/**
  * Offered, potentially UNUSED transport topology, distinct from performed
  * Message -> Exchange incidence.  A source-owned Channel offers an Option;
  * the Option witnesses resource, endpoints and one-or-more capacity sources;
