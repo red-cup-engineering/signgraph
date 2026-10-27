@@ -1,0 +1,84 @@
+{
+  "id": "2026-10-27-signgraph-normalization",
+  "kind": "misfiled-resources-register",
+  "by": "apply-services-section-normalization",
+  "date": "2026-10-27",
+  "moved": [
+    {
+      "from": "data/records/receiving-records/2026-10-26-signcell-198-adoption/qualification.json",
+      "to": "data/records/service-records/receiving-service-records/2026-10-26-signcell-198-adoption/qualification.json",
+      "rule": "eavt-data-law",
+      "sourceSha256": "5802c58bc4bea6c756223e81ca2cd33f648c186684a9a2055bbdfddb41052a5c",
+      "destinationSha256": "5802c58bc4bea6c756223e81ca2cd33f648c186684a9a2055bbdfddb41052a5c",
+      "byteIdentical": true
+    },
+    {
+      "from": "data/records/receiving-records/2026-10-26-signcell-198-adoption/receiving.tap",
+      "to": "data/records/service-records/receiving-service-records/2026-10-26-signcell-198-adoption/receiving.tap",
+      "rule": "eavt-data-law",
+      "sourceSha256": "45d0554b3c3a1d7c589730971e2344d9527dcb583c479629e2481d8eaa50ecc6",
+      "destinationSha256": "45d0554b3c3a1d7c589730971e2344d9527dcb583c479629e2481d8eaa50ecc6",
+      "byteIdentical": true
+    },
+    {
+      "from": "data/records/receiving-records/2026-10-26-signgraph-357-published-receiving/qualification.json",
+      "to": "data/records/service-records/receiving-service-records/2026-10-26-signgraph-357-published-receiving/qualification.json",
+      "rule": "eavt-data-law",
+      "sourceSha256": "144b21b53166368a894c66fe363e0361992c1b45773420f20b665548704ea972",
+      "destinationSha256": "144b21b53166368a894c66fe363e0361992c1b45773420f20b665548704ea972",
+      "byteIdentical": true
+    },
+    {
+      "from": "data/records/receiving-records/2026-10-26-signgraph-357-published-receiving/receiving.tap",
+      "to": "data/records/service-records/receiving-service-records/2026-10-26-signgraph-357-published-receiving/receiving.tap",
+      "rule": "eavt-data-law",
+      "sourceSha256": "55b61f1bfb325191076453c6503d6c944dd596b05409755a250c610f830dc90d",
+      "destinationSha256": "55b61f1bfb325191076453c6503d6c944dd596b05409755a250c610f830dc90d",
+      "byteIdentical": true
+    },
+    {
+      "from": "data/records/requirements-records/signgraph-meets-then-beats-application-peers.json",
+      "to": "data/records/service-records/requirements-service-records/signgraph-meets-then-beats-application-peers.json",
+      "rule": "eavt-data-law",
+      "sourceSha256": "ad725a8c4229c198bd13fd0ed0b2b2b4d16f718e3b1fd5e0345346d78ec238f3",
+      "destinationSha256": "ad725a8c4229c198bd13fd0ed0b2b2b4d16f718e3b1fd5e0345346d78ec238f3",
+      "byteIdentical": true
+    },
+    {
+      "from": "data/records/requirements-records/signgraph-meets-then-beats-oxigraph.json",
+      "to": "data/records/service-records/requirements-service-records/signgraph-meets-then-beats-oxigraph.json",
+      "rule": "eavt-data-law",
+      "sourceSha256": "13da155f2a78739b9422850fe1191cbca20b6988b860ee25ac21a8fe1480a430",
+      "destinationSha256": "13da155f2a78739b9422850fe1191cbca20b6988b860ee25ac21a8fe1480a430",
+      "byteIdentical": true
+    },
+    {
+      "from": "data/records/requirements-records/signgraph-meets-then-beats-sqlite-and-couchdb.json",
+      "to": "data/records/service-records/requirements-service-records/signgraph-meets-then-beats-sqlite-and-couchdb.json",
+      "rule": "eavt-data-law",
+      "sourceSha256": "7284e3c46b5173d3b61cd92af36215c30a7756c8b05b6048478415c2a5a3b510",
+      "destinationSha256": "7284e3c46b5173d3b61cd92af36215c30a7756c8b05b6048478415c2a5a3b510",
+      "byteIdentical": true
+    }
+  ],
+  "owed": [
+    {
+      "rule": "stray-top-level",
+      "reason": ".npmrc/ is not an entry the services-section law knows; its owner decides where it belongs",
+      "directory": ".",
+      "count": 1
+    },
+    {
+      "rule": "stray-top-level",
+      "reason": "pnpm-lock.yaml/ is not an entry the services-section law knows; its owner decides where it belongs",
+      "directory": ".",
+      "count": 1
+    },
+    {
+      "rule": "stray-top-level",
+      "reason": "pnpm-workspace.yaml/ is not an entry the services-section law knows; its owner decides where it belongs",
+      "directory": ".",
+      "count": 1
+    }
+  ]
+}
