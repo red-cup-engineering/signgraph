@@ -7,7 +7,10 @@
  * and observation-name equality as state sameness; Chu maps between two
  * organizations are SignChain's `chuMap`.
  */
-import { cellSet, coincides, sameCell } from "@red-cup-engineering/signcell/cell";
+import {
+  address, admitCell, cellSet, coincidenceKey, coincides, measured,
+  presence, recordOf, sameCell, valueOf
+} from "@red-cup-engineering/signcell/cell";
 import { natZero, natOne, natAdd, fromNatural } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { chuSpaceOfEntries } from "@red-cup-engineering/metrologic/chu";
 
@@ -32,13 +35,19 @@ export function cellGraph(cells, observations, options = {}) {
 export function relationGraphOfCells(cells) {
     if (cells.length === 0)
         throw new TypeError("an empty section presents no relation graph");
+    // SignCell's canonical coincidence bytes, not host object identity or
+    // JSON.stringify. Every original term is retained in first-seen order.
+    // Each incident endpoint is classified once in O(1) expected map access.
     const terms = [];
+    const positions = new Map();
     const indexOf = (term) => {
-        const found = terms.findIndex((candidate) => coincides(candidate, term));
-        if (found !== -1)
-            return found;
+        const key = coincidenceKey(term);
+        const prior = positions.get(key);
+        if (prior !== undefined) return prior;
+        const position = terms.length;
         terms.push(term);
-        return terms.length - 1;
+        positions.set(key, position);
+        return position;
     };
     const pairs = [];
     for (const cell of cells) {
@@ -87,7 +96,10 @@ export function relationGraph(section) {
  */
 export function flowNetworkOfCells(cells) {
     const graph = relationGraphOfCells(cells);
-    const indexOf = (term) => graph.terms.findIndex((candidate) => coincides(candidate, term));
+    // The weighted and directed readers must use the SAME upstream canonical
+    // coincidence classes. Avoid linear vertex rescans per oriented edge.
+    const positions = new Map(graph.terms.map((term, index) => [coincidenceKey(term), index]));
+    const indexOf = (term) => positions.get(coincidenceKey(term));
     const edges = [];
     for (const value of cells) {
         const fromIndex = indexOf(value.subject);
@@ -109,3 +121,76 @@ export function flowNetworkOfCells(cells) {
 export function flowNetwork(section) {
     return flowNetworkOfCells(section.entries.map((entry) => entry.cell));
 }
+
+// — Receive (not recreate) the original SignCell FOUR ⇄ Record adjunction. —
+
+/**
+ * Bring a source-witnessed SignCell charge/record tower into the ORIGINAL
+ * oriented SignGraph flow. The second argument is the actual producer
+ * exported as SignCell ./charge-spin#chargeRecordTowerOfCell. It is injected
+ * until that additive, draft SignCell export is published at a fixed version;
+ * SignGraph deliberately does not import an unreleased npm subpath.
+ *
+ * One entry is retained PER supplied cell presentation. The existing
+ * flowNetworkOfCells also retains parallel incidence edges. An address
+ * coincidence DOES NOT erase source testimony or mint new independent WITs.
+ *
+ * The returned records are evidence counts, NOT authenticated actors,
+ * accepted physical charges, a Scott/aperiodic closure ordinal, a sheaf,
+ * electromagnetic fields, or a physical metric. Source and original
+ * for/against/posited-value distinctions remain in every entry.
+ */
+export function sourceRecordTowerFlowOfCells(cells, towerOfCell) {
+  if (!Array.isArray(cells) || cells.length === 0 || cells.length > 1024) {
+    throw new TypeError("signgraph: source tower flow requires 1..1024 source cells");
+  }
+  if (typeof towerOfCell !== "function") {
+    throw new TypeError("signgraph: a source-owned SignCell tower reader is required");
+  }
+  const entries = cells.map((original, sourceIndex) => {
+    const admitted = admitCell(original);
+    const tower = towerOfCell(admitted);
+    const actualRecord = recordOf(admitted);
+    if (!tower || tower.kind !== "signcell.charge-record-tower.v1"
+        || tower.sourceAddress !== address(admitted)
+        || !tower.sourceCell || !coincides(admitCell(tower.sourceCell), admitted)
+        || tower.observedCharge !== presence(admitted)
+        || tower.valuedCharge !== valueOf(admitted)
+        || tower.measured !== measured(admitted)
+        || !tower.record || tower.record.pos !== actualRecord.pos
+        || tower.record.neg !== actualRecord.neg
+        || !tower.minimumRecord || !tower.retainedSurplus
+        || tower.minimumRecord.pos !== Number(actualRecord.pos > 0)
+        || tower.minimumRecord.neg !== Number(actualRecord.neg > 0)
+        || tower.retainedSurplus.pos !== actualRecord.pos - tower.minimumRecord.pos
+        || tower.retainedSurplus.neg !== actualRecord.neg - tower.minimumRecord.neg) {
+      throw new TypeError("signgraph: rejected foreign, stale or inconsistent source tower readout");
+    }
+    return Object.freeze({
+      sourceIndex,
+      cell: admitted,
+      sourceAddress: tower.sourceAddress,
+      tower,
+      from: admitted.subject,
+      to: admitted.object
+    });
+  });
+  // Use the existing oriented graph: subject -> object, self-links have no edge.
+  const flow = flowNetworkOfCells(entries.map((entry) => entry.cell));
+  const extensionalCells = cellSet(entries.map((entry) => entry.cell));
+  // Existing native Chu reader, now distinguishing evidence presence from the
+  // posited FOUR value. It is intentionally a LOSSY extensional projection:
+  // original entry witnesses and tally multiplicities stay above in entries.
+  const chu = cellGraph(extensionalCells, [
+    { name: "source-evidence-charge", evaluate: presence },
+    { name: "posited-charge", evaluate: valueOf }
+  ]);
+  return Object.freeze({
+    kind: "signgraph.source-record-tower-flow.v1",
+    flow,
+    chu,
+    entries: Object.freeze(entries),
+    extensionalCells
+  });
+}
+

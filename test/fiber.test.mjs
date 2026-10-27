@@ -153,3 +153,39 @@ test("finite indexed predicate fiber supports repeated Chu/FCA locality readings
   assert.equal(local.at(entities[1], entities[0]), "absurd");
   assert.equal(fiberFusion(local, local, [[entities[0], entities[1]]]).pairs.length, 1);
 });
+
+test("typed FOUR fibers cannot be forged by copying a kind label and a callable at",()=>{
+ const original=predicateFiber("territory",["a","b"],()=> "potential");
+ let reads=0;
+ const counterfeit=Object.freeze({kind:"signgraph.fiber",label:"territory",
+   entities:["a","b"],pairs:[["a","a"]],
+   at(){reads++;return "stable";}});
+ for(const operation of [fiberFusion,fiberResiduum,fiberLeqTruth]){
+   assert.throws(()=>operation(original,counterfeit),/original predicate fibers/u);
+   assert.throws(()=>operation(counterfeit,original),/original predicate fibers/u);
+ }
+ assert.equal(reads,0);
+ // A structured clone cannot confer construction origin by preserving fields.
+ const copied={...original};
+ assert.throws(()=>fiberFusion(original,copied),/original predicate fibers/u);
+ const real=fiberFusion(original,original);
+ assert.equal(real.kind,"signgraph.fiber");
+ assert.equal(real.at("a","a"),fusionReading("potential","potential"));
+});
+
+test("predicate fiber site admission refuses executable array or pair slots",()=>{
+ let reads=0;
+ const entities=["a","b"];
+ Object.defineProperty(entities,"0",{enumerable:true,get(){reads++;return "a"}});
+ assert.throws(()=>allPairs(entities),/inert data/u);
+ assert.throws(()=>predicateFiber("p",entities,()=> "potential"),/inert data/u);
+ const pair=["a","b"];
+ Object.defineProperty(pair,"0",{enumerable:true,get(){reads++;return "a"}});
+ assert.throws(()=>predicateFiber("p",["a","b"],()=> "potential",[pair]),/inert data/u);
+ const pairs=[["a","b"]];
+ Object.defineProperty(pairs,"0",{enumerable:true,get(){reads++;return pair}});
+ assert.throws(()=>predicateFiber("p",["a","b"],()=> "potential",pairs),/inert data/u);
+ const decorated=[["a","b"]];decorated.foreign="undisclosed";
+ assert.throws(()=>predicateFiber("p",["a","b"],()=> "potential",decorated),/dense undecorated/u);
+ assert.equal(reads,0);
+});
