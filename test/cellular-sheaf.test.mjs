@@ -717,3 +717,38 @@ test("source rational getter cannot execute during original sheaf restriction ad
  }),/exact source scalar cannot contain accessors/u);
  assert.equal(reads,0);
 });
+
+test("sheaf source records and stalk arrays refuse foreign executable accessors",()=>{
+ let reads=0;
+ const source={edges:[]};
+ Object.defineProperty(source,"vertices",{enumerable:true,get(){reads++;return [{id:"a",dim:1}];}});
+ assert.throws(()=>cellularSheaf(source),/inert own data/u);
+ const vertex={dim:1};
+ Object.defineProperty(vertex,"id",{enumerable:true,get(){reads++;return "a";}});
+ assert.throws(()=>cellularSheaf({vertices:[vertex],edges:[]}),/inert own data/u);
+ const edge={id:"ab",from:"a",to:"b",dim:1};
+ Object.defineProperty(edge,"restrict",{enumerable:true,get(){reads++;return {from:[[1]],to:[[1]]};}});
+ assert.throws(()=>cellularSheaf({vertices:[{id:"a",dim:1},{id:"b",dim:1}],edges:[edge]}),/inert own data/u);
+ const row=[1];
+ Object.defineProperty(row,"0",{enumerable:true,get(){reads++;return 1;}});
+ assert.throws(()=>cellularSheaf({vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+  edges:[{id:"ab",from:"a",to:"b",dim:1,restrict:{from:[row],to:[[1]]}}]}),/array slots must be inert own data/u);
+ assert.equal(reads,0);
+});
+
+test("strict observed cochains refuse getters without promoting missing stalks to zeros",()=>{
+ const sheaf=cellularSheaf({vertices:[{id:"a",dim:1},{id:"b",dim:1}],edges:[]});
+ let reads=0;
+ const row={value:1};
+ Object.defineProperty(row,"vertex",{enumerable:true,get(){reads++;return "a";}});
+ assert.throws(()=>cochain(sheaf,[row]),/inert own data/u);
+ const options={};
+ Object.defineProperty(options,"missing",{enumerable:true,get(){reads++;return "refuse";}});
+ assert.throws(()=>cochain(sheaf,[],options),/inert own data/u);
+ const vector=[1];
+ Object.defineProperty(vector,"0",{enumerable:true,get(){reads++;return 1;}});
+ assert.throws(()=>cochain(sheaf,[{vertex:"a",value:vector}]),/array slots must be inert own data/u);
+ assert.equal(reads,0);
+ assert.deepEqual(cochain(sheaf,[{vertex:"a",value:0},{vertex:"b",value:0}],{missing:"refuse"}),[0,0]);
+ assert.throws(()=>cochain(sheaf,[{vertex:"a",value:0}],{missing:"refuse"}),/incomplete observation/u);
+});
