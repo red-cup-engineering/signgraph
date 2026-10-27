@@ -34,11 +34,21 @@ const invalid = message => { throw new TypeError('SignGraph Alexandrov: ' + mess
  * identify, merge, appoint, authorize, or deliver to different Actors.
  */
 export function projectSignGraphAlexandrov(source, options) {
+  // Select the two caller-owned query coordinates by own data descriptor.
+  // This is an interpretation request, never source or authenticated actor
+  // testimony. Do not run accessors to decide a topology.
   if (!options || typeof options !== 'object' || Array.isArray(options) ||
-      Object.keys(options).some(key => !['nodeType', 'predicate'].includes(key)) ||
-      typeof options.nodeType !== 'string' || options.nodeType.length === 0 ||
-      typeof options.predicate !== 'string' || options.predicate.length === 0)
+      ![Object.prototype, null].includes(Object.getPrototypeOf(options)) ||
+      Reflect.ownKeys(options).length !== 2)
     invalid('options require exactly nodeType and predicate strings');
+  const typeField = Object.getOwnPropertyDescriptor(options, 'nodeType');
+  const predicateField = Object.getOwnPropertyDescriptor(options, 'predicate');
+  if (!typeField || !predicateField || !typeField.enumerable || !predicateField.enumerable ||
+      !Object.hasOwn(typeField,'value') || !Object.hasOwn(predicateField,'value') ||
+      typeof typeField.value !== 'string' || typeField.value.length === 0 ||
+      typeof predicateField.value !== 'string' || predicateField.value.length === 0)
+    invalid('options require exactly nodeType and predicate strings');
+  const nodeType = typeField.value, predicate = predicateField.value;
 
   const checked = glueSignGraphs(source);
   if (!checked.ok) {
@@ -47,7 +57,7 @@ export function projectSignGraphAlexandrov(source, options) {
     throw error;
   }
   const admitted = checked.value.graph;
-  const { nodeType, predicate } = options;
+
   const relation = admitted.relations.find(item => item.id === predicate);
   if (!relation || relation.subjectTypes.length !== 1 ||
       relation.objectTypes.length !== 1 ||
@@ -74,9 +84,15 @@ export function projectSignGraphAlexandrov(source, options) {
 
   function pointId(ref) {
     if (!ref || typeof ref !== 'object' || Array.isArray(ref) ||
-        typeof ref.id !== 'string' || ref.type !== nodeType || !byId.has(ref.id))
+        ![Object.prototype, null].includes(Object.getPrototypeOf(ref)))
       invalid('point must be an existing source-admitted typed reference');
-    return ref.id;
+    const id = Object.getOwnPropertyDescriptor(ref, 'id');
+    const type = Object.getOwnPropertyDescriptor(ref, 'type');
+    if (!id || !type || !id.enumerable || !type.enumerable ||
+        !Object.hasOwn(id,'value') || !Object.hasOwn(type,'value') ||
+        typeof id.value !== 'string' || type.value !== nodeType || !byId.has(id.value))
+      invalid('point must be an existing source-admitted typed reference');
+    return id.value;
   }
   const principalOpen = point => basis.find(item => item.point.id === pointId(point)).open;
   const specializes = (x, y) => futureIds.get(pointId(x)).has(pointId(y));

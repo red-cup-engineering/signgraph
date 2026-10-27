@@ -717,3 +717,12 @@ or from a syntactic `Follow` field. Native receiving is in
 source-authorized downstream Actor/service consumer remain separate
 gates. Source mathematics:
 Obsmetrologia's Alexandrov and generated causal-order proofs.
+ 
+### Inert typed topology selectors
+
+Alexandrov projections now require own enumerable data descriptors for the
+two selected graph interpretation coordinates and for every inspected typed
+point reference. An inherited, hidden or getter-backed actor ID cannot
+silently become a locally admitted graph reference. This is a pure source
+reading guard rather than independent Actor authentication, and executable
+Proxy traps remain a separate host security problem.

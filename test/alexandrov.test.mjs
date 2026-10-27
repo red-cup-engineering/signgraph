@@ -66,3 +66,31 @@ test('different actor carrier refuses identity transport; never identify a forei
  assert.throws(()=>compareSignGraphAlexandrov(source,fewer,{nodeType:t.id,predicate:'forward'}),
    /same source-admitted typed points/);
 });
+
+test('topology selectors and typed references refuse executable getters before observing them',()=>{
+ let executed=0;
+ const option={predicate:'forward'};
+ Object.defineProperty(option,'nodeType',{enumerable:true,get(){executed++;return t.id;}});
+ assert.throws(()=>projectSignGraphAlexandrov(source,option),/options require exactly/u);
+ const view=projectSignGraphAlexandrov(source,{nodeType:t.id,predicate:'forward'});
+ const reference={type:t.id};
+ Object.defineProperty(reference,'id',{enumerable:true,get(){executed++;return refs[0].id;}});
+ for(const use of [
+   ()=>view.principalOpen(reference),()=>view.specializes(reference,refs[1]),
+   ()=>view.isOpen([reference]),()=>view.upperHull([reference]),
+   ()=>view.futureNecessary([reference]),()=>view.topologicalClosure([reference]),
+   ()=>view.witnessedRoute(reference,refs[1]),
+ ])assert.throws(use,/source-admitted typed reference/u);
+ assert.equal(executed,0);
+ assert.equal(view.principalOpen(refs[2]).length,1,
+   'original source-admitted references still read their actual topology');
+});
+test('topological identity cannot be borrowed from a prototype or hidden coordinate',()=>{
+ const view=projectSignGraphAlexandrov(source,{nodeType:t.id,predicate:'forward'});
+ assert.throws(()=>view.principalOpen(Object.create({id:refs[0].id,type:t.id})),/source-admitted/u);
+ const hidden={type:t.id};
+ Object.defineProperty(hidden,'id',{value:refs[0].id,enumerable:false});
+ assert.throws(()=>view.principalOpen(hidden),/source-admitted/u);
+ const nullProto=Object.assign(Object.create(null),{id:refs[0].id,type:t.id});
+ assert.deepEqual(view.principalOpen(nullProto),view.principalOpen(refs[0]));
+});
