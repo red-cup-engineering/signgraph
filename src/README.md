@@ -717,3 +717,19 @@ their original Cell/valuation source; copying a `kind` field can never
 constitute admission. Original regression tests are now in the native
 receiving manifest. Installed dependencies and independent consumers remain
 release gates.
+
+## Frozen generator sites and inert source arrays
+
+Finite entity and pair lists are admitted via own enumerable data array
+slots; a decorated/sparse array or a getter-backed pair is not a source of
+mathematical incidence. The published `generator.domain` and
+`generator.codomain` now retain the **same canonical copies of the
+original pairs** used to construct the Metrologic morphism index. Mutating
+external entity objects after a generator has been created cannot change
+the public diagram while its pullback continues to use older addresses.
+
+Caller-declared support and truth-comparison subsets are admitted through
+the same pair mechanism; no arbitrary iterable can secretly add or remove
+a cell. This does not convert these graph coordinate declarations into
+witnessed real-world observations. Numeric valuation and source authority
+still require their respective original producers.

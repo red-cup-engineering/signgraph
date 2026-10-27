@@ -5,7 +5,7 @@ import { orderOps } from "@red-cup-engineering/metrologic/hyperdoctrine/order";
 import {
   allPairs, converse, knowledgeOrder, objectProjection, predicateFiber,
   specialization, subjectProjection, truthOrder,
-  fiberFusion, generatorPreservesFusion, generatorPreservesResiduum, generatorSatisfiesFrobenius,
+  fiberFusion, fiberLeqTruth, generatorPreservesFusion, generatorPreservesResiduum, generatorSatisfiesFrobenius,
 } from "../src/fiber.mjs";
 
 const entities = ["a", "b", "c"];
@@ -106,4 +106,32 @@ test("adjunction and preservation operations require original SignGraph generato
  assert.equal(gen.pullback(genuine).kind,"signgraph.fiber");
  assert.equal(gen.exists(knowledgeOrder(),genuine).kind,"signgraph.fiber");
  assert.equal(gen.forall(truthOrder(),genuine).kind,"signgraph.fiber");
+});
+
+test("finite generators freeze original source entity positions across caller mutation",()=>{
+ const s={entity:"s"},o={entity:"o"},members=[s,o];
+ const generator=converse(members);
+ const snapshot=JSON.stringify(generator.domain);
+ s.entity="forged";o.entity="forged";members.push("foreign");
+ assert.equal(JSON.stringify(generator.domain),snapshot);
+ assert.equal(JSON.stringify(generator.codomain),snapshot);
+ assert.equal(Object.isFrozen(generator.domain[0][0]),true);
+ assert.equal(Object.isFrozen(generator.codomain[0]),true);
+ const original=predicateFiber("observation",[{entity:"s"},{entity:"o"}],()=> "active");
+ assert.equal(generator.pullback(original).at({entity:"o"},{entity:"s"}),"active");
+ const fixed=specialization([{entity:"s"},{entity:"o"}],[[{entity:"s"},{entity:"o"}]]);
+ const fixedBefore=JSON.stringify(fixed.codomain);
+ assert.equal(fixed.codomain.length,1);
+ assert.equal(JSON.stringify(fixed.codomain),fixedBefore);
+});
+test("specialization source support and truth comparison restrictions refuse getters",()=>{
+ let reads=0;
+ const entities=["a","b"],good=predicateFiber("p",entities,()=> "potential");
+ const support=[["a","b"]];
+ Object.defineProperty(support,"0",{enumerable:true,get(){reads++;return ["a","b"]}});
+ assert.throws(()=>specialization(entities,support),/inert data/u);
+ const badPair=["a","b"];
+ Object.defineProperty(badPair,"1",{enumerable:true,get(){reads++;return "b"}});
+ assert.throws(()=>fiberLeqTruth(good,good,[badPair]),/inert data/u);
+ assert.equal(reads,0);
 });

@@ -172,3 +172,20 @@ test("typed FOUR fibers cannot be forged by copying a kind label and a callable 
  assert.equal(real.kind,"signgraph.fiber");
  assert.equal(real.at("a","a"),fusionReading("potential","potential"));
 });
+
+test("predicate fiber site admission refuses executable array or pair slots",()=>{
+ let reads=0;
+ const entities=["a","b"];
+ Object.defineProperty(entities,"0",{enumerable:true,get(){reads++;return "a"}});
+ assert.throws(()=>allPairs(entities),/inert data/u);
+ assert.throws(()=>predicateFiber("p",entities,()=> "potential"),/inert data/u);
+ const pair=["a","b"];
+ Object.defineProperty(pair,"0",{enumerable:true,get(){reads++;return "a"}});
+ assert.throws(()=>predicateFiber("p",["a","b"],()=> "potential",[pair]),/inert data/u);
+ const pairs=[["a","b"]];
+ Object.defineProperty(pairs,"0",{enumerable:true,get(){reads++;return pair}});
+ assert.throws(()=>predicateFiber("p",["a","b"],()=> "potential",pairs),/inert data/u);
+ const decorated=[["a","b"]];decorated.foreign="undisclosed";
+ assert.throws(()=>predicateFiber("p",["a","b"],()=> "potential",decorated),/dense undecorated/u);
+ assert.equal(reads,0);
+});
