@@ -1229,3 +1229,27 @@ test("unused transport offer source options and relation roles do not run getter
  }),/inert own data/u);
  assert.equal(calls,0);
 });
+
+test("channel stock-flow ambiguity remains available through the original admitted source cut",()=>{
+ const {graph,at,roles}=stockAmbiguityFixture({broken:true});
+ const opts={channel:at.channel,relations:roles};
+ const result=channelStockFlowAmbiguity(graph,opts);
+ assert.equal(result.kind,"signgraph.channelStockFlowAmbiguity.v1");
+ assert.equal(result.channel.id,at.channel.id);
+ assert.equal(result.actualCirculation,"not-established");
+ assert.deepEqual(channelStockFlowAmbiguity(wire(graph),opts),result);
+});
+test("route and shared stock-flow source readers refuse option getters without execution",()=>{
+ let count=0;
+ const {graph,refs}=sourceGraph();
+ const source={};
+ Object.defineProperty(source,"predicate",{enumerable:true,get(){count++;return "supports"}});
+ assert.throws(()=>findSignGraphRoute(graph,refs.a,refs.b,source),/inert own data/u);
+ const {graph:stock,at,roles}=stockAmbiguityFixture({broken:true});
+ const options={channel:at.channel};
+ Object.defineProperty(options,"relations",{enumerable:true,get(){count++;return roles;}});
+ assert.throws(()=>channelStockFlowAmbiguity(stock,options),/inert own data/u);
+ assert.equal(count,0);
+ const safe=findSignGraphRoute(graph,refs.a,refs.b,{predicate:"supports"});
+ assert.equal(safe.reachable,true);
+});
