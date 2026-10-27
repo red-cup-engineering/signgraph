@@ -382,6 +382,118 @@ export function channelStockFlowAmbiguity(graph, options = {}) {
   });
 }
 
+
+/**
+ * Report the source-identified edges that close an UNDIRECTED cycle after
+ * excluding proposed individually metered original exchanges. A self-loop
+ * or second independent parallel exchange closes a cycle; a second MESSAGE
+ * about the same exchange does not create another graph edge.
+ *
+ * This is a disjoint-set test of the cycle rank of the multigraph, NOT a
+ * flow estimator or a statement that any observation has been performed.
+ */
+function undirectedCycleClosingTransfers(transfers, excluded) {
+  const parent = new Map();
+  const root = (original) => {
+    if (!parent.has(original)) parent.set(original,original);
+    let result = original;
+    while (parent.get(result) !== result) result = parent.get(result);
+    let id = original;
+    while (id !== result) {
+      const next = parent.get(id);
+      parent.set(id,result);
+      id = next;
+    }
+    return result;
+  };
+  const closers = [];
+  const ordered = [...transfers].sort((a,b) =>
+    a.exchange.id < b.exchange.id ? -1 : a.exchange.id > b.exchange.id ? 1 : 0);
+  for (const transfer of ordered) {
+    if (excluded.has(transfer.exchange.id)) continue;
+    const a = root(transfer.from.id), b = root(transfer.to.id);
+    if (a === b) {
+      closers.push(transfer);
+    } else {
+      parent.set(a < b ? b : a, a < b ? a : b);
+    }
+  }
+  return Object.freeze(closers);
+}
+
+/**
+ * CONDITIONAL design assay for independent edge-meter placement.
+ *
+ * Assuming one exact conserved resource per original Resource, a COMPLETE
+ * original directed exchange multigraph, a SINGLE observation interval,
+ * known exact port-adjusted vertex divergence Bf, and actual independently
+ * measured individual edge fluxes f_W, the linear observation map
+ * f -> (Bf, f_W) is injective on all real edge vectors exactly when the
+ * UNMETERED underlying undirected multigraph is a forest.
+ *
+ * proposedWitnessExchangeIds are only a proposed INSTRUMENTATION DESIGN.
+ * They do NOT assert that meters exist, yield usable units, measure anything,
+ * belong to the authenticated Actor, or establish causal resource transfer.
+ * The source reader's obstructions remain explicit. Missing edges, unknown
+ * graph completeness, unknown ports, real flux, timing and law of effect
+ * remain outside this graph-only projection.
+ *
+ * No second graph, ledger, transaction, clock, allocator or authority.
+ */
+export function channelFlowWitnessPlacement(graph, options = {}) {
+  const proposals = options?.proposedWitnessExchangeIds ?? [];
+  if (!Array.isArray(proposals) || proposals.length > 4096 ||
+      proposals.some(id => typeof id !== "string" || !id.length) ||
+      new Set(proposals).size !== proposals.length)
+    throw new TypeError("flow witness placement requires unique original exchange IDs (at most 4096)");
+  const reading = channelResourceIncidence(graph, options);
+  const original = new Map(), grouped = new Map();
+  for (const transfer of reading.transfers) {
+    const exchangeId = transfer.exchange.id;
+    if (original.has(exchangeId))
+      throw new TypeError("one original exchange cannot be projected as two transfers");
+    original.set(exchangeId,transfer);
+    const resourceId = transfer.resource.id;
+    if (!grouped.has(resourceId))
+      grouped.set(resourceId,{resource:transfer.resource,transfers:[]});
+    grouped.get(resourceId).transfers.push(transfer);
+  }
+  for (const exchangeId of proposals)
+    if (!original.has(exchangeId))
+      throw new TypeError("proposed meter does not name one admitted channel exchange");
+  const proposed = new Set(proposals);
+  const resources = [...grouped.values()]
+    .sort((a,b) => a.resource.id < b.resource.id ? -1 : a.resource.id > b.resource.id ? 1 : 0)
+    .map(({resource,transfers}) => {
+      const minimum = undirectedCycleClosingTransfers(transfers,new Set()).length;
+      const remaining = undirectedCycleClosingTransfers(transfers,proposed);
+      return Object.freeze({
+        resource,
+        exchangeCount:transfers.length,
+        minimumIndependentEdgeMeterCount:minimum,
+        proposedIndividualEdgeMeters:Object.freeze(transfers
+          .filter(t => proposed.has(t.exchange.id)).map(t => t.exchange)),
+        unmeteredCycleClosingTransfers:remaining,
+        unmeteredComplementIsUndirectedForest:remaining.length === 0,
+        structuralCondition:remaining.length === 0 ?
+          "conditional-linear-observation-full-rank-if-all-premises-hold" :
+          "conditional-linear-observation-has-kernel",
+      });
+    });
+  return Object.freeze({
+    kind:"signgraph.channelFlowWitnessPlacement.v1",
+    graph:reading.graph,channel:reading.channel,
+    resources:Object.freeze(resources),obstructions:reading.obstructions,
+    proposalOnly:true,
+    originalGraphCompleteness:"not-attested",
+    physicalMeterReadings:"not-supplied",
+    nodeStocksAndExternalPorts:"not-supplied",
+    actualCirculation:"not-established",
+    actorBodyAndClock:"not-established",
+  });
+}
+
+
 /**
  * Offered, potentially UNUSED transport topology, distinct from performed
  * Message -> Exchange incidence.  A source-owned Channel offers an Option;
