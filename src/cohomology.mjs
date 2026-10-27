@@ -50,25 +50,67 @@ export const rankComparison = (left, right) => Object.freeze({ kind: `signgraph.
 /** The cohomology of a list of cells (any SignCells or triples) as a graph on their entities,
  *  with any further isolated entities. */
 export function cohomologyOfCells(cells, extraEntities = []) {
-  const entities = uniqueBy([...cells.flatMap((value) => [value.subject, value.object]), ...extraEntities], coincides);
-  const indexOf = (term) => entities.findIndex((candidate) => coincides(candidate, term));
-  const incidence = Object.freeze(cells.map((value) => {
+  // This is a pure reading over original SignCell predication coordinates,
+  // not a replacement content codec, authenticated source, or event log.
+  // Once admitted, each own source position is inspected exactly once.
+  const data = (value, role, required = true) => {
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      throw new TypeError("signgraph cohomology requires original source triples");
+    const descriptor = Object.getOwnPropertyDescriptor(value, role);
+    if (!descriptor) {
+      if (!required) return undefined;
+      throw new TypeError("signgraph cohomology is missing source " + role);
+    }
+    if (!descriptor.enumerable || !Object.hasOwn(descriptor, "value"))
+      throw new TypeError("signgraph cohomology source " + role + " must be inert data");
+    return descriptor.value;
+  };
+  const entities = [], positions = new Map();
+  const include = (term) => {
+    // Exactly the same SignCell/SCA coincidence used by the typed Cell,
+    // SignChain telling log and the original SignGraph oriented flow.
+    const key = coincidenceKey(term);
+    const found = positions.get(key);
+    if (found !== undefined) return found;
+    const index = entities.length;
+    entities.push(term); positions.set(key, index);
+    return index;
+  };
+  const originals = cells.map(value => {
+    const subject = data(value, "subject");
+    const predicate = data(value, "predicate", false);
+    const object = data(value, "object");
+    return Object.freeze({
+      subject, predicate, object,
+      sourceIndex: include(subject), targetIndex: include(object),
+    });
+  });
+  for (const entity of extraEntities) include(entity);
+  Object.freeze(entities);
+  const incidence = Object.freeze(originals.map(value => {
     const row = entities.map(() => 0);
-    row[indexOf(value.object)] += 1;
-    row[indexOf(value.subject)] -= 1;
+    row[value.targetIndex] += 1;
+    row[value.sourceIndex] -= 1;
     return Object.freeze(row);
   }));
   const parent = entities.map((_, index) => index);
   const find = (index) => (parent[index] === index ? index : (parent[index] = find(parent[index])));
-  for (const value of cells) parent[find(indexOf(value.subject))] = find(indexOf(value.object));
+  for (const value of originals)
+    parent[find(value.sourceIndex)] = find(value.targetIndex);
   const roots = [...new Set(entities.map((_, index) => find(index)))];
-  const h1 = cells.length - entities.length + roots.length;
+  const h1 = originals.length - entities.length + roots.length;
   return Object.freeze({
     kind: "signgraph.cohomology",
     entities,
-    cells: Object.freeze(cells.map((value) => Object.freeze({ subject: value.subject, predicate: value.predicate, object: value.object }))),
+    cells: Object.freeze(originals.map(value => Object.freeze({
+      subject: value.subject, predicate: value.predicate, object: value.object,
+    }))),
     incidence,
-    zeroCohomology: Object.freeze({ rank: roots.length, cocycleBasis: Object.freeze(roots.map((root) => Object.freeze(entities.map((_, index) => (find(index) === root ? 1 : 0))))) }),
+    zeroCohomology: Object.freeze({
+      rank: roots.length,
+      cocycleBasis: Object.freeze(roots.map(root => Object.freeze(
+        entities.map((_, index) => find(index) === root ? 1 : 0))),
+    }),
     firstCohomology: Object.freeze({ rank: h1, vanishing: rankVanishing(h1) }),
   });
 }

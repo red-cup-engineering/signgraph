@@ -697,3 +697,24 @@ to one comparison edge, yield the tensor equation `2x = 3y`. An observation
 `x = 3` extends to the exact section `(3, 2)`. A conflicting observation
 produces the corresponding exact obstruction. Each operation retains its
 input cell identities and the equations used in the result.
+
+## Source-exact directed incidence and cohomology
+
+The original `cohomologyOfCells` now indexes each entity using SignCell's
+already-established `coincidenceKey` rather than repeatedly scanning
+representatives for equality. The signed incidence, loop cancellation,
+parallel-edge multiplicities, first encountered source terms, connected
+components, and graph H0/H1 ranks retain their original definitions. This
+also matches the canonical key already used in `./cell-graph` for oriented
+FOUR/Record tower receiving. A raw incidence is neither authenticated
+provenance nor the face-filled/linear-sheaf cohomology of a higher complex.
+
+Each own triple position is read exactly once as an enumerable data
+descriptor, refusing arbitrary executable getters before constructing a
+mathematical reading. The existing SignCell carrier remains the semantic
+identity authority; no third Graph-local identifier or ledger is created.
+`test/cohomology-canonical-incidence.test.mjs` independently compares
+finite signed boundaries and Betti/cocycle results with a slower coincidence
+oracle, including Unicode/key-order aliases, duplicated/reversed edges,
+loops, isolated terms and foreign getter refusals. Native installed tests
+and downstream mathematical-service consumers remain separate gates.

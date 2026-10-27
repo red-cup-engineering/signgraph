@@ -18,7 +18,8 @@
     "test/pure-functional-boundary.test.mjs",
     "test/cell-content-owner.test.mjs",
     "test/source-record-tower-flow.test.mjs",
-    "test/cell-graph.test.mjs"
+    "test/cell-graph.test.mjs",
+    "test/cohomology-canonical-incidence.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -92,6 +93,7 @@
     "test/pure-functional-boundary.test.mjs",
     "test/cell-content-owner.test.mjs",
     "test/source-record-tower-flow.test.mjs",
-    "test/cell-graph.test.mjs"
+    "test/cell-graph.test.mjs",
+    "test/cohomology-canonical-incidence.test.mjs"
   ]
 }
