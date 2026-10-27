@@ -291,4 +291,3 @@ test("J26 original operation refuses anonymous, incomplete and unauthorized sour
   assert.throws(() => executeOperation("signgraph.j26.puncture",
     { ...target, overflow: "x".repeat(66000) }), /only removedFaces/);
 });
-

@@ -28,6 +28,7 @@
     "test/feather-g-codec.test.mjs",
     "test/feather-g-native-signgraph.test.mjs",
     "test/mark-reaction-receiving.test.mjs",
+    "test/alexandrov.test.mjs",
     "test/j26-source-generated-patch.test.mjs"
   ],
   "exports": {
@@ -64,7 +65,8 @@
     "./semantic-graph-schema": "./src/semantic-graph-schema.mjs",
     "./cellular-sheaf-complex": "./src/cellular-sheaf-complex.mjs",
     "./keratin-graph": "./src/keratin-graph.mjs",
-    "./feather-g-codec": "./src/feather-g-codec.mjs"
+    "./feather-g-codec": "./src/feather-g-codec.mjs",
+    "./alexandrov": "./src/alexandrov.mjs"
   },
   "dependencies": {
     "@red-cup-engineering/uri-services-section": "0.1.1",
@@ -117,6 +119,7 @@
     "test/feather-g-codec.test.mjs",
     "test/feather-g-native-signgraph.test.mjs",
     "test/mark-reaction-receiving.test.mjs",
+    "test/alexandrov.test.mjs",
     "test/j26-source-generated-patch.test.mjs"
   ]
 }
