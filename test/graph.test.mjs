@@ -3,7 +3,7 @@ import test from "node:test";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
 import { defineType, isSubtypeOf } from "@red-cup-engineering/signcell/type-system";
 import { createSignGraph } from "../src/semantic-graph.mjs";
-import { projectSignGraphTopology, findSignGraphRoute, channelResourceIncidence, channelTransportPossibilities } from "../src/graph.mjs";
+import { projectSignGraphTopology, findSignGraphRoute, channelResourceIncidence, channelTransportPossibilities, channelStockFlowAmbiguity } from "../src/graph.mjs";
 
 const accepted = (r) => { assert.equal(r.ok, true, JSON.stringify(r)); return r.value; };
 const t = accepted(defineType({
@@ -715,4 +715,70 @@ test("source-refusal, relation spoofing, and finite budget protect the graph bou
   // A misdeclared Quantity type cannot establish exact measured capacity.
   assert.equal(channelTransportPossibilities(f.graph,{channel:f.at.channel,
     relations:optionRoles,quantityType:optionKinds.endpoint.id,observedAt:atTime}).possibilities.length,0);
+});
+
+
+function stockAmbiguityFixture({broken=false,otherResource=false,disputed=false,selfLoop=false}={}) {
+  const roles={contains:"contains",reports:"reports",resource:"resource",from:"from",to:"to"};
+  const names=["channel","m1","m2","e1","e2","e3","water","energy","A","B","C","D","w1","w2"];
+  const marks=names.map(s=>accepted(createTypedMark(t,s)));
+  const at=Object.fromEntries(names.map((name,i)=>[name,referenceOf(marks[i])]));
+  const edge=(from,predicate,to,witness="w1")=>({
+    subject:at[from],predicate:roles[predicate],object:at[to],witness:at[witness],
+  });
+  const edges=[
+    edge("channel","contains","m1"),edge("channel","contains","m2"),
+    edge("m1","reports","e1"),edge("m1","reports","e2"),
+    edge("m1","reports","e3"),edge("m2","reports","e1","w2"),
+    edge("e1","resource","water"),edge("e1","from","A"),edge("e1","to","B"),
+    edge("e2","resource","water"),edge("e2","from","B"),edge("e2","to","C"),
+    edge("e3","resource",otherResource?"energy":"water"),
+    edge("e3","from",selfLoop?"A":"C"),
+    edge("e3","to",selfLoop?"A":broken?"D":"A"),
+    ...(disputed?[edge("e3","to","D","w2")]:[]),
+  ];
+  const graph=accepted(createSignGraph({cells:marks,
+    relations:Object.values(roles).map(id=>({
+      id,subjectTypes:[t.id],objectTypes:[t.id],witnessTypes:[t.id]})),edges}));
+  return {graph,at,roles};
+}
+
+test("source-witnessed directed resource cycle makes stock-only circulation inference conditional",()=>{
+  const {graph,at,roles}=stockAmbiguityFixture();
+  const before=JSON.stringify(graph);
+  const found=channelStockFlowAmbiguity(graph,{channel:at.channel,relations:roles});
+  assert.equal(found.kind,"signgraph.channelStockFlowAmbiguity.v1");
+  assert.equal(found.graph,graph.id);
+  assert.equal(found.resources.length,1);
+  assert.deepEqual(found.obstructions,[]);
+  const water=found.resources[0];
+  assert.equal(water.exchangeCount,3,"two message reports are not two exchanges");
+  assert.equal(water.resource.id,at.water.id);
+  assert.deepEqual(new Set(water.cycleTransfers.map(t=>t.exchange.id)),
+    new Set([at.e1.id,at.e2.id,at.e3.id]));
+  assert.equal(water.stockOnlyIdentifiability,"not-identifiable-if-these-cyclic-arcs-are-feasible");
+  assert.equal(water.realizedFlux,"not-observed");
+  assert.equal(found.actualCirculation,"not-established");
+  assert.equal(found.independentEdgeFlux,"not-supplied");
+  assert.equal(found.endogenousClock,"not-established");
+  assert.ok(water.cycleTransfers.every(t=>t.evidence.from[0].edges.every(
+    e=>graph.edges.some(original=>original.id===e.id))));
+  assert.equal(JSON.stringify(graph),before);
+  assert.deepEqual(channelStockFlowAmbiguity(wire(graph),{channel:at.channel,relations:roles}),found);
+});
+test("no directed same-resource witness is unknown, and invalid source never passes",()=>{
+  for(const options of [{broken:true},{otherResource:true},{disputed:true}]) {
+    const {graph,at,roles}=stockAmbiguityFixture(options);
+    const found=channelStockFlowAmbiguity(graph,{channel:at.channel,relations:roles});
+    assert.ok(found.resources.every(r=>r.cycleTransfers===null));
+    assert.ok(found.resources.every(r=>
+      r.stockOnlyIdentifiability==="undetermined-without-complete-source-and-effect-law"));
+    if(options.disputed)assert.equal(found.obstructions.length,1);
+    assert.equal(found.actualCirculation,"not-established");
+  }
+  const {graph,at,roles}=stockAmbiguityFixture({selfLoop:true});
+  assert.equal(channelStockFlowAmbiguity(graph,{channel:at.channel,relations:roles})
+    .resources[0].cycleTransfers.length,1);
+  const forged=wire(graph);forged.edges[0].id="ni:forged";
+  assert.throws(()=>channelStockFlowAmbiguity(forged,{channel:at.channel,relations:roles}),TypeError);
 });
