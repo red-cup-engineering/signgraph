@@ -26,7 +26,8 @@
     "test/cell-graph.test.mjs",
     "test/cohomology-canonical-incidence.test.mjs",
     "test/feather-g-codec.test.mjs",
-    "test/feather-g-native-signgraph.test.mjs"
+    "test/feather-g-native-signgraph.test.mjs",
+    "test/mark-reaction-receiving.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -113,6 +114,7 @@
     "test/cell-graph.test.mjs",
     "test/cohomology-canonical-incidence.test.mjs",
     "test/feather-g-codec.test.mjs",
-    "test/feather-g-native-signgraph.test.mjs"
+    "test/feather-g-native-signgraph.test.mjs",
+    "test/mark-reaction-receiving.test.mjs"
   ]
 }

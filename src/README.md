@@ -906,3 +906,22 @@ The original SignCell identities, source/physical witness authority,
 FEATHER-G numerical model execution, and published package receiving
 belong to their separate owners. No direction, evidence, or operational
 permission is inferred from an embedding.
+
+## Source-generated Mark reaction evidence receiving
+
+The existing `./substitution-spectrum` now exposes
+`receiveSourceMarkReactions`. It re-executes the same original
+performed-Articulating Mark substitution selector before accepting
+source-addressed SignCell reports. Each candidate path receives
+independent FOUR testimony with distinct positive and opposing witnesses;
+multiple paths to one final word do not merge their source identities.
+Unobserved, opposed and contested reports remain different outcomes.
+Capacity obstruction is never treated as proof of unreachable targets.
+
+The reader delegates canonical Cell identity, testimony joins and
+Record counts to SignCell; it adds no new solver, graph schema, causal
+inference, actor authority or physical reaction. See
+`test/mark-reaction-receiving.test.mjs` for eight original test cases
+including sixteen possible two-path FOUR readings, forged report controls,
+and bounded search refusal. Original SignCell/Metrologic package receiving
+and actual performed source verification remain independent gates.
