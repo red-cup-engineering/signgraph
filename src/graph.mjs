@@ -50,7 +50,8 @@ export function projectSignGraphTopology(graph) {
  * This is a pure route projection, NOT a SignChain proof, a claim of truth,
  * authorization to execute a workflow, or a checkpoint of one.
  */
-export function findSignGraphRoute(graph, sourceReference, targetReference, options = {}) {
+export function findSignGraphRoute(graph, sourceReference, targetReference, supplied = {}) {
+  const options = sourcePlacementRecord(supplied,"route options");
   if (!options || typeof options !== "object" || Array.isArray(options) ||
       Object.keys(options).some(key => key !== "predicate"))
     throw new TypeError("SignGraph route options permit only predicate");
@@ -353,7 +354,8 @@ function firstSourceDirectedCycle(transfers) {
  * invents flows, books money, asserts clock phases, or grants effects.
  */
 export function channelStockFlowAmbiguity(graph, options = {}) {
-  const reading = channelResourceIncidence(graph, admittedOptions);
+  // Original incidence now owns the inert options/roles source cut.
+  const reading = channelResourceIncidence(graph, options);
   const grouped = new Map();
   for (const transfer of reading.transfers) {
     const id = transfer.resource.id;
@@ -550,7 +552,7 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
          new Set(ids).size !== ids.length) ||
        scopedEntries.reduce((total,[,ids])=>total+ids.length,0) > 8192))
     throw new TypeError("flow witness placement requires unique resource-scoped endpoint IDs (at most 8192 total)");
-  const reading = channelResourceIncidence(graph, options);
+  const reading = channelResourceIncidence(graph, admittedOptions);
   const original = new Map(), grouped = new Map(), endpoints = new Set();
   for (const transfer of reading.transfers) {
     const exchangeId = transfer.exchange.id;
