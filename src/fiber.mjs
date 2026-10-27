@@ -16,17 +16,69 @@ import { reindex, existsAlong, forallAlong } from "@red-cup-engineering/metrolog
 import { isReading, knowledgeBottom, samePoint, fusionReading, residuumReading } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 import { orderOps } from "@red-cup-engineering/metrologic/hyperdoctrine/order";
 
+// Construction-origin receipts for this installed SignGraph module. These are
+// intentionally not serializable identity schemes, external attestation, actor
+// authority or evidence of a physical observation.
+const admittedFibers = new WeakSet();
+const admittedGenerators = new WeakSet();
+const admittedOrders = new WeakSet();
+const demandFiber = (fiber) => {
+  if (!fiber || typeof fiber !== "object" || !admittedFibers.has(fiber))
+    throw new TypeError("fiber: original SignGraph predicate fiber is required");
+  return fiber;
+};
+const demandGenerator = (generator) => {
+  if (!generator || typeof generator !== "object" || !admittedGenerators.has(generator))
+    throw new TypeError("fiber: original SignGraph generator is required");
+  return generator;
+};
+const demandOrder = (order) => {
+  if (!order || typeof order !== "object" || !admittedOrders.has(order))
+    throw new TypeError("fiber: original SignGraph FOUR order is required");
+  return order;
+};
+
 /** An order over readings: join, meet, bottom, top. */
 const order = (name) => {
   const { join, meet, bottom, top } = orderOps(name);
-  return Object.freeze({ kind: "signgraph.order", name, join, meet, bottom, top });
+  const admitted = Object.freeze({ kind: "signgraph.order", name, join, meet, bottom, top });
+  admittedOrders.add(admitted);
+  return admitted;
 };
 /** A graph order is Metrologic's canonical FOUR order, carried at a graph site. */
 export const knowledgeOrder = () => order("knowledge");
 export const truthOrder = () => order("truth");
 
+/** The source array must be ordinary dense own data, never an accessor or
+ * a caller-defined iterator that can fabricate a different cell at each read.
+ * Nested source terms are still admitted by SignCell's canonicalCarrier.
+ */
+const sourceArray = (value, label) => {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype)
+    throw new TypeError("predicateFiber: " + label + " must be an ordinary source array");
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (Reflect.ownKeys(descriptors).length !== value.length + 1)
+    throw new TypeError("predicateFiber: " + label + " must be a dense undecorated array");
+  return Object.freeze(Array.from({length:value.length},(_,index)=>{
+    const slot = descriptors[String(index)];
+    if (!slot || !slot.enumerable || !Object.hasOwn(slot,"value"))
+      throw new TypeError("predicateFiber: " + label + " slots must be inert data");
+    return slot.value;
+  }));
+};
+const sourcePair = (value) => {
+  const entries = sourceArray(value,"pair");
+  if (entries.length !== 2) throw new TypeError("predicateFiber: each pair needs two coordinates");
+  return Object.freeze([canonicalCarrier(entries[0]), canonicalCarrier(entries[1])]);
+};
+const sourcePairs = (values) => Object.freeze(sourceArray(values,"pairs").map(sourcePair));
+
 /** Every ordered (subject, object) pair over an entity list. */
-export const allPairs = (entities) => Object.freeze(entities.flatMap((subject) => entities.map((object) => Object.freeze([subject, object]))));
+export const allPairs = (entities) => {
+  const admitted = Object.freeze(sourceArray(entities,"entities").map(canonicalCarrier));
+  return Object.freeze(admitted.flatMap(subject =>
+    admitted.map(object => Object.freeze([subject,object]))));
+};
 
 /** A fiber over `label`: `read(subject, object)` at each listed pair; unlisted pairs read absurd. */
 export function predicateFiber(label, entities, read, pairs = allPairs(entities)) {
@@ -35,13 +87,11 @@ export function predicateFiber(label, entities, read, pairs = allPairs(entities)
   }
   // A fiber is indexed by content identities, not mutable caller-owned
   // object pointers or pair arrays.
-  const domain = Object.freeze(entities.map((entity) => canonicalCarrier(entity)));
+  const domain = Object.freeze(sourceArray(entities,"entities").map(canonicalCarrier));
   const keys = domain.map((entity) => coincidenceKey(entity));
   if (new Set(keys).size !== keys.length) throw new RangeError("predicateFiber: duplicate entity identity");
   const keySet = new Set(keys), seen = new Map();
-  const slots = pairs.map((pair) => {
-    if (!Array.isArray(pair) || pair.length !== 2) throw new TypeError("predicateFiber: each pair needs two coordinates");
-    const slot = Object.freeze([canonicalCarrier(pair[0]), canonicalCarrier(pair[1])]);
+  const slots = sourcePairs(pairs).map((slot) => {
     const subject = coincidenceKey(slot[0]), object = coincidenceKey(slot[1]);
     if (!keySet.has(subject) || !keySet.has(object)) {
       throw new RangeError("predicateFiber: pair lies outside its declared entity context");
@@ -69,7 +119,9 @@ export function predicateFiber(label, entities, read, pairs = allPairs(entities)
   }
   const at = (subject, object) =>
     readings.get(coincidenceKey(subject))?.get(coincidenceKey(object)) ?? knowledgeBottom();
-  return Object.freeze({ kind: "signgraph.fiber", label: canonicalCarrier(label), entities: domain, pairs: Object.freeze(slots), at });
+  const admitted = Object.freeze({ kind: "signgraph.fiber", label: canonicalCarrier(label), entities: domain, pairs: Object.freeze(slots), at });
+  admittedFibers.add(admitted);
+  return admitted;
 }
 
 /** The fiber a valuation carries over one predicate, read in the knowledge order. */
@@ -79,8 +131,11 @@ export const fiberOfValuation = (valuation, predicate, entities) => predicateFib
 // different entity contexts is not. Entity ordering is immaterial because the
 // fibers are content-addressed, and sparse pair support still reads ⊥ₖ.
 const requireSharedContext = (left, right) => {
-  if (left?.kind !== "signgraph.fiber" || right?.kind !== "signgraph.fiber") {
-    throw new TypeError("fiber: two predicate fibers are required");
+  // Inspect the in-process source owner before reading a caller's kind,
+  // label, entities or programmable at() method. A JSON lookalike cannot
+  // fabricate an admitted FOUR reading or a proof of fiber compatibility.
+  if (!admittedFibers.has(left) || !admittedFibers.has(right)) {
+    throw new TypeError("fiber: two predicate fibers are required; original predicate fibers only");
   }
   // A fiber is indexed by its predicate as well as its entity context. To
   // tensor distinct predicates a caller would need an explicitly typed
@@ -107,7 +162,8 @@ const cellwise = (operation) => (left, right, pairs) => {
 };
 const sameFiber = (left, right, pairs) => {
   requireSharedContext(left, right);
-  return (pairs ?? allPairs(left.entities)).every(([s, o]) => samePoint(left.at(s, o), right.at(s, o)));
+  return (pairs === undefined ? allPairs(left.entities) : sourcePairs(pairs))
+    .every(([s, o]) => samePoint(left.at(s, o), right.at(s, o)));
 };
 
 /** Cellwise linear fusion and residuum of two fibers. */
@@ -118,17 +174,22 @@ export const fiberResiduum = cellwise(residuumReading);
 export const fiberLeqTruth = (left, right, pairs) => {
   requireSharedContext(left, right);
   const { leq } = orderOps("truth");
-  return (pairs ?? allPairs(left.entities)).every(([s, o]) => leq(left.at(s, o), right.at(s, o)));
+  return (pairs === undefined ? allPairs(left.entities) : sourcePairs(pairs))
+    .every(([s, o]) => leq(left.at(s, o), right.at(s, o)));
 };
 
 // SignGraph owns only the SCA-coordinate presentation of a finite site. The
 // mathematical reindexing and existential/universal adjoints are Metrologic's;
 // no second implementation of the hyperdoctrine is retained here.
 const pairAddress = (pair) => coincidenceKey(pair);
-const indexedFiber = (fiber, pairs) =>
-  new Map(pairs.map(([s, o]) => [pairAddress([s, o]), fiber.at(s, o)]));
-const onPairs = (fiber, pairs, readings) =>
-  predicateFiber(fiber.label, fiber.entities, (s, o) => readings.get(pairAddress([s, o])), pairs);
+const indexedFiber = (fiber, pairs) => {
+  demandFiber(fiber);
+  return new Map(pairs.map(([s, o]) => [pairAddress([s, o]), fiber.at(s, o)]));
+};
+const onPairs = (fiber, pairs, readings) => {
+  demandFiber(fiber);
+  return predicateFiber(fiber.label, fiber.entities, (s, o) => readings.get(pairAddress([s, o])), pairs);
+};
 
 /** Translate a graph generator into one Metrologic index morphism u: local -> ambient.
  * The map is formed from canonical SCA coordinate identities, not string-concatenated
@@ -136,21 +197,36 @@ const onPairs = (fiber, pairs, readings) =>
  * off-diagonal values are the EMPTY-FIBER bottom/top given by Metrologic, never
  * made-up witnesses. Graph-specific fiber presentation stays with SignGraph. */
 function finiteGenerator(name, ambient, local, imageOf) {
-  const source = local.map(pairAddress);
-  const target = ambient.map(pairAddress);
+  // Bind the published morphism's site to the SAME immutable canonical pairs
+  // as the indexing map. A later caller mutation cannot rewrite the diagram.
+  const sourceSite = sourcePairs(local), targetSite = sourcePairs(ambient);
+  const source = sourceSite.map(pairAddress);
+  const target = targetSite.map(pairAddress);
   if (new Set(source).size !== source.length || new Set(target).size !== target.length)
     throw new RangeError("signgraph generator: a site cannot repeat a pair");
-  const images = new Map(local.map((pair) => [pairAddress(pair), pairAddress(imageOf(pair))]));
+  const images = new Map(sourceSite.map((pair) =>
+    [pairAddress(pair), pairAddress(sourcePair(imageOf(pair)))]));
   const morphism = Object.freeze({
     source, target,
     map: (key) => images.get(key),
   });
-  return Object.freeze({
-    kind: "signgraph.generator", generator: name, domain: ambient, codomain: local,
-    pullback: (fiber) => onPairs(fiber, local, reindex(morphism, indexedFiber(fiber, ambient))),
-    exists: (order, fiber) => onPairs(fiber, ambient, existsAlong(morphism, indexedFiber(fiber, local), order.name)),
-    forall: (order, fiber) => onPairs(fiber, ambient, forallAlong(morphism, indexedFiber(fiber, local), order.name)),
+  const admitted = Object.freeze({
+    kind: "signgraph.generator", generator: name, domain: targetSite, codomain: sourceSite,
+    pullback: (fiber) => {
+      demandFiber(fiber);
+      return onPairs(fiber, sourceSite, reindex(morphism, indexedFiber(fiber, targetSite)));
+    },
+    exists: (ord, fiber) => {
+      demandOrder(ord); demandFiber(fiber);
+      return onPairs(fiber, targetSite, existsAlong(morphism, indexedFiber(fiber, sourceSite), ord.name));
+    },
+    forall: (ord, fiber) => {
+      demandOrder(ord); demandFiber(fiber);
+      return onPairs(fiber, targetSite, forallAlong(morphism, indexedFiber(fiber, sourceSite), ord.name));
+    },
   });
+  admittedGenerators.add(admitted);
+  return admitted;
 }
 
 /** Converse is a bijective finite reindexing (both adjoints are its inverse). */
@@ -173,12 +249,21 @@ export function objectProjection(entities) {
 
 /** Restriction to a caller-admitted support: inclusion's two adjoints. */
 export function specialization(entities, support, ambient = allPairs(entities)) {
-  return finiteGenerator("specialization", ambient, Object.freeze([...support]), (pair) => pair);
+  return finiteGenerator("specialization", ambient, sourcePairs(support), (pair) => pair);
 }
 
 /** Whether a generator's pullback commutes with fusion, and with residuum. */
-export const generatorPreservesFusion = (gen, left, right) => sameFiber(gen.pullback(fiberFusion(left, right, gen.domain)), fiberFusion(gen.pullback(left), gen.pullback(right), gen.codomain), gen.codomain);
-export const generatorPreservesResiduum = (gen, left, right) => sameFiber(gen.pullback(fiberResiduum(left, right, gen.domain)), fiberResiduum(gen.pullback(left), gen.pullback(right), gen.codomain), gen.codomain);
+export const generatorPreservesFusion = (gen, left, right) => {
+  demandGenerator(gen);
+  return sameFiber(gen.pullback(fiberFusion(left, right, gen.domain)), fiberFusion(gen.pullback(left), gen.pullback(right), gen.codomain), gen.codomain);
+};
+export const generatorPreservesResiduum = (gen, left, right) => {
+  demandGenerator(gen);
+  return sameFiber(gen.pullback(fiberResiduum(left, right, gen.domain)), fiberResiduum(gen.pullback(left), gen.pullback(right), gen.codomain), gen.codomain);
+};
 
 /** Frobenius reciprocity: ∃(pullback(α) ⊗ φ) = α ⊗ ∃(φ). */
-export const generatorSatisfiesFrobenius = (gen, ord, alpha, phi) => sameFiber(gen.exists(ord, fiberFusion(gen.pullback(alpha), phi, gen.codomain)), fiberFusion(alpha, gen.exists(ord, phi), gen.domain), gen.domain);
+export const generatorSatisfiesFrobenius = (gen, ord, alpha, phi) => {
+  demandGenerator(gen); demandOrder(ord);
+  return sameFiber(gen.exists(ord, fiberFusion(gen.pullback(alpha), phi, gen.codomain)), fiberFusion(alpha, gen.exists(ord, phi), gen.domain), gen.domain);
+};
