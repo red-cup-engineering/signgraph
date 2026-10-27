@@ -392,8 +392,10 @@ export function channelStockFlowAmbiguity(graph, options = {}) {
  * This is a disjoint-set test of the cycle rank of the multigraph, NOT a
  * flow estimator or a statement that any observation has been performed.
  */
-function undirectedCycleClosingTransfers(transfers, excluded) {
+function undirectedCycleClosingTransfers(transfers, excluded, observedVertices = null) {
   const parent = new Map();
+  // Synthetic algebraic anchor, NEVER a resource, Actor, real port or vertex.
+  const anchor = Symbol("unobserved-vertex-boundary");
   const root = (original) => {
     if (!parent.has(original)) parent.set(original,original);
     let result = original;
@@ -406,6 +408,18 @@ function undirectedCycleClosingTransfers(transfers, excluded) {
     }
     return result;
   };
+  // Unknown divergences are not zero. Connecting each missing endpoint to
+  // one algebraic anchor makes every path between two missing endpoints a
+  // dependency of the actually observed incidence rows.
+  if (observedVertices !== null) {
+    const endpoints = new Set();
+    for (const t of transfers) {
+      endpoints.add(t.from.id);
+      endpoints.add(t.to.id);
+    }
+    for (const id of [...endpoints].sort())
+      if (!observedVertices.has(id)) parent.set(root(id),root(anchor));
+  }
   const closers = [];
   const ordered = [...transfers].sort((a,b) =>
     a.exchange.id < b.exchange.id ? -1 : a.exchange.id > b.exchange.id ? 1 : 0);
@@ -415,7 +429,7 @@ function undirectedCycleClosingTransfers(transfers, excluded) {
     if (a === b) {
       closers.push(transfer);
     } else {
-      parent.set(a < b ? b : a, a < b ? a : b);
+      parent.set(b,a);
     }
   }
   return Object.freeze(closers);
@@ -426,13 +440,20 @@ function undirectedCycleClosingTransfers(transfers, excluded) {
  *
  * Assuming one exact conserved resource per original Resource, a COMPLETE
  * original directed exchange multigraph, a SINGLE observation interval,
- * known exact port-adjusted vertex divergence Bf, and actual independently
- * measured individual edge fluxes f_W, the linear observation map
- * f -> (Bf, f_W) is injective on all real edge vectors exactly when the
- * UNMETERED underlying undirected multigraph is a forest.
+ * exact port-adjusted divergence on vertex set S, and independently measured
+ * edge fluxes f_W, the linear map f -> ((Bf)|_S, f_W) is injective on all
+ * real edge vectors exactly when unmetered edges form an undirected FOREST
+ * with at most ONE unobserved endpoint per nontrivial tree component.
+ * Equivalent: add an algebraic anchor linked to EACH unobserved endpoint
+ * and test that the augmented multigraph is acyclic. Isolated vertices
+ * impose no extra requirements. See Science #215 draft §7.21.
  *
- * proposedWitnessExchangeIds are only a proposed INSTRUMENTATION DESIGN.
- * They do NOT assert that meters exist, yield usable units, measure anything,
+ * proposedWitnessExchangeIds and proposedObservedCompartmentIds are only a
+ * proposed INSTRUMENTATION DESIGN. If vertex IDs are omitted, the original
+ * full-node mathematical assumption is retained for compatibility, and the
+ * output names that hypothetical coverage. If supplied (even []), only
+ * exactly named source-admitted exchange endpoints are assumed observed.
+ * These IDs do NOT assert that meters exist, yield usable units, measure anything,
  * belong to the authenticated Actor, or establish causal resource transfer.
  * The source reader's obstructions remain explicit. Missing edges, unknown
  * graph completeness, unknown ports, real flux, timing and law of effect
@@ -442,17 +463,24 @@ function undirectedCycleClosingTransfers(transfers, excluded) {
  */
 export function channelFlowWitnessPlacement(graph, options = {}) {
   const proposals = options?.proposedWitnessExchangeIds ?? [];
+  const vertices = options?.proposedObservedCompartmentIds;
   if (!Array.isArray(proposals) || proposals.length > 4096 ||
       proposals.some(id => typeof id !== "string" || !id.length) ||
       new Set(proposals).size !== proposals.length)
     throw new TypeError("flow witness placement requires unique original exchange IDs (at most 4096)");
+  if (vertices !== undefined &&
+      (!Array.isArray(vertices) || vertices.length > 8192 ||
+       vertices.some(id => typeof id !== "string" || !id.length) ||
+       new Set(vertices).size !== vertices.length))
+    throw new TypeError("flow witness placement requires unique original endpoint IDs (at most 8192)");
   const reading = channelResourceIncidence(graph, options);
-  const original = new Map(), grouped = new Map();
+  const original = new Map(), grouped = new Map(), endpoints = new Set();
   for (const transfer of reading.transfers) {
     const exchangeId = transfer.exchange.id;
     if (original.has(exchangeId))
       throw new TypeError("one original exchange cannot be projected as two transfers");
     original.set(exchangeId,transfer);
+    endpoints.add(transfer.from.id); endpoints.add(transfer.to.id);
     const resourceId = transfer.resource.id;
     if (!grouped.has(resourceId))
       grouped.set(resourceId,{resource:transfer.resource,transfers:[]});
@@ -461,20 +489,36 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
   for (const exchangeId of proposals)
     if (!original.has(exchangeId))
       throw new TypeError("proposed meter does not name one admitted channel exchange");
+  for (const id of vertices ?? [])
+    if (!endpoints.has(id))
+      throw new TypeError("proposed vertex reading does not name one admitted exchange endpoint");
   const proposed = new Set(proposals);
+  const observed = vertices === undefined ? null : new Set(vertices);
   const resources = [...grouped.values()]
     .sort((a,b) => a.resource.id < b.resource.id ? -1 : a.resource.id > b.resource.id ? 1 : 0)
     .map(({resource,transfers}) => {
-      const minimum = undirectedCycleClosingTransfers(transfers,new Set()).length;
-      const remaining = undirectedCycleClosingTransfers(transfers,proposed);
+      // Full-node special case (Science §7.20) differs from a sparse-row
+      // observed incidence matrix (Science §7.21).
+      const fullNodeMinimum = undirectedCycleClosingTransfers(transfers,new Set()).length;
+      const minimum = undirectedCycleClosingTransfers(transfers,new Set(),observed).length;
+      const remaining = undirectedCycleClosingTransfers(transfers,proposed,observed);
+      const localEndpoints = new Set();
+      for (const t of transfers) {
+        localEndpoints.add(t.from.id);localEndpoints.add(t.to.id);
+      }
       return Object.freeze({
         resource,
         exchangeCount:transfers.length,
         minimumIndependentEdgeMeterCount:minimum,
+        minimumEdgeMeterCountWithFullVertexCoverage:fullNodeMinimum,
+        proposedObservedCompartmentIds: Object.freeze([...localEndpoints]
+          .filter(id => observed === null || observed.has(id)).sort()),
         proposedIndividualEdgeMeters:Object.freeze(transfers
           .filter(t => proposed.has(t.exchange.id)).map(t => t.exchange)),
         unmeteredCycleClosingTransfers:remaining,
-        unmeteredComplementIsUndirectedForest:remaining.length === 0,
+        unmeteredComplementIsUndirectedForest:
+          undirectedCycleClosingTransfers(transfers,proposed).length === 0,
+        unmeteredComplementHasAtMostOneUnobservedVertexPerTree:remaining.length === 0,
         structuralCondition:remaining.length === 0 ?
           "conditional-linear-observation-full-rank-if-all-premises-hold" :
           "conditional-linear-observation-has-kernel",
@@ -485,6 +529,9 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
     graph:reading.graph,channel:reading.channel,
     resources:Object.freeze(resources),obstructions:reading.obstructions,
     proposalOnly:true,
+    vertexCoverageAssumption:observed === null ?
+      "all-admitted-exchange-endpoints-hypothetically-observed" :
+      "explicit-proposed-observed-endpoints-not-measured",
     originalGraphCompleteness:"not-attested",
     physicalMeterReadings:"not-supplied",
     nodeStocksAndExternalPorts:"not-supplied",
