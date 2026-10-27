@@ -348,7 +348,7 @@ function firstSourceDirectedCycle(transfers) {
  * invents flows, books money, asserts clock phases, or grants effects.
  */
 export function channelStockFlowAmbiguity(graph, options = {}) {
-  const reading = channelResourceIncidence(graph, options);
+  const reading = channelResourceIncidence(graph, admittedOptions);
   const grouped = new Map();
   for (const transfer of reading.transfers) {
     const id = transfer.resource.id;
@@ -464,10 +464,60 @@ function undirectedCycleClosingTransfers(transfers, excluded, observedVertices =
  *
  * No second graph, ledger, transaction, clock, allocator or authority.
  */
+/** Admission only for hypothetical, caller-declared source coordinates.
+ * This does not assign identity, numerical units, witness truth or authority.
+ * Proxy descriptor traps require a host sandbox.
+ */
+function sourcePlacementRecord(input, label) {
+  if (!input || typeof input !== "object" || Array.isArray(input) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(input)))
+    throw new TypeError("flow witness placement "+label+" needs plain source data");
+  const descriptors=Object.getOwnPropertyDescriptors(input);
+  const names=Reflect.ownKeys(descriptors);
+  if (names.length>8192 || names.some(k=>typeof k!=="string" ||
+      !descriptors[k].enumerable || !Object.hasOwn(descriptors[k],"value")))
+    throw new TypeError("flow witness placement "+label+" requires inert own data");
+  return Object.freeze(Object.fromEntries(names.map(k=>[k,descriptors[k].value])));
+}
+function sourcePlacementCopy(value,label,depth=0,ancestors=new Set()) {
+  if (value===null || typeof value!=="object") return value;
+  if (depth>7 || ancestors.has(value))
+    throw new TypeError("flow witness placement "+label+" needs bounded acyclic source data");
+  ancestors.add(value);
+  let result;
+  if (Array.isArray(value)) {
+    if (Object.getPrototypeOf(value)!==Array.prototype)
+      throw new TypeError("flow witness placement "+label+" requires ordinary arrays");
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    if (value.length>8192 || Reflect.ownKeys(descriptors).length!==value.length+1)
+      throw new TypeError("flow witness placement "+label+" requires dense undecorated source arrays");
+    result=Object.freeze(Array.from({length:value.length},(_,i)=>{
+      const part=descriptors[String(i)];
+      if (!part || !part.enumerable || !Object.hasOwn(part,"value"))
+        throw new TypeError("flow witness placement "+label+" requires inert own array slots");
+      return sourcePlacementCopy(part.value,label,depth+1,ancestors);
+    }));
+  } else {
+    const record=sourcePlacementRecord(value,label);
+    result=Object.freeze(Object.fromEntries(Object.entries(record)
+      .map(([k,v])=>[k,sourcePlacementCopy(v,label,depth+1,ancestors)])));
+  }
+  ancestors.delete(value);
+  return result;
+}
 export function channelFlowWitnessPlacement(graph, options = {}) {
-  const proposals = options?.proposedWitnessExchangeIds ?? [];
-  const vertices = options?.proposedObservedCompartmentIds;
-  const scopedVertices = options?.proposedObservedCompartmentIdsByResource;
+  // Read the outer source declaration once, preserve the original Channel
+  // reference for existing SignGraph admission, and detach only structural
+  // proposal/relations/calibration data before any mathematical operation.
+  const sourceOptions=sourcePlacementRecord(options,"options");
+  const structural=new Set(["relations","proposedWitnessExchangeIds",
+    "proposedObservedCompartmentIds","proposedObservedCompartmentIdsByResource",
+    "hypotheticalErrorCeilings"]);
+  const admittedOptions=Object.freeze(Object.fromEntries(Object.entries(sourceOptions)
+    .map(([key,value])=>[key,structural.has(key)?sourcePlacementCopy(value,key):value])));
+  const proposals = admittedOptions.proposedWitnessExchangeIds ?? [];
+  const vertices = admittedOptions.proposedObservedCompartmentIds;
+  const scopedVertices = admittedOptions.proposedObservedCompartmentIdsByResource;
   if (!Array.isArray(proposals) || proposals.length > 4096 ||
       proposals.some(id => typeof id !== "string" || !id.length) ||
       new Set(proposals).size !== proposals.length)
@@ -535,7 +585,7 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
   }
   const proposed = new Set(proposals);
   // Proposed error ceilings are design constraints, NEVER actual sensor readings.
-  const ceilings = options?.hypotheticalErrorCeilings;
+  const ceilings = admittedOptions.hypotheticalErrorCeilings;
   const plain = value => value !== null && typeof value === "object" &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype ||

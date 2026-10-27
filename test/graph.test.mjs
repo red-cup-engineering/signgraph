@@ -1157,3 +1157,43 @@ test("multi-resource observation and calibrated units remain independently scope
   assert.equal(byId.get(at.energy.id).hypotheticalResolution.unit,"joule");
   assert.ok(result.resources.every(r=>r.hypotheticalResolution.actualReadings==="not-supplied"));
 });
+
+test("hypothetical meter placement refuses executable proposal, scope and calibration getters",()=>{
+ const {graph,at,roles}=stockAmbiguityFixture({broken:true});
+ const base={channel:at.channel,relations:roles};
+ let calls=0;
+ const outer={...base};
+ Object.defineProperty(outer,"proposedWitnessExchangeIds",{enumerable:true,get(){calls++;return [at.e1.id]}});
+ assert.throws(()=>channelFlowWitnessPlacement(graph,outer),/inert own data/);
+ const meters=[at.e1.id];
+ Object.defineProperty(meters,"0",{enumerable:true,get(){calls++;return at.e1.id}});
+ assert.throws(()=>channelFlowWitnessPlacement(graph,{...base,proposedWitnessExchangeIds:meters}),/inert own array slots/);
+ const scope={};
+ Object.defineProperty(scope,at.water.id,{enumerable:true,get(){calls++;return [at.B.id]}});
+ assert.throws(()=>channelFlowWitnessPlacement(graph,{...base,proposedObservedCompartmentIdsByResource:scope}),/inert own data/);
+ const quantity={unit:"kg"};
+ Object.defineProperty(quantity,"atoms",{enumerable:true,get(){calls++;return "2"}});
+ assert.throws(()=>channelFlowWitnessPlacement(graph,{...base,
+   proposedObservedCompartmentIds:[at.B.id],proposedWitnessExchangeIds:[at.e1.id],
+   hypotheticalErrorCeilings:{[at.water.id]:{vertex:{[at.B.id]:quantity},edge:{}}}
+ }),/inert own data/);
+ assert.equal(calls,0);
+ const legitimate=channelFlowWitnessPlacement(graph,{...base,
+   proposedObservedCompartmentIds:[at.B.id],proposedWitnessExchangeIds:[at.e1.id,at.e3.id]});
+ assert.equal(legitimate.proposalOnly,true);
+ assert.equal(legitimate.physicalMeterReadings,"not-supplied");
+});
+test("hypothetical options use immutable source cuts without allowing erased array positions",()=>{
+ const {graph,at,roles}=stockAmbiguityFixture({broken:true});
+ const input={channel:at.channel,relations:roles,
+   proposedWitnessExchangeIds:[at.e1.id,at.e3.id],
+   proposedObservedCompartmentIds:[at.B.id]};
+ const result=channelFlowWitnessPlacement(graph,input);
+ input.proposedWitnessExchangeIds[0]="unadmitted";
+ input.proposedObservedCompartmentIds[0]="unadmitted";
+ assert.equal(result.resources[0].proposedIndividualEdgeMeters[0].id,at.e1.id);
+ assert.deepEqual(result.resources[0].proposedObservedCompartmentIds,[at.B.id]);
+ const gaps=[at.e1.id];gaps.length=2;
+ assert.throws(()=>channelFlowWitnessPlacement(graph,{channel:at.channel,relations:roles,
+   proposedWitnessExchangeIds:gaps}),/dense undecorated source arrays/);
+});
