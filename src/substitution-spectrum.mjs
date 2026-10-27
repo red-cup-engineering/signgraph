@@ -17,11 +17,8 @@
  * cohomological rank, nor any non-finite closure regime.
  */
 import { isMark } from "@red-cup-engineering/signcell/mark";
-import {
-  admitCell, cellSet, measured, presence, recordOf
-} from "@red-cup-engineering/signcell/cell";
 import { isUtterance, traceOfArticulating } from "@red-cup-engineering/signcell/utterance";
-import { semanticId } from "@red-cup-engineering/semiotic-content-address";
+import { semanticId, admitCell, cellSet, measured, presence, recordOf } from "@red-cup-engineering/signcell/cell";
 import { charPoly, fromInts, toInt } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { cohomologyOfEdgeGraph } from "./cohomology.mjs";
 
@@ -265,7 +262,6 @@ export function selectSourceMarkReactions(input) {
   }
   throw new Error("finite source-reaction iteration exceeded its own depth bound");
 }
-
 
 /**
  * FOUR-valued receiving of a SOURCE-GENERATED reaction product.

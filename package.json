@@ -1,12 +1,23 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.6.0",
+  "version": "0.7.1-dev.4",
   "type": "module",
   "description": "SignCell and SignChain sites, transport, relations and graph projections.",
   "files": [
     "src",
     "data/records/requirements-records",
-    "scripts/holonomy.mjs"
+    "test/graph.test.mjs",
+    "test/token-sheaf.test.mjs",
+    "test/holonomy-operations.test.mjs",
+    "test/performed-head-observation.test.mjs",
+    "test/relational-value.test.mjs",
+    "test/relational-value-admission.test.mjs",
+    "test/cellular-sheaf.test.mjs",
+    "test/valuation-trace.test.mjs",
+    "test/evidence-order-receiving.test.mjs",
+    "test/pure-functional-boundary.test.mjs",
+    "test/cell-content-owner.test.mjs",
+    "test/mark-reaction-receiving.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -43,34 +54,42 @@
   },
   "dependencies": {
     "@red-cup-engineering/uri-services-section": "0.1.1",
-    "@red-cup-engineering/metrologic": "0.13.0",
+    "@red-cup-engineering/metrologic": "0.14.3-dev.1364",
     "@red-cup-engineering/cbor-services-section": "0.1.1",
     "@red-cup-engineering/json-services-section": "0.4.0",
     "@red-cup-engineering/eavt-services-section": "0.11.0",
     "@red-cup-engineering/computer-content-engineering-services-section": "0.1.0",
     "@red-cup-engineering/xml-document-rendering-service": "0.1.7",
     "@red-cup-engineering/computer-data-engineering-services-section": "0.7.1",
-    "@red-cup-engineering/exact-number-data-service": "0.1.2",
-    "@red-cup-engineering/signcell": "0.10.0",
-    "@red-cup-engineering/signchain": "0.3.0",
+    "@red-cup-engineering/exact-number-data-service": "0.1.7",
+    "@red-cup-engineering/signcell": "0.13.1-dev.212",
+    "@red-cup-engineering/signchain": "0.4.2-dev.72",
     "@red-cup-engineering/json-schema-services-section": "0.5.0",
-    "@red-cup-engineering/semiotic-content-address": "0.1.0",
+    "@red-cup-engineering/semiotic-content-address": "0.1.1",
     "@red-cup-engineering/computer-code-engineering-services-section": "0.1.2"
   },
   "scripts": {
     "test": "node --test \"test/**/*.test.mjs\"",
-    "check:holonomy": "node --check src/embedding.mjs && node --check src/cohomology.mjs && node --check src/paths.mjs && node --check src/cellular-sheaf.mjs && node --check src/hierarchical-circuit.mjs && node --check src/operations.mjs && node --check scripts/holonomy.mjs",
-    "test:holonomy": "node --test test/cellular-2complex.test.mjs test/sixfold-holonomy.test.mjs test/holonomy-operations.test.mjs test/geometric-receiving.test.mjs test/cellular-sheaf.test.mjs test/hierarchical-circuit.test.mjs"
+    "check:holonomy": "node --check src/embedding.mjs && node --check src/cohomology.mjs && node --check src/paths.mjs && node --check src/cellular-sheaf.mjs && node --check src/hierarchical-circuit.mjs && node --check src/operations.mjs && node --check src/mark-gluing.mjs && node --check test/performed-head-observation.test.mjs",
+    "test:holonomy": "node --test test/cellular-2complex.test.mjs test/sixfold-holonomy.test.mjs test/holonomy-operations.test.mjs test/geometric-receiving.test.mjs test/cellular-sheaf.test.mjs test/hierarchical-circuit.test.mjs test/performed-head-observation.test.mjs"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/red-cup-engineering/signgraph.git"
   },
   "private": false,
-  "bin": {
-    "signgraph-holonomy": "scripts/holonomy.mjs"
-  },
   "receivingTests": [
-    "test/graph.test.mjs"
+    "test/graph.test.mjs",
+    "test/token-sheaf.test.mjs",
+    "test/holonomy-operations.test.mjs",
+    "test/performed-head-observation.test.mjs",
+    "test/relational-value.test.mjs",
+    "test/relational-value-admission.test.mjs",
+    "test/cellular-sheaf.test.mjs",
+    "test/valuation-trace.test.mjs",
+    "test/evidence-order-receiving.test.mjs",
+    "test/pure-functional-boundary.test.mjs",
+    "test/cell-content-owner.test.mjs",
+    "test/mark-reaction-receiving.test.mjs"
   ]
 }

@@ -14,7 +14,7 @@ import {
   cellular2Complex, cellular3Complex, burgersOfComplex, affineHolonomyOfComplex,
 } from "./cohomology.mjs";
 import { geometricReceiving, metricSquareOfVector } from "./embedding.mjs";
-import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing } from "./mark-gluing.mjs";
+import { unfoldArticulatingIncidenceTower, generateHeadObservationGluing, derivePerformedHeadShadow, readPerformedCellularCover, assessPerformedBoundaryFactorization, readPerformedKinematicSectionSpace } from "./mark-gluing.mjs";
 
 export const LIMITS = Object.freeze({
   inputBytes: 65536,
@@ -128,6 +128,24 @@ function boundedArticulating(input, workBudget) {
   return Object.freeze({source:input.articulating,maxLayers});
 }
 
+/**
+ * Both original head-observation consumers receive exactly the same performed
+ * Articulating source and host budget; neither may supply its own paths, graph,
+ * quotient or authority. This is the shared source admission, not a second
+ * formal semantics.
+ */
+function boundedHeadObservation(input, workBudget) {
+  if (!input || typeof input !== "object" || Array.isArray(input) ||
+      Object.keys(input).some(key => !["articulating", "steps"].includes(key)) ||
+      !Object.hasOwn(input, "articulating"))
+    throw new TypeError("source head quotient operation only admits Articulating plus bounded steps");
+  const { source } = boundedArticulating({ articulating: input.articulating, maxLayers: 16 }, workBudget);
+  const steps = input.steps ?? 1;
+  if (!Number.isSafeInteger(steps) || steps < 0 || steps > 6)
+    throw new RangeError("source-generated quotient permits zero to six bounded re-attendings");
+  return Object.freeze({ articulating: source, steps });
+}
+
 const shape = (complex, steps, volumeSteps) => Object.freeze({
   vertices: complex.vertices.length,
   edges: complex.edges.length,
@@ -166,6 +184,15 @@ const schema = (requiredExtra, propertyExtra) => Object.freeze({
   ...commonInput,
   required: Object.freeze([...commonInput.required, ...requiredExtra]),
   properties: Object.freeze({ ...commonInput.properties, ...propertyExtra }),
+});
+
+const performedHeadInputSchema = Object.freeze({
+  type: "object", additionalProperties: false,
+  required: Object.freeze(["articulating"]),
+  properties: Object.freeze({
+    articulating: { type: "object" },
+    steps: { type: "integer", minimum: 0, maximum: 6 },
+  }),
 });
 
 export const operations = Object.freeze({
@@ -249,22 +276,117 @@ export const operations = Object.freeze({
   observedHeadGluing: Object.freeze({
     id:"signgraph.mark-incidence.observed-head-gluing",
     description:"Construct source-generated head-identification incidence cycles AFTER Articulating, with exact candidate WIT accounting and no physical erasure assertion.",
+    inputSchema: performedHeadInputSchema,
+    execute(input, { workBudget } = {}){
+      return generateHeadObservationGluing(boundedHeadObservation(input, workBudget));
+    },
+  }),
+  performedHeadShadow: Object.freeze({
+    id: "signgraph.mark-incidence.performed-head-shadow",
+    description: "Compute source-generated observed head paths; distinguish actual Articulating composition from observer-created nonlifting paths.",
+    inputSchema: performedHeadInputSchema,
+    execute(input, { workBudget } = {}) {
+      return derivePerformedHeadShadow(boundedHeadObservation(input, workBudget));
+    },
+  }),
+  performedKinematicSections: Object.freeze({
+    id:"signgraph.mark-incidence.kinematic-section-descent",
+    description:"Query genuine source-generated Kinematic Alexandrov upper-opens, coherent local occurrence-pair sections, exact sparse 3-axis incidence tensor factors, compatible gluing and original overlap obstructions from the existing performed Articulating.",
     inputSchema:Object.freeze({
       type:"object",additionalProperties:false,
-      required:Object.freeze(["articulating"]),
+      required:Object.freeze(["articulating","patches"]),
       properties:Object.freeze({
         articulating:{type:"object"},
         steps:{type:"integer",minimum:0,maximum:6},
+        patches:{type:"array",minItems:1,maxItems:8,
+          items:{type:"array",minItems:1,
+            items:{type:"integer",minimum:0}}},
+        sections:{type:"array",items:{type:"array",items:{
+          type:"object",additionalProperties:false,
+          required:["pointIndex","claimIndex"],
+          properties:{pointIndex:{type:"integer",minimum:0},
+            claimIndex:{type:"integer",minimum:0}},
+        }}},
       }),
     }),
-    execute(input, { workBudget } = {}){
+    execute(input,{workBudget}={}){
       if(!input||typeof input!=="object"||Array.isArray(input)||
-         Object.keys(input).some(k=>!["articulating","steps"].includes(k))||
-         !Object.hasOwn(input,"articulating"))
-        throw new TypeError("source head quotient operation only admits Articulating plus bounded steps");
-      const {source}=boundedArticulating({articulating:input.articulating,maxLayers:16}, workBudget);
-      return generateHeadObservationGluing({articulating:source,
-        ...(input.steps===undefined?{}:{steps:input.steps})});
+         Object.keys(input).some(k=>!["articulating","steps","patches","sections"].includes(k))||
+         !Array.isArray(input.patches)||input.patches.length<1||input.patches.length>8)
+        throw new TypeError("performed kinematic sections need original Articulating and finite source patches");
+      const budget=budgetOf(workBudget);
+      if(new TextEncoder().encode(JSON.stringify(input)).length>budget.inputBytes)
+        throw new RangeError("performed kinematic sections exceed source-host byte budget");
+      const source=boundedHeadObservation({
+        articulating:input.articulating,
+        ...(input.steps===undefined?{}:{steps:input.steps}),
+      },workBudget);
+      return readPerformedKinematicSectionSpace(derivePerformedHeadShadow(source),{
+        patches:input.patches,
+        ...(input.sections===undefined?{}:{sections:input.sections}),
+      });
+    },
+  }),
+  performedCellularCover: Object.freeze({
+    id:"signgraph.mark-incidence.performed-cellular-cover",
+    description:"Read a source-generated kinematic/L-Space claim fiber as finite cellular local sections, reporting genuine uncovered and incompatible original occurrence pairs, gluing only a conditional compatible full cover.",
+    inputSchema:Object.freeze({
+      type:"object",additionalProperties:false,
+      required:Object.freeze(["articulating","targetPointIndex","patches"]),
+      properties:Object.freeze({
+        articulating:{type:"object"},
+        steps:{type:"integer",minimum:0,maximum:6},
+        targetPointIndex:{type:"integer",minimum:0},
+        patches:{type:"array",minItems:1,maxItems:64,items:{
+          type:"object",additionalProperties:false,
+          required:["pointIndex","coveredClaimIndices","selectedClaimIndices"],
+          properties:{
+            pointIndex:{type:"integer",minimum:0},
+            coveredClaimIndices:{type:"array",items:{type:"integer",minimum:0}},
+            selectedClaimIndices:{type:"array",items:{type:"integer",minimum:0}},
+          },
+        }},
+      }),
+    }),
+    execute(input,{workBudget}={}){
+      if(!input||typeof input!=="object"||Array.isArray(input)||
+         Object.keys(input).some(k=>!["articulating","steps","targetPointIndex","patches"].includes(k))||
+         !Number.isSafeInteger(input.targetPointIndex)||input.targetPointIndex<0||
+         !Array.isArray(input.patches)||input.patches.length<1||input.patches.length>64)
+        throw new TypeError("performed cellular cover requires source Articulating, kinematic locus and bounded original patches");
+      if(new TextEncoder().encode(JSON.stringify(input)).length>budgetOf(workBudget).inputBytes)
+        throw new RangeError("performed cellular cover exceeds native source-byte budget");
+      const generated=boundedHeadObservation({
+        articulating:input.articulating,
+        ...(input.steps===undefined?{}:{steps:input.steps}),
+      },workBudget);
+      return readPerformedCellularCover(
+        derivePerformedHeadShadow(generated),input.targetPointIndex,input.patches);
+    },
+  }),
+  boundaryFactorization: Object.freeze({
+    id: "signgraph.mark-incidence.boundary-factorization",
+    description: "Test whether complete recipient-specific source classes descend through the ORIGINAL performed claim-address boundary; return a source occurrence obstruction if not.",
+    inputSchema: Object.freeze({
+      type: "object", additionalProperties: false,
+      required: Object.freeze(["articulating", "requiredReadings"]),
+      properties: Object.freeze({
+        articulating: { type: "object" },
+        steps: { type: "integer", minimum: 0, maximum: 6 },
+        requiredReadings: { type: "array", items: { type: "object" } },
+      }),
+    }),
+    execute(input, { workBudget } = {}) {
+      if (!input || typeof input !== "object" || Array.isArray(input) ||
+          Object.keys(input).some(key => !["articulating","steps","requiredReadings"].includes(key)))
+        throw new TypeError("boundary factorization requires original Articulating, steps and recipient readings");
+      if (new TextEncoder().encode(JSON.stringify(input)).length > budgetOf(workBudget).inputBytes)
+        throw new RangeError("boundary factorization exceeds the input byte budget");
+      const generated = boundedHeadObservation({
+        articulating: input.articulating,
+        ...(input.steps === undefined ? {} : { steps: input.steps }),
+      }, workBudget);
+      return assessPerformedBoundaryFactorization(derivePerformedHeadShadow(generated), input.requiredReadings);
     },
   }),
   articulatingTower: Object.freeze({
@@ -285,8 +407,22 @@ export const operations = Object.freeze({
   }),
 });
 
+// One published operation ID SHALL designate exactly one schema and executor.
+// A duplicate makes generated operation catalogs and actual dispatch disagree.
+// Refuse it at module admission, before any source reading or host effect.
+const operationList = Object.values(operations);
+const operationById = new Map();
+for (const op of operationList) {
+  if (typeof op?.id !== "string" || !op.id ||
+      typeof op.execute !== "function" || !op.inputSchema)
+    throw new TypeError("signgraph operation registration lacks its declared typed source contract");
+  if (operationById.has(op.id))
+    throw new TypeError("signgraph duplicate operation id: " + op.id);
+  operationById.set(op.id, op);
+}
+
 export function executeOperation(id, input, { workBudget } = {}) {
-  const op = Object.values(operations).find(op => op.id === id);
+  const op = operationById.get(id);
   if (!op) throw new RangeError("signgraph operation id is not installed");
   return op.execute(input, { workBudget });
 }
