@@ -104,9 +104,14 @@ export function findSignGraphRoute(graph, sourceReference, targetReference, opti
  * original graph. "inside" optionally projects endpoint -> compartment,
  * a one-level spatial reading, not a fabricated hierarchy or sheaf.
  */
-export function channelResourceIncidence(graph, {
-  channel, relations, maxMessages = 256, maxExchanges = 1024, maxEdges = 16384, maxContainmentDepth = 1,
-} = {}) {
+export function channelResourceIncidence(graph, supplied = {}) {
+  // The source-owner interface reads one original, inert declaration.
+  // An executable getter cannot silently substitute a predicate after the
+  // graph's relation admission has already checked another predicate.
+  const options = sourcePlacementRecord(supplied,"channel incidence options");
+  const {channel, maxMessages = 256, maxExchanges = 1024,
+    maxEdges = 16384, maxContainmentDepth = 1} = options;
+  const relations = sourcePlacementCopy(options.relations,"channel relations");
   const required = ["contains", "reports", "resource", "from", "to"];
   const allowed = [...required, "quantity", "settlement", "inside"];
   if (relations === null || typeof relations !== "object" || Array.isArray(relations) ||
@@ -471,12 +476,12 @@ function undirectedCycleClosingTransfers(transfers, excluded, observedVertices =
 function sourcePlacementRecord(input, label) {
   if (!input || typeof input !== "object" || Array.isArray(input) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(input)))
-    throw new TypeError("flow witness placement "+label+" needs plain source data");
+    throw new TypeError("SignGraph source "+label+" needs plain source data");
   const descriptors=Object.getOwnPropertyDescriptors(input);
   const names=Reflect.ownKeys(descriptors);
   if (names.length>8192 || names.some(k=>typeof k!=="string" ||
       !descriptors[k].enumerable || !Object.hasOwn(descriptors[k],"value")))
-    throw new TypeError("flow witness placement "+label+" requires inert own data");
+    throw new TypeError("SignGraph source "+label+" requires inert own data");
   return Object.freeze(Object.fromEntries(names.map(k=>[k,descriptors[k].value])));
 }
 function sourcePlacementCopy(value,label,depth=0,ancestors=new Set()) {
@@ -684,10 +689,11 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
  * an available/reserved balance, an Act, a settlement, or a route optimizer.
  * Negative testimony is retained, not voted away. No new graph or ledger.
  */
-export function channelTransportPossibilities(graph, {
-  channel, relations, quantityType, observedAt = null,
-  maxOptions = 256, maxSources = 1024, maxEdges = 16384,
-} = {}) {
+export function channelTransportPossibilities(graph, supplied = {}) {
+  const options = sourcePlacementRecord(supplied,"transport possibilities options");
+  const {channel, quantityType, observedAt = null,
+    maxOptions = 256, maxSources = 1024, maxEdges = 16384} = options;
+  const relations = sourcePlacementCopy(options.relations,"transport relations");
   const mandatory = ["offers", "resource", "from", "to", "inside", "uses", "capacityResource", "capacity"];
   const optional = ["cost", "opposes", "revokes"];
   if (!relations || typeof relations !== "object" || Array.isArray(relations) ||

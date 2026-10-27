@@ -973,3 +973,17 @@ A source-defined hole does not automatically imply a physical defect,
 causal shroud, conserved energy or permission to remove material.
 Lean J26 source-generation proof and full pinned native dependency
 receiving remain independent obligations.
+
+## Original channel/transport source-admission consistency
+
+The original `channelResourceIncidence`, `channelTransportPossibilities`
+and `channelFlowWitnessPlacement` now share **one** SignGraph admission
+rule for their caller-owned option/role declarations. This retains the
+existing typed Graph and SignCell readmission, original relation vocabulary,
+Resource IDs, FOUR witnesses and exact flow mathematics. It refuses
+getter-backed budgets or relation labels *before* executing them, including
+a relation changing between declaration validation and source query.
+A declared Channel reference is still checked by the original SignGraph
+membership/typing owner; ordinary descriptor checking is not external
+authentication or a second canonical identity. Proxy traps require a
+separate host boundary.

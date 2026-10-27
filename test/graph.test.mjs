@@ -1197,3 +1197,35 @@ test("hypothetical options use immutable source cuts without allowing erased arr
  assert.throws(()=>channelFlowWitnessPlacement(graph,{channel:at.channel,relations:roles,
    proposedWitnessExchangeIds:gaps}),/dense undecorated source arrays/);
 });
+
+test("original channel incidence rejects caller option and relation accessors before graph admission",()=>{
+ const {graph,at,roles}=stockAmbiguityFixture({broken:true});
+ let calls=0;
+ const outer={channel:at.channel};
+ Object.defineProperty(outer,"relations",{enumerable:true,get(){calls++;return roles;}});
+ assert.throws(()=>channelResourceIncidence(graph,outer),/inert own data/u);
+ const withRole={...roles};
+ Object.defineProperty(withRole,"reports",{enumerable:true,get(){calls++;return roles.reports;}});
+ assert.throws(()=>channelResourceIncidence(graph,{channel:at.channel,relations:withRole}),/inert own data/u);
+ const opts={channel:at.channel,relations:roles};
+ Object.defineProperty(opts,"maxExchanges",{enumerable:true,get(){calls++;return 1024;}});
+ assert.throws(()=>channelResourceIncidence(graph,opts),/inert own data/u);
+ assert.equal(calls,0);
+ const valid=channelResourceIncidence(graph,{channel:at.channel,relations:roles});
+ assert.equal(valid.kind,"signgraph.channelResourceIncidence.v1");
+ assert.equal(valid.channel.id,at.channel.id);
+});
+
+test("unused transport offer source options and relation roles do not run getters",()=>{
+ let calls=0;
+ const {graph,at,roles}=stockAmbiguityFixture();
+ const fakeOptions={channel:at.channel,quantityType:"source.quantity"};
+ Object.defineProperty(fakeOptions,"relations",{enumerable:true,get(){calls++;return roles;}});
+ assert.throws(()=>channelTransportPossibilities(graph,fakeOptions),/inert own data/u);
+ const nested={...roles};
+ Object.defineProperty(nested,"offers",{enumerable:true,get(){calls++;return "source:offers";}});
+ assert.throws(()=>channelTransportPossibilities(graph,{
+   channel:at.channel,quantityType:"source.quantity",relations:nested
+ }),/inert own data/u);
+ assert.equal(calls,0);
+});
