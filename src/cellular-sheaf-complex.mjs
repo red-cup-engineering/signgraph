@@ -16,6 +16,9 @@ import { ratPairOfEntry, ratRank } from '@red-cup-engineering/exact-number-data-
 import { rationalOfBigInts, ratZero, ratAdd, ratMultiply, ratNegate, ratIsZero, rationalParts } from '@red-cup-engineering/exact-number-data-service/exact-number';
 import { rationalToFiniteNumber } from '@red-cup-engineering/exact-number-data-service/exact-number-host';
 
+// Matrix exchange is a capability of actually admitted in-process cochain
+// readings; JSON-shaped forged structs cannot turn into certified operators.
+const admittedReadings = new WeakSet();
 const rational = entry => rationalOfBigInts(...ratPairOfEntry(entry));
 const fraction = value => {
   const [num, den] = rationalParts(value);
@@ -129,7 +132,7 @@ export function cellular2Sheaf({ vertices, edges, faces }) {
   const h0 = sheaf.c0 - r0, h1 = sheaf.c1 - r0 - r1, h2 = c2 - r1;
   if (h0 < 0 || h1 < 0 || h2 < 0)
     throw new RangeError('cellular2Sheaf: inconsistent rational cohomology dimensions');
-  return Object.freeze({
+  const result = Object.freeze({
     kind: 'signgraph.cellular2Sheaf', sheaf, complex,
     faces: Object.freeze(admittedFaces), c0: sheaf.c0, c1: sheaf.c1, c2,
     coboundary: Object.freeze({ zero: frozenRows(zero), one: frozenRows(one) }),
@@ -139,6 +142,8 @@ export function cellular2Sheaf({ vertices, edges, faces }) {
     rank: Object.freeze({ zero: r0, one: r1 }),
     cohomology: Object.freeze({ h0, h1, h2 }),
   });
+  admittedReadings.add(result);
+  return result;
 }
 
 /**
@@ -150,7 +155,7 @@ export function cellular2Sheaf({ vertices, edges, faces }) {
  * admitted sheaf, because Matrix Market carries matrices, not typed cells.
  */
 export function matrixMarketCoboundary(reading, degree) {
-  if (reading?.kind !== 'signgraph.cellular2Sheaf' || (degree !== 0 && degree !== 1))
+  if (!admittedReadings.has(reading) || (degree !== 0 && degree !== 1))
     throw new TypeError('matrixMarketCoboundary: provide an admitted cellular2Sheaf and degree 0 or 1');
   const rows = degree === 0 ? reading.c1 : reading.c2;
   const cols = degree === 0 ? reading.c0 : reading.c1;

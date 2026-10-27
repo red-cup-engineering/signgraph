@@ -119,3 +119,12 @@ test('Matrix Market refuses a nonzero exact coefficient which binary64 cannot ca
   // A loop is an admitted closed walk: d0=0, but d1 retains the nonzero rational.
   assert.throws(() => matrixMarketCoboundary(cellular2Sheaf(unitLoop), 1), RangeError);
 });
+
+test('Matrix Market exchange requires a source-admitted original result, not a forged JSON lookalike',()=>{
+  const good=cellular2Sheaf({...triangle(),faces:[face('certified')]});
+  const forged={...good};
+  assert.equal(forged.kind,good.kind);
+  assert.throws(()=>matrixMarketCoboundary(forged,0),/admitted cellular2Sheaf/u);
+  assert.throws(()=>matrixMarketCoboundary(JSON.parse(JSON.stringify(good)),1),/admitted cellular2Sheaf/u);
+  assert.match(matrixMarketCoboundary(good,1),/^%%MatrixMarket matrix coordinate real/u);
+});

@@ -8,7 +8,7 @@
  * the presheaf settlement reads: the site with a trace of valuations, seeded
  * with the posited one. The sheaf is a valuation taken as the global section.
  */
-import { cell, cellAt, cellSet, mergeCellSets, sameCell, triple } from "@red-cup-engineering/signcell/cell";
+import { cell, cellAt, cellSet, mergeCellSets, triple, tripleKey } from "@red-cup-engineering/signcell/cell";
 import { knowledgeLeq } from "@red-cup-engineering/signchain/bilattice";
 import { freeSite, site as siteOf } from "./site.mjs";
 
@@ -39,7 +39,14 @@ export const sameValuation = (left, right) => valuationLeqKnowledge(left, right)
  *  Refuses a valuation carrying a cell outside the site. */
 export function posit(site, valuation) {
   const admitted = cellSet(valuation);
-  if (admitted.some((told) => !site.cells.some((at) => sameCell(at, told)))) throw new TypeError("posit: the valuation tells a cell outside its site");
+  if (admitted.length > 0) {
+    // Membership is the same canonical triple coincidence that constructs a
+    // site. Index once instead of re-encoding its cells for every telling;
+    // the admitted evidence, including untold cells and written values, stays
+    // in the original SignCell set below.
+    const members = new Set(site.cells.map(tripleKey));
+    if (admitted.some((told) => !members.has(tripleKey(told)))) throw new TypeError("posit: the valuation tells a cell outside its site");
+  }
   return Object.freeze({ kind: "signgraph.presheaf", site, traces: Object.freeze([admitted]) });
 }
 
