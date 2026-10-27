@@ -1,3 +1,4 @@
+import { conditionalFlowCutErrorBudgets } from "./flow-resolution-budget.mjs";
 import { createGraph, shortestPath } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { glueSignGraphs, querySignGraph } from "./semantic-graph.mjs";
 
@@ -347,7 +348,7 @@ function firstSourceDirectedCycle(transfers) {
  * invents flows, books money, asserts clock phases, or grants effects.
  */
 export function channelStockFlowAmbiguity(graph, options = {}) {
-  const reading = channelResourceIncidence(graph, options);
+  const reading = channelResourceIncidence(graph, admittedOptions);
   const grouped = new Map();
   for (const transfer of reading.transfers) {
     const id = transfer.resource.id;
@@ -381,6 +382,294 @@ export function channelStockFlowAmbiguity(graph, options = {}) {
     endogenousClock:"not-established",
   });
 }
+
+
+/**
+ * Report the source-identified edges that close an UNDIRECTED cycle after
+ * excluding proposed individually metered original exchanges. A self-loop
+ * or second independent parallel exchange closes a cycle; a second MESSAGE
+ * about the same exchange does not create another graph edge.
+ *
+ * This is a disjoint-set test of the cycle rank of the multigraph, NOT a
+ * flow estimator or a statement that any observation has been performed.
+ */
+function undirectedCycleClosingTransfers(transfers, excluded, observedVertices = null) {
+  const parent = new Map();
+  // Synthetic algebraic anchor, NEVER a resource, Actor, real port or vertex.
+  const anchor = Symbol("unobserved-vertex-boundary");
+  const root = (original) => {
+    if (!parent.has(original)) parent.set(original,original);
+    let result = original;
+    while (parent.get(result) !== result) result = parent.get(result);
+    let id = original;
+    while (id !== result) {
+      const next = parent.get(id);
+      parent.set(id,result);
+      id = next;
+    }
+    return result;
+  };
+  // Unknown divergences are not zero. Connecting each missing endpoint to
+  // one algebraic anchor makes every path between two missing endpoints a
+  // dependency of the actually observed incidence rows.
+  if (observedVertices !== null) {
+    const endpoints = new Set();
+    for (const t of transfers) {
+      endpoints.add(t.from.id);
+      endpoints.add(t.to.id);
+    }
+    for (const id of [...endpoints].sort())
+      if (!observedVertices.has(id)) parent.set(root(id),root(anchor));
+  }
+  const closers = [];
+  const ordered = [...transfers].sort((a,b) =>
+    a.exchange.id < b.exchange.id ? -1 : a.exchange.id > b.exchange.id ? 1 : 0);
+  for (const transfer of ordered) {
+    if (excluded.has(transfer.exchange.id)) continue;
+    const a = root(transfer.from.id), b = root(transfer.to.id);
+    if (a === b) {
+      closers.push(transfer);
+    } else {
+      parent.set(b,a);
+    }
+  }
+  return Object.freeze(closers);
+}
+
+/**
+ * CONDITIONAL design assay for independent edge-meter placement.
+ *
+ * Assuming one exact conserved resource per original Resource, a COMPLETE
+ * original directed exchange multigraph, a SINGLE observation interval,
+ * exact port-adjusted divergence on vertex set S, and independently measured
+ * edge fluxes f_W, the linear map f -> ((Bf)|_S, f_W) is injective on all
+ * real edge vectors exactly when unmetered edges form an undirected FOREST
+ * with at most ONE unobserved endpoint per nontrivial tree component.
+ * Equivalent: add an algebraic anchor linked to EACH unobserved endpoint
+ * and test that the augmented multigraph is acyclic. Isolated vertices
+ * impose no extra requirements. See Science #215 draft §7.21.
+ *
+ * proposedWitnessExchangeIds, proposedObservedCompartmentIds and optional
+ * proposedObservedCompartmentIdsByResource (Resource ID -> endpoint IDs) are only a
+ * proposed INSTRUMENTATION DESIGN. Nonempty global endpoint coverage is
+ * refused with multiple Resources: an A water reading is not an A energy reading. If vertex IDs are omitted, the original
+ * full-node mathematical assumption is retained for compatibility, and the
+ * output names that hypothetical coverage. If supplied (even []), only
+ * exactly named source-admitted exchange endpoints are assumed observed.
+ * These IDs do NOT assert that meters exist, yield usable units, measure anything,
+ * belong to the authenticated Actor, or establish causal resource transfer.
+ * The source reader's obstructions remain explicit. Missing edges, unknown
+ * graph completeness, unknown ports, real flux, timing and law of effect
+ * remain outside this graph-only projection.
+ *
+ * No second graph, ledger, transaction, clock, allocator or authority.
+ */
+/** Admission only for hypothetical, caller-declared source coordinates.
+ * This does not assign identity, numerical units, witness truth or authority.
+ * Proxy descriptor traps require a host sandbox.
+ */
+function sourcePlacementRecord(input, label) {
+  if (!input || typeof input !== "object" || Array.isArray(input) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(input)))
+    throw new TypeError("flow witness placement "+label+" needs plain source data");
+  const descriptors=Object.getOwnPropertyDescriptors(input);
+  const names=Reflect.ownKeys(descriptors);
+  if (names.length>8192 || names.some(k=>typeof k!=="string" ||
+      !descriptors[k].enumerable || !Object.hasOwn(descriptors[k],"value")))
+    throw new TypeError("flow witness placement "+label+" requires inert own data");
+  return Object.freeze(Object.fromEntries(names.map(k=>[k,descriptors[k].value])));
+}
+function sourcePlacementCopy(value,label,depth=0,ancestors=new Set()) {
+  if (value===null || typeof value!=="object") return value;
+  if (depth>7 || ancestors.has(value))
+    throw new TypeError("flow witness placement "+label+" needs bounded acyclic source data");
+  ancestors.add(value);
+  let result;
+  if (Array.isArray(value)) {
+    if (Object.getPrototypeOf(value)!==Array.prototype)
+      throw new TypeError("flow witness placement "+label+" requires ordinary arrays");
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    if (value.length>8192 || Reflect.ownKeys(descriptors).length!==value.length+1)
+      throw new TypeError("flow witness placement "+label+" requires dense undecorated source arrays");
+    result=Object.freeze(Array.from({length:value.length},(_,i)=>{
+      const part=descriptors[String(i)];
+      if (!part || !part.enumerable || !Object.hasOwn(part,"value"))
+        throw new TypeError("flow witness placement "+label+" requires inert own array slots");
+      return sourcePlacementCopy(part.value,label,depth+1,ancestors);
+    }));
+  } else {
+    const record=sourcePlacementRecord(value,label);
+    result=Object.freeze(Object.fromEntries(Object.entries(record)
+      .map(([k,v])=>[k,sourcePlacementCopy(v,label,depth+1,ancestors)])));
+  }
+  ancestors.delete(value);
+  return result;
+}
+export function channelFlowWitnessPlacement(graph, options = {}) {
+  // Read the outer source declaration once, preserve the original Channel
+  // reference for existing SignGraph admission, and detach only structural
+  // proposal/relations/calibration data before any mathematical operation.
+  const sourceOptions=sourcePlacementRecord(options,"options");
+  const structural=new Set(["relations","proposedWitnessExchangeIds",
+    "proposedObservedCompartmentIds","proposedObservedCompartmentIdsByResource",
+    "hypotheticalErrorCeilings"]);
+  const admittedOptions=Object.freeze(Object.fromEntries(Object.entries(sourceOptions)
+    .map(([key,value])=>[key,structural.has(key)?sourcePlacementCopy(value,key):value])));
+  const proposals = admittedOptions.proposedWitnessExchangeIds ?? [];
+  const vertices = admittedOptions.proposedObservedCompartmentIds;
+  const scopedVertices = admittedOptions.proposedObservedCompartmentIdsByResource;
+  if (!Array.isArray(proposals) || proposals.length > 4096 ||
+      proposals.some(id => typeof id !== "string" || !id.length) ||
+      new Set(proposals).size !== proposals.length)
+    throw new TypeError("flow witness placement requires unique original exchange IDs (at most 4096)");
+  if (vertices !== undefined &&
+      (!Array.isArray(vertices) || vertices.length > 8192 ||
+       vertices.some(id => typeof id !== "string" || !id.length) ||
+       new Set(vertices).size !== vertices.length))
+    throw new TypeError("flow witness placement requires unique original endpoint IDs (at most 8192)");
+  // A compartment ID is not a resource measurement. An endpoint shared by
+  // water and energy cannot inherit water's proposed observation as energy.
+  if (scopedVertices !== undefined &&
+      (scopedVertices === null || typeof scopedVertices !== "object" ||
+       Array.isArray(scopedVertices) ||
+       ![Object.prototype, null].includes(Object.getPrototypeOf(scopedVertices))))
+    throw new TypeError("flow witness placement requires resource-to-endpoint observation arrays");
+  if (scopedVertices !== undefined && vertices !== undefined)
+    throw new TypeError("flow witness placement refuses mixed global and resource-scoped endpoint coverage");
+  const scopedEntries = scopedVertices === undefined ? null : Object.entries(scopedVertices);
+  if (scopedEntries !== null &&
+      (scopedEntries.length > 4096 ||
+       scopedEntries.some(([id,ids]) =>
+         !id.length || !Array.isArray(ids) || ids.length > 8192 ||
+         ids.some(v => typeof v !== "string" || !v.length) ||
+         new Set(ids).size !== ids.length) ||
+       scopedEntries.reduce((total,[,ids])=>total+ids.length,0) > 8192))
+    throw new TypeError("flow witness placement requires unique resource-scoped endpoint IDs (at most 8192 total)");
+  const reading = channelResourceIncidence(graph, options);
+  const original = new Map(), grouped = new Map(), endpoints = new Set();
+  for (const transfer of reading.transfers) {
+    const exchangeId = transfer.exchange.id;
+    if (original.has(exchangeId))
+      throw new TypeError("one original exchange cannot be projected as two transfers");
+    original.set(exchangeId,transfer);
+    endpoints.add(transfer.from.id); endpoints.add(transfer.to.id);
+    const resourceId = transfer.resource.id;
+    if (!grouped.has(resourceId))
+      grouped.set(resourceId,{resource:transfer.resource,transfers:[]});
+    grouped.get(resourceId).transfers.push(transfer);
+  }
+  for (const exchangeId of proposals)
+    if (!original.has(exchangeId))
+      throw new TypeError("proposed meter does not name one admitted channel exchange");
+  for (const id of vertices ?? [])
+    if (!endpoints.has(id))
+      throw new TypeError("proposed vertex reading does not name one admitted exchange endpoint");
+  // Empty global coverage is unambiguous; positive cross-resource coverage
+  // must be labelled by the ORIGINAL Resource identity, not by endpoint alone.
+  if (vertices?.length > 0 && grouped.size > 1)
+    throw new TypeError("multi-resource observations require resource-scoped endpoint IDs");
+  if (scopedEntries !== null) {
+    for (const [resourceId,ids] of scopedEntries) {
+      const owned = grouped.get(resourceId);
+      if (!owned)
+        throw new TypeError("proposed resource observation does not name one admitted resource");
+      const local = new Set();
+      for (const t of owned.transfers) {
+        local.add(t.from.id);
+        local.add(t.to.id);
+      }
+      for (const id of ids)
+        if (!local.has(id))
+          throw new TypeError("proposed resource endpoint does not belong to that resource's admitted exchanges");
+    }
+  }
+  const proposed = new Set(proposals);
+  // Proposed error ceilings are design constraints, NEVER actual sensor readings.
+  const ceilings = admittedOptions.hypotheticalErrorCeilings;
+  const plain = value => value !== null && typeof value === "object" &&
+    !Array.isArray(value) &&
+    (Object.getPrototypeOf(value) === Object.prototype ||
+      Object.getPrototypeOf(value) === null);
+  if (ceilings !== undefined) {
+    if (!plain(ceilings) || Object.keys(ceilings).length > 4096)
+      throw new TypeError("hypothetical error ceilings require bounded resource-ID maps");
+    for (const [resourceId,budget] of Object.entries(ceilings))
+      if (!grouped.has(resourceId) || !plain(budget) ||
+          Object.keys(budget).sort().join(",") !== "edge,vertex" ||
+          !plain(budget.vertex) || !plain(budget.edge))
+        throw new TypeError("hypothetical error ceilings require original resource and vertex/edge maps");
+  }
+  const resources = [...grouped.values()]
+    .sort((a,b) => a.resource.id < b.resource.id ? -1 : a.resource.id > b.resource.id ? 1 : 0)
+    .map(({resource,transfers}) => {
+      const observed = scopedEntries !== null
+        ? new Set(Object.hasOwn(scopedVertices,resource.id) ? scopedVertices[resource.id] : [])
+        : vertices === undefined ? null : new Set(vertices);
+      if (ceilings !== undefined && Object.hasOwn(ceilings,resource.id)) {
+        const original = ceilings[resource.id];
+        const allowedVertices = new Set(transfers.flatMap(t => [t.from.id,t.to.id]));
+        const allowedMeters = new Set(transfers.filter(t => proposed.has(t.exchange.id))
+          .map(t => t.exchange.id));
+        for (const id of Object.keys(original.vertex))
+          if (!allowedVertices.has(id) || (observed !== null && !observed.has(id)))
+            throw new TypeError("vertex error ceiling names no proposed source-admitted observation for resource");
+        for (const id of Object.keys(original.edge))
+          if (!allowedMeters.has(id))
+            throw new TypeError("edge error ceiling names no proposed original resource exchange meter");
+      }
+      // Full-node special case (Science §7.20) differs from a sparse-row
+      // observed incidence matrix (Science §7.21).
+      const fullNodeMinimum = undirectedCycleClosingTransfers(transfers,new Set()).length;
+      const minimum = undirectedCycleClosingTransfers(transfers,new Set(),observed).length;
+      const remaining = undirectedCycleClosingTransfers(transfers,proposed,observed);
+      const localEndpoints = new Set();
+      for (const t of transfers) {
+        localEndpoints.add(t.from.id);localEndpoints.add(t.to.id);
+      }
+      return Object.freeze({
+        resource,
+        exchangeCount:transfers.length,
+        minimumIndependentEdgeMeterCount:minimum,
+        minimumEdgeMeterCountWithFullVertexCoverage:fullNodeMinimum,
+        proposedObservedCompartmentIds: Object.freeze([...localEndpoints]
+          .filter(id => observed === null || observed.has(id)).sort()),
+        proposedIndividualEdgeMeters:Object.freeze(transfers
+          .filter(t => proposed.has(t.exchange.id)).map(t => t.exchange)),
+        unmeteredCycleClosingTransfers:remaining,
+        unmeteredComplementIsUndirectedForest:
+          undirectedCycleClosingTransfers(transfers,proposed).length === 0,
+        unmeteredComplementHasAtMostOneUnobservedVertexPerTree:remaining.length === 0,
+        structuralCondition:remaining.length === 0 ?
+          "conditional-linear-observation-full-rank-if-all-premises-hold" :
+          "conditional-linear-observation-has-kernel",
+        ...(ceilings === undefined ? {} : {
+          hypotheticalResolution:conditionalFlowCutErrorBudgets(transfers,{
+            proposedWitnessExchangeIds:proposed,
+            proposedObservedCompartmentIds:observed,
+            hypotheticalErrorCeilings:ceilings[resource.id] ?? {vertex:{},edge:{}},
+            structuralIdentifiable:remaining.length === 0,
+          }),
+        }),
+      });
+    });
+  return Object.freeze({
+    kind:"signgraph.channelFlowWitnessPlacement.v1",
+    graph:reading.graph,channel:reading.channel,
+    resources:Object.freeze(resources),obstructions:reading.obstructions,
+    proposalOnly:true,
+    vertexCoverageAssumption:scopedEntries !== null ?
+      "explicit-resource-scoped-proposed-observed-endpoints-not-measured" :
+      vertices === undefined ?
+      "all-admitted-exchange-endpoints-hypothetically-observed" :
+      "explicit-proposed-observed-endpoints-not-measured",
+    originalGraphCompleteness:"not-attested",
+    physicalMeterReadings:"not-supplied",
+    nodeStocksAndExternalPorts:"not-supplied",
+    actualCirculation:"not-established",
+    actorBodyAndClock:"not-established",
+  });
+}
+
 
 /**
  * Offered, potentially UNUSED transport topology, distinct from performed
