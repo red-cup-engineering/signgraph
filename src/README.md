@@ -725,3 +725,26 @@ rational coefficients. Its dependency-closed qualification and external
 Matrix Market solver reception are separate release gates. This is a
 source-preserving graph/mathematics reader, not a runtime ledger, message
 bus, effect executor, Lean kernel proof or authenticated observation.
+
+## Exact cellular sheaf source stability
+
+The original `cellularSheaf` now retains all vertex/edge endpoint identities
+through SignCell's existing canonical carrier, so incidence keys and typed
+basis names remain stable after an external request or model object changes.
+Mutable exact-number object restrictions are converted to canonical, frozen
+Data-owned rationals after validating their inert own data descriptors.
+Scalar strings, integers and finite inexact host floats keep their original
+numerical meaning. The exact-to-binary64 projection still belongs solely to
+the existing Exact Number provider. A hostile scalar getter is rejected
+without execution; no JSON-shaped number can become independently witnessed
+physical or financial evidence.
+
+The higher `cellular2Sheaf` reuses the same source-address owner for face
+identities and their edge-incidence references, building both the original
+cell complex and its typed rank/basis receipt from one source face snapshot.
+This repairs a source-provenance drift where immutable *wrappers* retained
+mutable caller-owned identifier objects and rational coefficients.
+Both the original `test/cellular-sheaf.test.mjs` and 2-sheaf
+`test/cellular-sheaf-complex.test.mjs` now include mutation and adversarial
+cases. The Matrix Market header remains standard NIST coordinate exchange;
+a numerical matrix file alone never authenticates its source cells.

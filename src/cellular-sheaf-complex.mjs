@@ -9,7 +9,7 @@
  * Cells and the cover are supplied by a source. No face, witness, or
  * inclusion is invented from a drawn line or an unordered relation.
  */
-import { coincidenceKey } from '@red-cup-engineering/signcell/cell';
+import { canonicalCarrier, coincidenceKey } from '@red-cup-engineering/signcell/cell';
 import { cellular2Complex } from './cohomology.mjs';
 import { cellularSheaf } from './cellular-sheaf.mjs';
 import { ratPairOfEntry, ratRank } from '@red-cup-engineering/exact-number-data-service/rational-matrix';
@@ -45,15 +45,26 @@ export function cellular2Sheaf({ vertices, edges, faces }) {
     throw new TypeError('cellular2Sheaf: vertices, edges, faces must be arrays');
   const sheaf = cellularSheaf({ vertices, edges });
   if (!sheaf.exact) throw new RangeError('cellular2Sheaf: all restrictions must be exact rational entries');
+  // Read original face/edge identities ONCE through the same SignCell content
+  // owner as vertex/edge stalk IDs. Otherwise the returned complex, native
+  // basis and Matrix Market receipt could disagree after caller mutation.
+  const sourceFaces = faces.map(face => ({
+    id: canonicalCarrier(face.id), dim: face.dim,
+    boundary: face.boundary.map(step => ({
+      edge: canonicalCarrier(step.edge),
+      direction: step.direction,
+      restrict: step.restrict,
+    })),
+  }));
   const complex = cellular2Complex({
     vertices: sheaf.vertices.map(v => v.id),
     edges: sheaf.edges.map(e => ({ id: e.id, from: e.from, to: e.to })),
-    faces: faces.map(f => ({ id: f?.id, boundary: f?.boundary?.map(step => ({ edge: step.edge, direction: step.direction })) })),
+    faces: sourceFaces.map(f => ({ id: f.id, boundary: f.boundary.map(step => ({ edge: step.edge, direction: step.direction })) })),
   });
   const edgeIndex = new Map(sheaf.edges.map((edge, i) => [coincidenceKey(edge.id), i]));
   let c2 = 0;
   const faceOffsets = [];
-  const admittedFaces = faces.map((face, index) => {
+  const admittedFaces = sourceFaces.map((face, index) => {
     const dim = nonnegative(face.dim, 'face stalk dimension');
     faceOffsets.push(c2);
     c2 += dim;

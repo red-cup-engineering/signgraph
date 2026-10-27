@@ -653,3 +653,36 @@ test("different original enterprise/cloud stalks pull back to one witnessed base
   assert.deepEqual(A.vertices.map(x=>x.id),["aws:tenant","aws:capacity"],
     "pullback cannot rename original cloud resource identities");
 });
+
+test("original cellular stalk IDs and restriction data remain immutable after caller edits",()=>{
+ const alpha={source:"A",coordinates:{side:"left"}};
+ const beta={source:"B",coordinates:{side:"right"}};
+ const sourceEdge={address:"edge:original"};
+ const entry={kind:"exactNumber.rational",num:"1",den:"3"};
+ const from=[[entry]],to=[[1]];
+ const sheaf=cellularSheaf({
+   vertices:[{id:alpha,dim:1},{id:beta,dim:1}],
+   edges:[{id:sourceEdge,from:alpha,to:beta,dim:1,restrict:{from,to}}],
+ });
+ const original={vertex:JSON.stringify(sheaf.vertices[0].id),edge:JSON.stringify(sheaf.edges[0].id),
+   restriction:JSON.stringify(sheaf.edges[0].restrict.from)};
+ alpha.coordinates.side="changed";beta.source="changed";sourceEdge.address="rewritten";entry.num="999";
+ assert.equal(JSON.stringify(sheaf.vertices[0].id),original.vertex);
+ assert.equal(JSON.stringify(sheaf.edges[0].id),original.edge);
+ assert.equal(JSON.stringify(sheaf.edges[0].restrict.from),original.restriction);
+ assert.equal(Object.isFrozen(sheaf.vertices[0].id.coordinates),true);
+ assert.equal(Object.isFrozen(sheaf.edges[0].restrict.from[0][0]),true);
+ assert.equal(cellularSheafCohomology(sheaf).h0,1,
+   "the original exact rank cannot change when a caller mutates old input");
+});
+test("source rational getter cannot execute during original sheaf restriction admission",()=>{
+ let reads=0;
+ const hostile={kind:"exactNumber.rational",den:"2"};
+ Object.defineProperty(hostile,"num",{enumerable:true,get(){reads++;return "1";}});
+ assert.throws(()=>cellularSheaf({
+   vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+   edges:[{id:"ab",from:"a",to:"b",dim:1,
+     restrict:{from:[[hostile]],to:[[1]]}}],
+ }),/exact source scalar cannot contain accessors/u);
+ assert.equal(reads,0);
+});

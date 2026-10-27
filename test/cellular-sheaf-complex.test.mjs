@@ -128,3 +128,26 @@ test('Matrix Market exchange requires a source-admitted original result, not a f
   assert.throws(()=>matrixMarketCoboundary(JSON.parse(JSON.stringify(good)),1),/admitted cellular2Sheaf/u);
   assert.match(matrixMarketCoboundary(good,1),/^%%MatrixMarket matrix coordinate real/u);
 });
+
+test("structured vertex, edge and face identities remain stable across exact cellular2Sheaf and Matrix Market",()=>{
+ const a={source:"a",detail:{ordinal:0}},b={source:"b",detail:{ordinal:1}};
+ const edgeId={source:"edge",ordinal:3},faceId={source:"face",ordinal:4};
+ const built=cellular2Sheaf({
+   vertices:[{id:a,dim:1},{id:b,dim:1}],
+   edges:[{id:edgeId,from:a,to:b,dim:1,restrict:{from:[[1]],to:[[1]]}}],
+   faces:[{id:faceId,dim:1,boundary:[
+     {edge:edgeId,direction:1,restrict:[[1]]},
+     {edge:edgeId,direction:-1,restrict:[[1]]},
+   ]}],
+ });
+ const basisBefore=JSON.stringify(built.basis);
+ const complexBefore=JSON.stringify(built.complex);
+ const mmBefore=matrixMarketCoboundary(built,1);
+ a.detail.ordinal=999;b.source="rewritten";edgeId.ordinal=99;faceId.source="rewritten";
+ assert.equal(JSON.stringify(built.basis),basisBefore);
+ assert.equal(JSON.stringify(built.complex),complexBefore);
+ assert.equal(matrixMarketCoboundary(built,1),mmBefore);
+ assert.equal(Object.isFrozen(built.faces[0].id),true);
+ assert.equal(Object.isFrozen(built.sheaf.vertices[0].id.detail),true);
+ assert.deepEqual(built.cohomology,{h0:1,h1:0,h2:1});
+});

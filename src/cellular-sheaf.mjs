@@ -19,7 +19,7 @@
  * Deterministic: only + − × ÷ and Math.sqrt (IEEE correctly rounded), in a fixed summation
  * order; no transcendental functions.
  */
-import { coincidenceKey } from "@red-cup-engineering/signcell/cell";
+import { canonicalCarrier, coincidenceKey } from "@red-cup-engineering/signcell/cell";
 import { isExactEntry, ratPairOfEntry, ratRank, ratSolve } from "@red-cup-engineering/exact-number-data-service/rational-matrix";
 import { rationalToFiniteNumber } from "@red-cup-engineering/exact-number-data-service/exact-number-host";
 import { rationalOfBigInts } from "@red-cup-engineering/exact-number-data-service/exact-number";
@@ -63,43 +63,67 @@ export function cellularSheaf({ vertices, edges }) {
   const vertexOffsets = [];
   let c0 = 0;
   const vs = vertices.map((vertex, index) => {
-    const key = coincidenceKey(vertex.id);
+    const id = canonicalCarrier(vertex.id);
+    const key = coincidenceKey(id);
     if (vertexIndex.has(key)) throw new RangeError("cellularSheaf: duplicate vertex id");
     vertexIndex.set(key, index);
     const dim = dimensionOf(vertex.dim, "a vertex dim");
     vertexOffsets.push(c0);
     c0 += dim;
-    return Object.freeze({ id: vertex.id, dim });
+    return Object.freeze({ id, dim });
   });
   const edgeKeys = new Set();
   const edgeOffsets = [];
   let c1 = 0;
   const from = [], to = [];
   const es = edges.map((edge) => {
-    const key = coincidenceKey(edge.id);
+    // Detached canonical source identities must agree with incidence indices
+    // for the entire lifetime of this mathematical section receipt.
+    const id = canonicalCarrier(edge.id);
+    const fromId = canonicalCarrier(edge.from), toId = canonicalCarrier(edge.to);
+    const key = coincidenceKey(id);
     if (edgeKeys.has(key)) throw new RangeError("cellularSheaf: duplicate edge id");
     edgeKeys.add(key);
-    const fi = vertexIndex.get(coincidenceKey(edge.from)), ti = vertexIndex.get(coincidenceKey(edge.to));
+    const fi = vertexIndex.get(coincidenceKey(fromId)), ti = vertexIndex.get(coincidenceKey(toId));
     if (fi === undefined || ti === undefined) throw new RangeError("cellularSheaf: an edge names a vertex that is not in the sheaf");
     const dim = dimensionOf(edge.dim, "an edge dim");
     const check = (matrix, vertexDim, side) => {
       if (!Array.isArray(matrix) || matrix.length !== dim || !matrix.every((row) => Array.isArray(row) && row.length === vertexDim)) {
         throw new RangeError(`cellularSheaf: restriction ${side} of an edge must be ${dim} × ${vertexDim}`);
       }
-      // Validate exact rational carriers WITHOUT projecting them to a double:
-      // a large exact ratio must remain available to rational cohomology,
-      // even if the numeric Laplacian cannot represent that carrier.
-      for (const row of matrix) for (const entry of row) {
-        if (typeof entry === "number") numberOfEntry(entry);
-        else ratPairOfEntry(entry);
-      }
-      return freezeMatrix(matrix);
+      // Exact Number retains the scalar mathematics; this source boundary
+      // must additionally detach caller-owned rational records before any
+      // later rank, coboundary or Matrix Market consumer can inspect them.
+      // Inexact finite host floats keep their original numeric meaning.
+      const stableEntry = entry => {
+        if (typeof entry === "number") { numberOfEntry(entry); return entry; }
+        if (entry === null || typeof entry !== "object") {
+          ratPairOfEntry(entry); return entry;
+        }
+        if (![Object.prototype, null].includes(Object.getPrototypeOf(entry)))
+          throw new TypeError("cellularSheaf: exact source scalar must be plain data");
+        const descriptors = Object.getOwnPropertyDescriptors(entry);
+        const names = Reflect.ownKeys(descriptors);
+        if (names.some(name => typeof name !== "string" ||
+            !descriptors[name].enumerable || !Object.hasOwn(descriptors[name], "value")))
+          throw new TypeError("cellularSheaf: exact source scalar cannot contain accessors or hidden data");
+        const inert = Object.create(null);
+        for (const name of names) {
+          const part = descriptors[name].value;
+          if (!["string","number","bigint","boolean"].includes(typeof part))
+            throw new TypeError("cellularSheaf: exact source scalar contains executable content");
+          Object.defineProperty(inert, name, {value: part, enumerable: true});
+        }
+        const [numerator, denominator] = ratPairOfEntry(inert);
+        return rationalOfBigInts(numerator, denominator);
+      };
+      return freezeMatrix(matrix.map(row => row.map(stableEntry)));
     };
     const restrict = Object.freeze({ from: check(edge.restrict?.from, vs[fi].dim, "from"), to: check(edge.restrict?.to, vs[ti].dim, "to") });
     from.push(fi); to.push(ti);
     edgeOffsets.push(c1);
     c1 += dim;
-    return Object.freeze({ id: edge.id, from: edge.from, to: edge.to, dim, restrict });
+    return Object.freeze({ id, from: fromId, to: toId, dim, restrict });
   });
   const exact = es.every((edge) => [edge.restrict.from, edge.restrict.to].every((matrix) => matrix.every((row) => row.every(isExactEntry))));
   return Object.freeze({
