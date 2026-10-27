@@ -35,7 +35,7 @@ function receivingScriptPaths(packageJson, fileExists = path =>
 test("explicit named native test scripts have the same packed receiving sources", () => {
   const named = receivingScriptPaths(manifest);
   assert.ok(named.includes("test/cellular-2complex.test.mjs"));
-  assert.ok(named.includes("test/meridian-flow-observability.test.mjs") === false);
+  assert.ok(manifest.receivingTests.includes("test/meridian-flow-observability.test.mjs"));
   assert.ok(named.includes("test/hierarchical-circuit.test.mjs"));
 });
 
