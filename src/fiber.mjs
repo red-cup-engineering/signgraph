@@ -135,7 +135,7 @@ const requireSharedContext = (left, right) => {
   // label, entities or programmable at() method. A JSON lookalike cannot
   // fabricate an admitted FOUR reading or a proof of fiber compatibility.
   if (!admittedFibers.has(left) || !admittedFibers.has(right)) {
-    throw new TypeError("fiber: two original predicate fibers are required");
+    throw new TypeError("fiber: two predicate fibers are required; original predicate fibers only");
   }
   // A fiber is indexed by its predicate as well as its entity context. To
   // tensor distinct predicates a caller would need an explicitly typed
