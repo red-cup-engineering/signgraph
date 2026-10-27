@@ -43,7 +43,7 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
       - name: Check executable syntax
         run: npm run check:holonomy
-      - name: Execute bounded operations and CLI receiving
+      - name: Execute bounded pure operations receiving
         run: npm run test:holonomy
       - name: Check the entire owning SignGraph suite
         run: npm test
