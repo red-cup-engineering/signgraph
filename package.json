@@ -16,7 +16,9 @@
     "test/valuation-trace.test.mjs",
     "test/evidence-order-receiving.test.mjs",
     "test/pure-functional-boundary.test.mjs",
-    "test/cell-content-owner.test.mjs"
+    "test/cell-content-owner.test.mjs",
+    "test/fiber.test.mjs",
+    "test/fiber-adjoints.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -88,6 +90,8 @@
     "test/valuation-trace.test.mjs",
     "test/evidence-order-receiving.test.mjs",
     "test/pure-functional-boundary.test.mjs",
-    "test/cell-content-owner.test.mjs"
+    "test/cell-content-owner.test.mjs",
+    "test/fiber.test.mjs",
+    "test/fiber-adjoints.test.mjs"
   ]
 }

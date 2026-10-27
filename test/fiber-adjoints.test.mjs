@@ -5,6 +5,7 @@ import { orderOps } from "@red-cup-engineering/metrologic/hyperdoctrine/order";
 import {
   allPairs, converse, knowledgeOrder, objectProjection, predicateFiber,
   specialization, subjectProjection, truthOrder,
+  fiberFusion, generatorPreservesFusion, generatorPreservesResiduum, generatorSatisfiesFrobenius,
 } from "../src/fiber.mjs";
 
 const entities = ["a", "b", "c"];
@@ -81,4 +82,28 @@ test("SignGraph's orders are exact views of Metrologic's FOUR order operations",
     assert.ok(equal(actual.bottom, upstream.bottom));
     assert.ok(equal(actual.top, upstream.top));
   }
+});
+
+test("adjunction and preservation operations require original SignGraph generators, fibers and order producers",()=>{
+ const genuine=ambient(),gen=converse(entities);
+ let calls=0;
+ const fakeFiber={kind:"signgraph.fiber",label:"attested",entities:[...entities],
+   pairs:allPairs(entities),at(){calls++;return "stable";}};
+ assert.throws(()=>gen.pullback(fakeFiber),/original SignGraph predicate fiber/u);
+ assert.throws(()=>gen.exists(knowledgeOrder(),fakeFiber),/original SignGraph predicate fiber/u);
+ assert.throws(()=>gen.forall(knowledgeOrder(),fakeFiber),/original SignGraph predicate fiber/u);
+ const fakeOrder={kind:"signgraph.order",name:"knowledge",
+  join:knowledgeOrder().join,meet:knowledgeOrder().meet};
+ assert.throws(()=>gen.exists(fakeOrder,genuine),/original SignGraph FOUR order/u);
+ assert.throws(()=>gen.forall(fakeOrder,genuine),/original SignGraph FOUR order/u);
+ const bogusGen={kind:"signgraph.generator",domain:gen.domain,codomain:gen.codomain,
+  pullback(){calls++;return genuine;},exists(){calls++;return genuine;}};
+ for(const proof of [()=>generatorPreservesFusion(bogusGen,genuine,genuine),
+   ()=>generatorPreservesResiduum(bogusGen,genuine,genuine),
+   ()=>generatorSatisfiesFrobenius(bogusGen,knowledgeOrder(),genuine,genuine)])
+   assert.throws(proof,/original SignGraph generator/u);
+ assert.equal(calls,0);
+ assert.equal(gen.pullback(genuine).kind,"signgraph.fiber");
+ assert.equal(gen.exists(knowledgeOrder(),genuine).kind,"signgraph.fiber");
+ assert.equal(gen.forall(truthOrder(),genuine).kind,"signgraph.fiber");
 });

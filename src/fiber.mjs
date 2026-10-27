@@ -16,10 +16,34 @@ import { reindex, existsAlong, forallAlong } from "@red-cup-engineering/metrolog
 import { isReading, knowledgeBottom, samePoint, fusionReading, residuumReading } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 import { orderOps } from "@red-cup-engineering/metrologic/hyperdoctrine/order";
 
+// Construction-origin receipts for this installed SignGraph module. These are
+// intentionally not serializable identity schemes, external attestation, actor
+// authority or evidence of a physical observation.
+const admittedFibers = new WeakSet();
+const admittedGenerators = new WeakSet();
+const admittedOrders = new WeakSet();
+const demandFiber = (fiber) => {
+  if (!fiber || typeof fiber !== "object" || !admittedFibers.has(fiber))
+    throw new TypeError("fiber: original SignGraph predicate fiber is required");
+  return fiber;
+};
+const demandGenerator = (generator) => {
+  if (!generator || typeof generator !== "object" || !admittedGenerators.has(generator))
+    throw new TypeError("fiber: original SignGraph generator is required");
+  return generator;
+};
+const demandOrder = (order) => {
+  if (!order || typeof order !== "object" || !admittedOrders.has(order))
+    throw new TypeError("fiber: original SignGraph FOUR order is required");
+  return order;
+};
+
 /** An order over readings: join, meet, bottom, top. */
 const order = (name) => {
   const { join, meet, bottom, top } = orderOps(name);
-  return Object.freeze({ kind: "signgraph.order", name, join, meet, bottom, top });
+  const admitted = Object.freeze({ kind: "signgraph.order", name, join, meet, bottom, top });
+  admittedOrders.add(admitted);
+  return admitted;
 };
 /** A graph order is Metrologic's canonical FOUR order, carried at a graph site. */
 export const knowledgeOrder = () => order("knowledge");
@@ -69,7 +93,9 @@ export function predicateFiber(label, entities, read, pairs = allPairs(entities)
   }
   const at = (subject, object) =>
     readings.get(coincidenceKey(subject))?.get(coincidenceKey(object)) ?? knowledgeBottom();
-  return Object.freeze({ kind: "signgraph.fiber", label: canonicalCarrier(label), entities: domain, pairs: Object.freeze(slots), at });
+  const admitted = Object.freeze({ kind: "signgraph.fiber", label: canonicalCarrier(label), entities: domain, pairs: Object.freeze(slots), at });
+  admittedFibers.add(admitted);
+  return admitted;
 }
 
 /** The fiber a valuation carries over one predicate, read in the knowledge order. */
@@ -79,8 +105,11 @@ export const fiberOfValuation = (valuation, predicate, entities) => predicateFib
 // different entity contexts is not. Entity ordering is immaterial because the
 // fibers are content-addressed, and sparse pair support still reads ⊥ₖ.
 const requireSharedContext = (left, right) => {
-  if (left?.kind !== "signgraph.fiber" || right?.kind !== "signgraph.fiber") {
-    throw new TypeError("fiber: two predicate fibers are required");
+  // Inspect the in-process source owner before reading a caller's kind,
+  // label, entities or programmable at() method. A JSON lookalike cannot
+  // fabricate an admitted FOUR reading or a proof of fiber compatibility.
+  if (!admittedFibers.has(left) || !admittedFibers.has(right)) {
+    throw new TypeError("fiber: two original predicate fibers are required");
   }
   // A fiber is indexed by its predicate as well as its entity context. To
   // tensor distinct predicates a caller would need an explicitly typed
@@ -125,10 +154,14 @@ export const fiberLeqTruth = (left, right, pairs) => {
 // mathematical reindexing and existential/universal adjoints are Metrologic's;
 // no second implementation of the hyperdoctrine is retained here.
 const pairAddress = (pair) => coincidenceKey(pair);
-const indexedFiber = (fiber, pairs) =>
-  new Map(pairs.map(([s, o]) => [pairAddress([s, o]), fiber.at(s, o)]));
-const onPairs = (fiber, pairs, readings) =>
-  predicateFiber(fiber.label, fiber.entities, (s, o) => readings.get(pairAddress([s, o])), pairs);
+const indexedFiber = (fiber, pairs) => {
+  demandFiber(fiber);
+  return new Map(pairs.map(([s, o]) => [pairAddress([s, o]), fiber.at(s, o)]));
+};
+const onPairs = (fiber, pairs, readings) => {
+  demandFiber(fiber);
+  return predicateFiber(fiber.label, fiber.entities, (s, o) => readings.get(pairAddress([s, o])), pairs);
+};
 
 /** Translate a graph generator into one Metrologic index morphism u: local -> ambient.
  * The map is formed from canonical SCA coordinate identities, not string-concatenated
@@ -145,12 +178,23 @@ function finiteGenerator(name, ambient, local, imageOf) {
     source, target,
     map: (key) => images.get(key),
   });
-  return Object.freeze({
+  const admitted = Object.freeze({
     kind: "signgraph.generator", generator: name, domain: ambient, codomain: local,
-    pullback: (fiber) => onPairs(fiber, local, reindex(morphism, indexedFiber(fiber, ambient))),
-    exists: (order, fiber) => onPairs(fiber, ambient, existsAlong(morphism, indexedFiber(fiber, local), order.name)),
-    forall: (order, fiber) => onPairs(fiber, ambient, forallAlong(morphism, indexedFiber(fiber, local), order.name)),
+    pullback: (fiber) => {
+      demandFiber(fiber);
+      return onPairs(fiber, local, reindex(morphism, indexedFiber(fiber, ambient)));
+    },
+    exists: (ord, fiber) => {
+      demandOrder(ord); demandFiber(fiber);
+      return onPairs(fiber, ambient, existsAlong(morphism, indexedFiber(fiber, local), ord.name));
+    },
+    forall: (ord, fiber) => {
+      demandOrder(ord); demandFiber(fiber);
+      return onPairs(fiber, ambient, forallAlong(morphism, indexedFiber(fiber, local), ord.name));
+    },
   });
+  admittedGenerators.add(admitted);
+  return admitted;
 }
 
 /** Converse is a bijective finite reindexing (both adjoints are its inverse). */
@@ -177,8 +221,17 @@ export function specialization(entities, support, ambient = allPairs(entities)) 
 }
 
 /** Whether a generator's pullback commutes with fusion, and with residuum. */
-export const generatorPreservesFusion = (gen, left, right) => sameFiber(gen.pullback(fiberFusion(left, right, gen.domain)), fiberFusion(gen.pullback(left), gen.pullback(right), gen.codomain), gen.codomain);
-export const generatorPreservesResiduum = (gen, left, right) => sameFiber(gen.pullback(fiberResiduum(left, right, gen.domain)), fiberResiduum(gen.pullback(left), gen.pullback(right), gen.codomain), gen.codomain);
+export const generatorPreservesFusion = (gen, left, right) => {
+  demandGenerator(gen);
+  return sameFiber(gen.pullback(fiberFusion(left, right, gen.domain)), fiberFusion(gen.pullback(left), gen.pullback(right), gen.codomain), gen.codomain);
+};
+export const generatorPreservesResiduum = (gen, left, right) => {
+  demandGenerator(gen);
+  return sameFiber(gen.pullback(fiberResiduum(left, right, gen.domain)), fiberResiduum(gen.pullback(left), gen.pullback(right), gen.codomain), gen.codomain);
+};
 
 /** Frobenius reciprocity: ∃(pullback(α) ⊗ φ) = α ⊗ ∃(φ). */
-export const generatorSatisfiesFrobenius = (gen, ord, alpha, phi) => sameFiber(gen.exists(ord, fiberFusion(gen.pullback(alpha), phi, gen.codomain)), fiberFusion(alpha, gen.exists(ord, phi), gen.domain), gen.domain);
+export const generatorSatisfiesFrobenius = (gen, ord, alpha, phi) => {
+  demandGenerator(gen); demandOrder(ord);
+  return sameFiber(gen.exists(ord, fiberFusion(gen.pullback(alpha), phi, gen.codomain)), fiberFusion(alpha, gen.exists(ord, phi), gen.domain), gen.domain);
+};
