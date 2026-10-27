@@ -53,6 +53,62 @@ function validateEdgeList(raw, label) {
   return freeze({vertices: frozenArray(Array.from({length: n}, (_,i) => i)), edges: frozenArray(normalized)});
 }
 
+
+/**
+ * Copy ONLY inert external FEATHER-G graph wire data before inspecting edge
+ * numbers. JSON text is already parsed by the ordinary JSON parser; object
+ * inputs must satisfy the same finite ordinary data shape. No accessor-backed
+ * source can create a new apparent edge during decoding.
+ *
+ * This guard is specific to the FEATHER-G external edge-list format and does
+ * not replace SignCell's canonical semiotic carrier or source admission.
+ * ECMAScript Proxy traps remain executable; a host security boundary is
+ * required to accept hostile executable objects from another realm.
+ */
+function inertFeatherGCollection(source) {
+  const proto = source !== null && typeof source === 'object'
+    ? Object.getPrototypeOf(source) : undefined;
+  if (proto !== Object.prototype && proto !== null)
+    fail('graph collection must be an ordinary source JSON record');
+  const records = Object.getOwnPropertyDescriptors(source);
+  const keys = Reflect.ownKeys(records);
+  if (keys.length < 1 || keys.length > MAX_GRAPHS ||
+      keys.some(key => typeof key !== 'string' ||
+        !Object.hasOwn(records[key], 'value') || !records[key].enumerable))
+    fail('graph indices must be enumerable inert JSON data properties');
+  const copied = Object.create(null);
+  for (const key of keys) {
+    const edges = records[key].value;
+    if (!Array.isArray(edges) || Object.getPrototypeOf(edges) !== Array.prototype ||
+        edges.length < 1 || edges.length > MAX_EDGES_PER_GRAPH)
+      fail('edge lists must be ordinary bounded JSON arrays');
+    const edgeProps = Object.getOwnPropertyDescriptors(edges);
+    if (Reflect.ownKeys(edgeProps).length !== edges.length + 1)
+      fail('edge lists cannot be sparse or decorated');
+    const copyEdges = [];
+    for (let index = 0; index < edges.length; index++) {
+      const descriptor = edgeProps[String(index)];
+      if (!descriptor || !descriptor.enumerable || !Object.hasOwn(descriptor,'value'))
+        fail('edge entries must be inert enumerable array elements');
+      const pair = descriptor.value;
+      if (!Array.isArray(pair) || Object.getPrototypeOf(pair) !== Array.prototype ||
+          pair.length !== 2)
+        fail('edges must be ordinary two-endpoint arrays');
+      const slots = Object.getOwnPropertyDescriptors(pair);
+      if (Reflect.ownKeys(slots).length !== 3 ||
+          !['0','1'].every(index => slots[index] &&
+            slots[index].enumerable && Object.hasOwn(slots[index], 'value')))
+        fail('edge endpoints must be inert dense array elements');
+      copyEdges.push(frozenArray([slots['0'].value,slots['1'].value]));
+    }
+    Object.defineProperty(copied,key,{
+      value:frozenArray(copyEdges),enumerable:true,
+      configurable:false,writable:false
+    });
+  }
+  return freeze(copied);
+}
+
 /**
  * Read the FEATHER-G reference graph-level JSON format into a typed SignGraph
  * structural projection. The imported indices are not SignCell identifiers,
@@ -64,6 +120,7 @@ export function decodeFeatherGGraphCollection(input) {
     try { parsed = JSON.parse(input); } catch { fail('graphs must be valid JSON'); }
   }
   if (!isRecord(parsed)) fail('graph collection must be an object');
+  parsed = inertFeatherGCollection(parsed);
   const keys = Object.keys(parsed);
   if (keys.length < 1 || keys.length > MAX_GRAPHS ||
       keys.some((key, i) => !own(parsed, String(i))))

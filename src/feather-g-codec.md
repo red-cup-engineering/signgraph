@@ -89,3 +89,16 @@ an embedding's reverse map exists.
 Run `node --test test/feather-g-codec.test.mjs` from the SignGraph source root.
 This is source-only interoperability until package publishing and an actual
 consumer's FEATHER-G execution/receiving are independently evidenced.
+
+## Untrusted object admission and execution boundary
+
+The object-input FEATHER-G decoder first takes an inert, detached snapshot of
+the entire finite external graph collection. Only plain JSON records, dense
+undecorated arrays, two data-only endpoints per edge and finite bounded graph
+sizes can reach the existing original structural validator. Ordinary getters
+and hidden/symbol properties refuse *without execution*, including nested
+getter-backed edge endpoints. JSON strings are decoded by JSON.parse and pass
+the same structural checks. This does **not** make a hostile ECMAScript Proxy
+safe to evaluate in process: admitting executable foreign objects requires a
+host sandbox/capability boundary. It also does not make imported edge lists
+source-witnessed native SignCells or bestow a reversible embedding.

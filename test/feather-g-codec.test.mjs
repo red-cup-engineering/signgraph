@@ -85,3 +85,40 @@ test('accepted readout may be used directly by numeric FEATHER-G descriptor read
   const spoof=structuredClone(readout);
   assert.throws(()=>decodeFeatherGEmbeddingCsv('id,x_0,x_1\n0,1,0',spoof,{order:1,evalPoints:1}),/graph IDs/);
 });
+
+test('object wire admission rejects getters at every edge-list layer without executing them',()=>{
+  let executed=0;
+  const first={};
+  Object.defineProperty(first,'0',{enumerable:true,get(){executed++;return [[0,1]];}});
+  const nested=[[0,1]];
+  Object.defineProperty(nested,'0',{enumerable:true,get(){executed++;return [0,1];}});
+  const endpoint=[0,1];
+  Object.defineProperty(endpoint,'1',{enumerable:true,get(){executed++;return 1;}});
+  for(const candidate of [first,{'0':nested},{'0':[endpoint]}]){
+    assert.throws(()=>decodeFeatherGGraphCollection(candidate),/FEATHER-G codec/u);
+  }
+  assert.equal(executed,0,'descriptor checks cannot call external getters');
+});
+test('object wire admission refuses sparse, decorated, symbol and nonplain edge collections',()=>{
+  const sparse=new Array(2);sparse[0]=[0,1];
+  const decorated=[[0,1]];decorated.extra='not-wire';
+  const pair=[0,1];pair.extra=2;
+  const hidden=[[0,1]];Object.defineProperty(hidden,'hidden',{value:2});
+  const symbol={ '0':[[0,1]], [Symbol('event')]:1 };
+  for(const invalid of [
+    {'0':sparse},{'0':decorated},{'0':[pair]},{'0':hidden},
+    symbol,new Date(),Object.create({'0':[[0,1]]}),
+  ])assert.throws(()=>decodeFeatherGGraphCollection(invalid),/FEATHER-G codec/u);
+});
+test('ordinary parsed FEATHER-G inputs roundtrip without mutation or forged source identity',()=>{
+  const source={'0':[[1,0],[1,2]],'1':[[0,1]]};
+  const baseline=JSON.stringify(source);
+  const first=decodeFeatherGGraphCollection(source);
+  const fromText=decodeFeatherGGraphCollection(JSON.stringify(source));
+  assert.deepEqual(first.graphs.map(g=>g.incidences.map(e=>e.endpoints)),
+    fromText.graphs.map(g=>g.incidences.map(e=>e.endpoints)));
+  assert.equal(JSON.stringify(source),baseline);
+  source['0'][0][0]=999;
+  assert.deepEqual(first.graphs[0].incidences[0].endpoints,[0,1]);
+  assert.match(first.sourceQualification,/unwitnessed/u);
+});

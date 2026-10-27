@@ -20,8 +20,9 @@
  * order; no transcendental functions.
  */
 import { coincidenceKey } from "@red-cup-engineering/signcell/cell";
-import { isExactEntry, ratPairOfEntry, ratRank } from "@red-cup-engineering/exact-number-data-service/rational-matrix";
+import { isExactEntry, ratPairOfEntry, ratRank, ratSolve } from "@red-cup-engineering/exact-number-data-service/rational-matrix";
 import { rationalToFiniteNumber } from "@red-cup-engineering/exact-number-data-service/exact-number-host";
+import { rationalOfBigInts } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { rankVanishing } from "./cohomology.mjs";
 
 const freezeMatrix = (matrix) => Object.freeze(matrix.map((row) => Object.freeze([...row])));
@@ -327,6 +328,308 @@ function exactCoboundary(sheaf) {
     }
   });
   return rows;
+}
+
+/**
+ * Construct an actual exact affine global section extending a finite set of
+ * source-attributed local stalk coordinates on the original cellular sheaf.
+ *
+ * Unobserved coordinates remain free unknowns constrained by the sheaf's
+ * restriction maps. The construction solves for a compatible global lift.
+ *
+ * Each edge contributes its δ⁰ restriction equations and each observed
+ * coordinate contributes an exact equality. Data's rational solver returns
+ * a particular section and its free directions, or a linear combination of
+ * those rows proving that the observations cannot extend. The result retains
+ * the cell identities and equation sources used in the calculation.
+ */
+export function extendCellularSheafSection(sheaf, observations = []) {
+  if (sheaf?.kind !== "signgraph.cellularSheaf" ||
+      !Array.isArray(sheaf.vertices) || !Array.isArray(sheaf.edges) ||
+      sheaf.exact !== true)
+    throw new TypeError("cellularSheaf extension needs an original exact rational sheaf");
+  if (!Array.isArray(observations) || sheaf.c0 > 256 ||
+      sheaf.c1 + observations.length > 256)
+    throw new RangeError("cellularSheaf extension exceeds the exact 256-coordinate/equation envelope");
+  const sites = new Map(sheaf.vertices.map((v,i) => [coincidenceKey(v.id), {
+    vertex:v,index:i,offset:sheaf.vertexOffsets[i]
+  }]));
+  const measured = observations.map((row,i) => {
+    if (!row || typeof row !== "object" || Array.isArray(row) ||
+        Object.keys(row).some(key => !["vertex","coordinate","value","sourceRecord"].includes(key)))
+      throw new TypeError("source-local section needs a typed source observation");
+    const at=sites.get(coincidenceKey(row.vertex));
+    if (!at || !Number.isSafeInteger(row.coordinate) ||
+        row.coordinate < 0 || row.coordinate >= at.vertex.dim ||
+        typeof row.sourceRecord !== "string" || !row.sourceRecord.trim() ||
+        row.sourceRecord.length > 1024)
+      throw new TypeError("source-local section needs one actual stalk coordinate and witness locator");
+    const [numerator,denominator]=ratPairOfEntry(row.value);
+    const column=at.offset+row.coordinate;
+    return Object.freeze({
+      vertex:at.vertex.id,coordinate:row.coordinate,
+      value:denominator===1n?String(numerator):numerator+"/"+denominator,
+      column,sourceRecord:row.sourceRecord,
+      equationIndex:sheaf.c1+i,
+    });
+  });
+  const differential=exactCoboundary(sheaf);
+  const edgeEquationSources=sheaf.edges.flatMap((edge,e)=>
+    Array.from({length:edge.dim},(_,coordinate)=>Object.freeze({
+      equationIndex:sheaf.edgeOffsets[e]+coordinate,
+      origin:"cellular-restriction",edge:edge.id,edgeCoordinate:coordinate
+    })));
+  const observedCoordinates=new Set(measured.map(row=>row.column));
+  const coefficients=[
+    ...differential,
+    ...measured.map(row=>Array.from({length:sheaf.c0},(_,i)=>i===row.column?1:0))
+  ];
+  const rhs=[
+    ...Array.from({length:sheaf.c1},()=>0),
+    ...measured.map(row=>row.value)
+  ];
+  const answer=ratSolve(coefficients,rhs,{columns:sheaf.c0});
+  const sourceRows=Object.freeze([
+    ...edgeEquationSources,
+    ...measured.map(x=>Object.freeze({equationIndex:x.equationIndex,
+      origin:"source-observation",vertex:x.vertex,coordinate:x.coordinate,
+      sourceRecord:x.sourceRecord}))
+  ]);
+  return Object.freeze({
+    kind:"signgraph.cellularSheaf.sourceLocalExtension.v1",
+    status:answer.status==="solution-family"?
+      "mathematically-liftable":"mathematically-obstructed",
+    sourceRows,
+    observedCoordinateCount:measured.length,
+    distinctObservedCoordinates:observedCoordinates.size,
+    unobservedCoordinates:sheaf.c0-observedCoordinates.size,
+    exactSection:answer.particular,
+    extensionDirections:answer.kernelBasis,
+    freeDimensions:answer.freeColumns.length,
+    // The obstruction is a linear combination of sourceRows in order.
+    obstruction:answer.obstruction,
+    mathematicalAssay:"exact finite rational 1-skeleton restrictions",
+  });
+}
+
+
+/**
+ * Construct a finite genuine LOCAL-TO-GLOBAL section from an observed cover
+ * of the same already-admitted exact cellular sheaf. A patch is a source's
+ * COMPLETE stalk reading on its stated vertex subcomplex; it cannot silently
+ * replace absent coordinates with zero or invent an unstated edge reading.
+ *
+ * The patch's source-induced subgraph has every original edge whose TWO
+ * vertices appear in the patch. Its exact restriction equations must hold
+ * before the patch counts as a section. A cover must jointly include every
+ * original vertex and edge (not merely the vertex set). Only THEN are all
+ * original local observations glued through the ONE original ratSolve-based
+ * exact global extension. Incompatible overlaps produce an actual linear
+ * combination of original equations and source observations.
+ *
+ * This computes finite rational descent on the supplied cellular chart.
+ * A successful result contains the global section and its extension space;
+ * a failed result identifies the incomplete cover or exact obstruction.
+ *
+ * patches: [{region,sourceRef,vertices:[{vertex,values:[rational,...]}]}]
+ * Source owners, CAIRN rights and NI custody qualify patches BEFORE this
+ * mathematical operation is invoked. Only original stalks/edges are used.
+ */
+export function glueCellularSheafPatches(sheaf, patches) {
+  if(sheaf?.kind!=="signgraph.cellularSheaf" || sheaf.exact!==true ||
+     !Array.isArray(sheaf.vertices) || !Array.isArray(sheaf.edges) ||
+     !Array.isArray(patches) || patches.length<1 || patches.length>16 ||
+     sheaf.c0>256 || sheaf.c1>256)
+    throw new TypeError("cellularSheaf patch gluing requires a bounded existing exact source chart and source cover");
+
+  const byVertex=new Map(sheaf.vertices.map(vertex=>[coincidenceKey(vertex.id),vertex]));
+  const ids=new Set(),coveredVertices=new Set(),coveredEdges=new Set();
+  const observations=[],localRegions=[];
+  for(const [index,patch] of patches.entries()){
+    if(!patch || typeof patch!=="object" || Array.isArray(patch) ||
+       Object.keys(patch).some(key=>!["region","sourceRef","vertices"].includes(key)) ||
+       typeof patch.region!=="string" || !/^[a-z][a-z0-9-]{0,95}$/u.test(patch.region) ||
+       typeof patch.sourceRef!=="string" || !patch.sourceRef.trim() ||
+       patch.sourceRef.length>1024 || !Array.isArray(patch.vertices) ||
+       patch.vertices.length<1 || patch.vertices.length>sheaf.vertices.length)
+      throw new TypeError("cellularSheaf patch needs named source, bounded region and actual local stalks");
+    const id=JSON.stringify([patch.sourceRef,patch.region]);
+    if(ids.has(id))throw new TypeError("cellularSheaf cover repeats one source region");
+    ids.add(id);
+    const selected=new Map(),localObservations=[];
+    for(const reading of patch.vertices){
+      if(!reading || typeof reading!=="object" || Array.isArray(reading) ||
+         Object.keys(reading).some(k=>!["vertex","values"].includes(k)))
+        throw new TypeError("cellularSheaf patch stalk needs one original vertex and its complete value vector");
+      const key=coincidenceKey(reading.vertex),vertex=byVertex.get(key);
+      if(!vertex || selected.has(key) || !Array.isArray(reading.values) ||
+         reading.values.length!==vertex.dim)
+        throw new TypeError("cellularSheaf patch repeats or omits an original stalk coordinate");
+      selected.set(key,vertex);
+      coveredVertices.add(key);
+      for(const [coordinate,value] of reading.values.entries()){
+        // The existing Data rational admission is the sole scalar validator:
+        // a decimal floating approximation is not an exact source coordinate.
+        const [numerator,denominator]=ratPairOfEntry(value);
+        localObservations.push(Object.freeze({
+          vertex:vertex.id,coordinate,
+          value:denominator===1n?numerator.toString():numerator+"/"+denominator,
+          sourceRecord:patch.sourceRef,
+        }));
+      }
+    }
+    const edges=sheaf.edges.filter(edge=>
+      selected.has(coincidenceKey(edge.from))&&selected.has(coincidenceKey(edge.to)));
+    for(const edge of edges)coveredEdges.add(coincidenceKey(edge.id));
+    const localSheaf=cellularSheaf({
+      vertices:[...selected.values()],edges,
+    });
+    if(localSheaf.c1+localObservations.length>256)
+      throw new RangeError("cellularSheaf local patch exceeds exact source equation budget");
+    const local=extendCellularSheafSection(localSheaf,localObservations);
+    const region=Object.freeze({
+      region:patch.region,sourceRef:patch.sourceRef,index,
+      sourceVertices:Object.freeze([...selected.values()].map(x=>x.id)),
+      sourceEdges:Object.freeze(edges.map(x=>x.id)),
+      status:local.status,
+      obstruction:local.status==="mathematically-obstructed"
+        ?local.obstruction:null,
+      sourceRows:local.status==="mathematically-obstructed"
+        ?local.sourceRows:Object.freeze([]),
+    });
+    localRegions.push(region);
+    observations.push(...localObservations);
+    if(local.status==="mathematically-obstructed")return Object.freeze({
+      kind:"signgraph.cellularSheaf.sourceCoverGluing.v1",
+      status:"locally-obstructed",regions:Object.freeze(localRegions),
+      failedRegion:patch.region,exactGlobalSection:null,
+      obstruction:local.obstruction,sourceRows:local.sourceRows,
+      mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
+    });
+  }
+  const uncoveredVertices=sheaf.vertices
+    .filter(vertex=>!coveredVertices.has(coincidenceKey(vertex.id)))
+    .map(vertex=>vertex.id);
+  const uncoveredEdges=sheaf.edges
+    .filter(edge=>!coveredEdges.has(coincidenceKey(edge.id)))
+    .map(edge=>edge.id);
+  if(uncoveredVertices.length||uncoveredEdges.length)return Object.freeze({
+    kind:"signgraph.cellularSheaf.sourceCoverGluing.v1",
+    status:"incomplete-cover",regions:Object.freeze(localRegions),
+    uncoveredVertices:Object.freeze(uncoveredVertices),
+    uncoveredEdges:Object.freeze(uncoveredEdges),
+    exactGlobalSection:null,
+    mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
+  });
+  if(sheaf.c1+observations.length>256)
+    throw new RangeError("cellularSheaf global patch gluing exceeds exact equation budget");
+  const global=extendCellularSheafSection(sheaf,observations);
+  return Object.freeze({
+    kind:"signgraph.cellularSheaf.sourceCoverGluing.v1",
+    status:global.status==="mathematically-liftable"?"globally-glued":"globally-obstructed",
+    regions:Object.freeze(localRegions),
+    uncoveredVertices:Object.freeze([]),uncoveredEdges:Object.freeze([]),
+    exactGlobalSection:global.status==="mathematically-liftable"?global.exactSection:null,
+    extensionDirections:global.extensionDirections,
+    globalSourceRows:global.sourceRows,
+    obstruction:global.obstruction,
+    // Original observation indices in the global obstruction retain patch
+    // source ref via sourceRecord; repeated observations are retained.
+    mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
+  });
+}
+
+/**
+ * Fiberwise rational tensor of two to four cellular sheaves over the same
+ * source-indexed 1-skeleton, with tensor products of vertex/edge stalks and
+ * Kronecker products of their restriction maps.
+ *
+ * (F tensor G)(v) = F(v) tensor_Q G(v)
+ * (F tensor G)(e) = F(e) tensor_Q G(e)
+ * rho_(v,e) = rho_F(v,e) tensor rho_G(v,e).
+ *
+ * Factor source revisions remain explicit. The resulting cellular tensor
+ * chart composes with exact section extension, cover gluing and pullback.
+ */
+export function tensorCellularSheaves(factors) {
+  if (!Array.isArray(factors) || factors.length < 2 || factors.length > 4 ||
+      factors.some(factor => factor?.sheaf?.kind !== "signgraph.cellularSheaf" ||
+        factor.sheaf.exact !== true || typeof factor.sourceRef !== "string" ||
+        !factor.sourceRef.trim()))
+    throw new TypeError("cellularSheaf tensor requires 2..4 exact source-attributed factors");
+  const source=factors[0].sheaf;
+  // A sheaf's source identity is its witnessed vertex/edge incidence, not
+  // its input-array enumeration. Multiple custodians may supply the same
+  // lawful base chart in a different order. Align exact SignCell
+  // coincidence keys rather than treating that order as physical geometry.
+  const aligned=factors.map(factor=>{
+    const other=factor.sheaf;
+    if(other.vertices.length!==source.vertices.length ||
+       other.edges.length!==source.edges.length)
+      throw new RangeError("cellularSheaf tensor factors have different source graphs");
+    const byVertex=new Map(other.vertices.map(vertex=>[coincidenceKey(vertex.id),vertex]));
+    const byEdge=new Map(other.edges.map(edge=>[coincidenceKey(edge.id),edge]));
+    const vertices=source.vertices.map(vertex=>byVertex.get(coincidenceKey(vertex.id)));
+    if(vertices.some(vertex=>vertex===undefined))
+      throw new RangeError("cellularSheaf tensor cannot silently reassign stalk source identities");
+    const edges=source.edges.map(edge=>{
+      const otherEdge=byEdge.get(coincidenceKey(edge.id));
+      if(otherEdge===undefined ||
+         coincidenceKey(otherEdge.from)!==coincidenceKey(edge.from) ||
+         coincidenceKey(otherEdge.to)!==coincidenceKey(edge.to))
+        throw new RangeError("cellularSheaf tensor requires the same oriented source incidence");
+      return otherEdge;
+    });
+    return Object.freeze({
+      vertices:Object.freeze(vertices),
+      edges:Object.freeze(edges)
+    });
+  });
+  const multiply = (left,right) => {
+    const [a,b]=ratPairOfEntry(left),[c,d]=ratPairOfEntry(right);
+    return rationalOfBigInts(a*c,b*d);
+  };
+  // Indexed tensor row order: (left row, right row); column order:
+  // (left column, right column). No flattening of an arbitrary incidence
+  // tensor into unrelated source records is permitted.
+  const kron=(left,right)=>left.flatMap(aRow=>
+    right.map(bRow=>aRow.flatMap(a=>bRow.map(b=>multiply(a,b)))));
+  let product=source;
+  for(const next of aligned.slice(1)){
+    // Forecast tensor dimensions *before* allocating any Kronecker matrices.
+    // For a large source-dimensional factor this prevents accidental
+    // quadratic/cubic memory allocation before a late refusal.
+    const vertexDims=product.vertices.map((v,i)=>v.dim*next.vertices[i].dim);
+    const edgeDims=product.edges.map((edge,i)=>edge.dim*next.edges[i].dim);
+    const totalVertices=vertexDims.reduce((n,dim)=>n+dim,0);
+    const totalEdges=edgeDims.reduce((n,dim)=>n+dim,0);
+    if(totalVertices>256 || totalEdges>256 ||
+       !Number.isSafeInteger(totalVertices) || !Number.isSafeInteger(totalEdges))
+      throw new RangeError("cellularSheaf tensor exceeds the bounded rational chart");
+    const vertices=product.vertices.map((v,i)=>({
+      id:v.id,dim:vertexDims[i]
+    }));
+    const edges=product.edges.map((edge,i)=>{
+      const counterpart=next.edges[i];
+      return {
+        id:edge.id,from:edge.from,to:edge.to,
+        dim:edgeDims[i],
+        restrict:{
+          from:kron(edge.restrict.from,counterpart.restrict.from),
+          to:kron(edge.restrict.to,counterpart.restrict.to)
+        }
+      };
+    });
+    product=cellularSheaf({vertices,edges});
+  }
+  return Object.freeze({...product,
+    tensor:Object.freeze({
+      kind:"signgraph.cellularSheaf.stalkwiseTensor.v1",
+      factors:Object.freeze(factors.map(f=>f.sourceRef)),
+      base:"identical source-indexed oriented 1-skeleton",
+      algebra:"exact rational stalk tensor with Kronecker restriction",
+    })
+  });
 }
 
 // — the heat flow —
@@ -751,5 +1054,101 @@ export function bodyBarReceipt(bodyIds, constraints, options = {}) {
   return Object.freeze({
     kind: "signgraph.bodyBarRigidity", bodies: bodyIds.length, pieces, motions: cohomology.h0, mechanisms, selfStresses: cohomology.h1,
     rigid: mechanisms === 0, maxwell: Object.freeze({ ...maxwell, holds: maxwell.lhs === maxwell.rhs }), cohomology,
+  });
+}
+
+
+/**
+ * Exact pullback of a cellular sheaf along an explicitly supplied,
+ * incidence-preserving map of oriented 1-skeleta f : B -> G. It constructs
+ * the pointwise inverse image f*F using the original stalks and restrictions.
+ *
+ * base={vertices:[id,...],edges:[{id,from,to},...]};
+ * map={vertices:[{id,source},...],edges:[{id,source},...]};
+ * Each original base cell has exactly one image of the SAME cell dimension.
+ * Maps need not be injective; original source cell IDs never get rewritten.
+ * An edge image must preserve both incident vertex images and orientation.
+ *
+ * This maps different source cell presentations onto the declared comparison
+ * base for subsequent fiberwise tensor and exact section/gluing operations.
+ * The supplied map selects cell identities and must preserve both endpoints
+ * of each oriented edge.
+ */
+export function pullbackCellularSheaf(source, {base, map}={}) {
+  if (source?.kind!=="signgraph.cellularSheaf" || source.exact!==true ||
+      !base || typeof base!=="object" || Array.isArray(base) ||
+      Object.keys(base).some(key=>!["vertices","edges"].includes(key)) ||
+      !Array.isArray(base.vertices) || !Array.isArray(base.edges) ||
+      base.vertices.length<1 || base.vertices.length>128 ||
+      base.edges.length>256 || !map || typeof map!=="object" ||
+      Array.isArray(map) || Object.keys(map).some(key=>!["vertices","edges"].includes(key)) ||
+      !Array.isArray(map.vertices) || !Array.isArray(map.edges) ||
+      map.vertices.length!==base.vertices.length ||
+      map.edges.length!==base.edges.length)
+    throw new TypeError("cellularSheaf pullback requires an exact source and bounded complete base-to-source cell map");
+
+  const id=coincidenceKey;
+  const srcVertices=new Map(source.vertices.map(v=>[id(v.id),v]));
+  const srcEdges=new Map(source.edges.map(e=>[id(e.id),e]));
+  const baseVertices=new Set(),baseEdges=new Set();
+  for(const vertex of base.vertices) {
+    const key=id(vertex);
+    if(baseVertices.has(key))throw new TypeError("cellularSheaf pullback repeats a base vertex");
+    baseVertices.add(key);
+  }
+  for(const edge of base.edges) {
+    if(!edge || typeof edge!=="object" || Array.isArray(edge) ||
+       Object.keys(edge).sort().join(",")!=="from,id,to" ||
+       !baseVertices.has(id(edge.from)) || !baseVertices.has(id(edge.to)) ||
+       baseEdges.has(id(edge.id)))
+      throw new TypeError("cellularSheaf pullback needs one oriented original base edge and its endpoints");
+    baseEdges.add(id(edge.id));
+  }
+
+  const admitted=(entries,baseKeys,sourceKeys,label)=>{
+    const result=new Map();
+    for(const row of entries) {
+      if(!row || typeof row!=="object" || Array.isArray(row) ||
+         Object.keys(row).sort().join(",")!=="id,source")
+        throw new TypeError("cellularSheaf pullback needs exact "+label+" source cell images");
+      const key=id(row.id), image=id(row.source);
+      if(!baseKeys.has(key) || result.has(key) || !sourceKeys.has(image))
+        throw new TypeError("cellularSheaf pullback has an unknown, duplicate, or missing "+label+" cell image");
+      result.set(key,row.source);
+    }
+    if(result.size!==baseKeys.size)
+      throw new TypeError("cellularSheaf pullback omits an original "+label+" cell image");
+    return result;
+  };
+  const vertexImages=admitted(map.vertices,baseVertices,new Set(srcVertices.keys()),"vertex");
+  const edgeImages=admitted(map.edges,baseEdges,new Set(srcEdges.keys()),"edge");
+  const vertices=base.vertices.map(vertex=>{
+    const original=srcVertices.get(id(vertexImages.get(id(vertex))));
+    return {id:vertex,dim:original.dim};
+  });
+  const edges=base.edges.map(edge=>{
+    const original=srcEdges.get(id(edgeImages.get(id(edge.id))));
+    const mappedFrom=vertexImages.get(id(edge.from));
+    const mappedTo=vertexImages.get(id(edge.to));
+    if(id(mappedFrom)!==id(original.from) || id(mappedTo)!==id(original.to))
+      throw new TypeError("cellularSheaf pullback edge must preserve exact oriented incidence of both source endpoints");
+    return {id:edge.id,from:edge.from,to:edge.to,dim:original.dim,
+      restrict:{from:original.restrict.from,to:original.restrict.to}};
+  });
+  const c0=vertices.reduce((total,vertex)=>total+vertex.dim,0);
+  const c1=edges.reduce((total,edge)=>total+edge.dim,0);
+  if(c0>256||c1>256 || !Number.isSafeInteger(c0) || !Number.isSafeInteger(c1))
+    throw new RangeError("cellularSheaf pullback exceeds the bounded exact section dimension");
+  const sheaf=cellularSheaf({vertices,edges});
+  return Object.freeze({
+    kind:"signgraph.cellularSheaf.pullback.v1",
+    sheaf,
+    baseVertices:Object.freeze([...base.vertices]),
+    baseEdges:Object.freeze(base.edges.map(e=>e.id)),
+    vertexImages:Object.freeze(base.vertices.map(vertex=>
+      Object.freeze({id:vertex,source:vertexImages.get(id(vertex))}))),
+    edgeImages:Object.freeze(base.edges.map(edge=>
+      Object.freeze({id:edge.id,source:edgeImages.get(id(edge.id))}))),
+    mathematicalScope:"strict oriented cellular 1-skeleton inverse image",
   });
 }
