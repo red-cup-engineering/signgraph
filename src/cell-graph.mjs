@@ -8,7 +8,7 @@
  * organizations are SignChain's `chuMap`.
  */
 import {
-  address, admitCell, cellSet, coincides, measured,
+  address, admitCell, cellSet, coincidenceKey, coincides, measured,
   presence, recordOf, sameCell, valueOf
 } from "@red-cup-engineering/signcell/cell";
 import { natZero, natOne, natAdd, fromNatural } from "@red-cup-engineering/exact-number-data-service/exact-number";
@@ -35,13 +35,19 @@ export function cellGraph(cells, observations, options = {}) {
 export function relationGraphOfCells(cells) {
     if (cells.length === 0)
         throw new TypeError("an empty section presents no relation graph");
+    // SignCell's canonical coincidence bytes, not host object identity or
+    // JSON.stringify. Every original term is retained in first-seen order.
+    // Each incident endpoint is classified once in O(1) expected map access.
     const terms = [];
+    const positions = new Map();
     const indexOf = (term) => {
-        const found = terms.findIndex((candidate) => coincides(candidate, term));
-        if (found !== -1)
-            return found;
+        const key = coincidenceKey(term);
+        const prior = positions.get(key);
+        if (prior !== undefined) return prior;
+        const position = terms.length;
         terms.push(term);
-        return terms.length - 1;
+        positions.set(key, position);
+        return position;
     };
     const pairs = [];
     for (const cell of cells) {
@@ -90,7 +96,10 @@ export function relationGraph(section) {
  */
 export function flowNetworkOfCells(cells) {
     const graph = relationGraphOfCells(cells);
-    const indexOf = (term) => graph.terms.findIndex((candidate) => coincides(candidate, term));
+    // The weighted and directed readers must use the SAME upstream canonical
+    // coincidence classes. Avoid linear vertex rescans per oriented edge.
+    const positions = new Map(graph.terms.map((term, index) => [coincidenceKey(term), index]));
+    const indexOf = (term) => positions.get(coincidenceKey(term));
     const edges = [];
     for (const value of cells) {
         const fromIndex = indexOf(value.subject);

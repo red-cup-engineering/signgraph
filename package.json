@@ -17,7 +17,8 @@
     "test/evidence-order-receiving.test.mjs",
     "test/pure-functional-boundary.test.mjs",
     "test/cell-content-owner.test.mjs",
-    "test/source-record-tower-flow.test.mjs"
+    "test/source-record-tower-flow.test.mjs",
+    "test/cell-graph.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -90,6 +91,7 @@
     "test/evidence-order-receiving.test.mjs",
     "test/pure-functional-boundary.test.mjs",
     "test/cell-content-owner.test.mjs",
-    "test/source-record-tower-flow.test.mjs"
+    "test/source-record-tower-flow.test.mjs",
+    "test/cell-graph.test.mjs"
   ]
 }

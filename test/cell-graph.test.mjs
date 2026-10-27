@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { samePoint } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 import { toInt } from "@red-cup-engineering/exact-number-data-service/exact-number";
-import { cell, sameCell, valueOf } from "@red-cup-engineering/signcell/cell";
+import { cell, coincides, sameCell, valueOf } from "@red-cup-engineering/signcell/cell";
 import { at, transpose } from "@red-cup-engineering/metrologic/chu";
 import { cellGraph, relationGraphOfCells, flowNetworkOfCells, flowNetwork } from "../src/cell-graph.mjs";
 
@@ -132,4 +132,57 @@ test("cellGraph presents one stable SignCell point despite contrary later testim
   assert.deepEqual(observations[0].against, ["witness-B"]);
   assert.ok(samePoint(at(graph, supported, "joined-knowledge"), "stable"));
   assert.ok(samePoint(at(graph, opposed, "joined-knowledge"), "stable"));
+});
+
+test("canonical coincidence-indexed flow agrees on Unicode, byte terms and repeated predication presentations",()=>{
+  const first={name:"e\\u0301",bits:new Uint8Array([1,2,3])};
+  const same={bits:new Uint8Array([1,2,3]),name:"é"};
+  const other={name:"other",bits:new Uint8Array([4])};
+  const source=[
+    cell(first,"reports",other,{for:["first"]}),
+    cell(same,"reports",other,{against:["second"]}),
+    cell(other,"reports",same,{for:["reverse"]}),
+    cell(first,"is",same,{for:["identity"]}),
+  ];
+  const undirected=relationGraphOfCells(source);
+  const oriented=flowNetworkOfCells(source);
+  assert.equal(undirected.terms.length,2,"NFC and key-order equivalent references have one vertex");
+  assert.deepEqual(undirected.weights.map(row=>row.map(toInt)),[[0,3],[3,0]]);
+  assert.deepEqual(oriented.edges.map(edge=>[edge.fromIndex,edge.toIndex]),[[0,1],[0,1],[1,0]]);
+  assert.equal(oriented.edges[0].fromIndex,oriented.edges[1].fromIndex);
+  assert.equal(oriented.edges[0].toIndex,oriented.edges[1].toIndex);
+  assert.equal(oriented.edges.length,3,"reflexive equivalence is excluded only from boundary edges");
+  assert.equal(oriented.terms[0].name,"e\\u0301","first source presentation remains readable");
+});
+
+test("canonical vertex index matches independent coincidence scans on varied finite source graphs",()=>{
+  const terms=[
+    "a","b","c","d", {left:1,right:[2,3]}, {right:[2,3],left:1},
+    "e\\u0301","é", {bytes:new Uint8Array([0,255])},{bytes:new Uint8Array([0,255])}
+  ];
+  for(let size=1;size<=70;size+=7){
+    const source=Array.from({length:size},(_,i)=>cell(
+      terms[(i*13+2)%terms.length], "typed", terms[(i*7+5)%terms.length],
+      {for:[i]}));
+    const expectedTerms=[];
+    const expectedEdges=[];
+    const counts=[];
+    const indexOf=value=>{
+      let result=expectedTerms.findIndex(term=>coincides(term,value));
+      if(result<0){result=expectedTerms.length;expectedTerms.push(value);}
+      return result;
+    };
+    for(const entry of source){
+      const a=indexOf(entry.subject),b=indexOf(entry.object);
+      if(a!==b)expectedEdges.push([a,b]);
+    }
+    const actual=flowNetworkOfCells(source);
+    assert.deepEqual(actual.edges.map(e=>[e.fromIndex,e.toIndex]),expectedEdges);
+    assert.equal(actual.terms.length,expectedTerms.length);
+    for(let i=0;i<expectedTerms.length;i++)
+      assert.ok(coincides(expectedTerms[i],actual.terms[i]));
+    const adjacency=Array.from({length:expectedTerms.length},()=>Array(expectedTerms.length).fill(0));
+    for(const [a,b] of expectedEdges){adjacency[a][b]++;adjacency[b][a]++;}
+    assert.deepEqual(actual.graph.weights.map(row=>row.map(toInt)),adjacency);
+  }
 });
