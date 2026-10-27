@@ -75,53 +75,6 @@ test("incompatible, reused, invented or self-facing contacts refuse, rather than
   assert.throws(()=>j26FacePatch({tiles:["A","B"],interfaces:[valid,valid]}),/duplicate interface/);
 });
 
-
-// The older Science Python J26 research (Obsmetrologia PR #69) uses a
-// different but congruent coordinate/vertex chart. These integer points
-// and face names are a ONE-TIME source-matching fixture, not another
-// geometry engine or an independently installed Python solver.
-const legacyJ26 = Object.freeze({
-  vertices: Object.freeze({
-    A: [0, 0, 0], B: [2, 0, 0], C: [1, 1, 0], D: [0, 0, 2],
-    E: [2, 0, 2], F: [1, 1, 2], G: [0, -1, 1], H: [2, -1, 1],
-  }),
-  faces: Object.freeze({
-    T0: { sourceFace: "leftTop", cycle: "CBA" },
-    T1: { sourceFace: "leftBottom", cycle: "DEF" },
-    T2: { sourceFace: "rightTop", cycle: "GDA" },
-    T3: { sourceFace: "rightBottom", cycle: "BEH" },
-    S0: { sourceFace: "leftSide1", cycle: "BCFE" },
-    S1: { sourceFace: "leftSide0", cycle: "CADF" },
-    S2: { sourceFace: "rightSide1", cycle: "ABHG" },
-    S3: { sourceFace: "rightSide0", cycle: "GHED" },
-  }),
-  // Explicit, verified source bijection: 8 vertices/14 edges/8 faces.
-  vertexMap: Object.freeze({
-    A: "q1", B: "q0", C: "a", D: "q2",
-    E: "q3", F: "b", G: "c", H: "d",
-  }),
-});
-
-const integerReferenceAtSource = () => Object.fromEntries(
-  Object.entries(legacyJ26.vertexMap).map(([old, native]) =>
-    [native, legacyJ26.vertices[old]]));
-const delta = (after, before) => after.map((v, i) => v - before[i]);
-const referenceGradient = (surface, points) =>
-  surface.edges.map(({ from, to }) => delta(points[to], points[from]));
-const fieldAtSourceEdge = (surface, field, from, to, increment) => {
-  const next = field.map(v => [...v]);
-  const index = surface.edges.findIndex(e =>
-    (e.from === from && e.to === to) || (e.from === to && e.to === from));
-  assert.notEqual(index, -1, "source edge must exist, not be inferred");
-  const edge = surface.edges[index];
-  next[index][2] += edge.from === from ? increment : -increment;
-  return next;
-};
-const vectorFieldOnView = (surface, field, view) => {
-  const byIdentity = new Map(surface.edges.map((edge, i) => [edge.id, field[i]]));
-  return view.complex.edges.map(edge => byIdentity.get(edge.id));
-};
-
 test("old J26 research chart matches EXACT original Metrologic vertices and oriented faces", () => {
   // Source Python integer triple (i,j,k) represents (i/2, j*sqrt(3)/2, k/2).
   // This explicit Euclidean reflection/translation maps the chart onto the

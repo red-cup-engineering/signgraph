@@ -1,7 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { operations, LIMITS, executeOperation } from "../src/operations.mjs";
 
 const triangle = () => ({
@@ -14,7 +12,7 @@ const triangle = () => ({
   faces: [{ id: "f", boundary: ["ab", "bc", "ca"].map(edge => ({ edge, direction: 1 })) }],
 });
 
-test("three reusable operations share one structural admission, with machine-readable schemas", () => {
+test("published operations retain their exact catalog and machine-readable schemas", () => {
   assert.deepEqual(Object.values(operations).map(op => op.id), [
     "signgraph.holonomy.topology",
     "signgraph.holonomy.burgers",
@@ -22,6 +20,10 @@ test("three reusable operations share one structural admission, with machine-rea
     "signgraph.holonomy.affine",
     "signgraph.j26.puncture",
     "signgraph.mark-incidence.observed-head-gluing",
+    "signgraph.mark-incidence.performed-head-shadow",
+    "signgraph.mark-incidence.kinematic-section-descent",
+    "signgraph.mark-incidence.performed-cellular-cover",
+    "signgraph.mark-incidence.boundary-factorization",
     "signgraph.mark-incidence.articulating-tower",
   ]);
   for (const op of Object.values(operations).filter(op =>
@@ -140,66 +142,6 @@ test("trusted hosts can select higher finite capacity without weakening default 
   }).betti.h0, 1);
 });
 
-const bin = fileURLToPath(new URL("../scripts/holonomy.mjs", import.meta.url));
-
-test("installed CLI batches successful and rejected JSONL requests without side effects", () => {
-  const input = triangle();
-  const messages = [
-    { operation: "signgraph.holonomy.topology", input },
-    { operation: "signgraph.holonomy.affine", input: {
-      ...input, edgeMotions: [
-        { rotation: 0, translation: [1, 0] },
-        { rotation: 0, translation: [0, 1] },
-        { rotation: 0, translation: [-1, -1] },
-      ],
-    }},
-    { operation: "signgraph.holonomy.unknown", input },
-    { operation: "signgraph.holonomy.topology", input },
-  ].map(x => JSON.stringify(x)).join("\n") + "\n";
-  const child = spawnSync(process.execPath, [bin], {
-    input: messages, encoding: "utf8", timeout: 10000,
-  });
-  assert.equal(child.status, 1, child.stderr);
-  const receipts = child.stdout.trim().split("\n").map(x => JSON.parse(x));
-  assert.equal(receipts.length, 4);
-  assert.deepEqual(receipts.map(x => x.ok), [true, true, false, true]);
-  assert.equal(receipts[0].receipt.graphOnlyH1, 1);
-  assert.equal(receipts[1].receipt.classification, "affine-flat");
-  assert.match(receipts[2].error, /not installed/);
-  assert.equal(receipts[3].receipt.betti.h1, 0);
-  assert.equal(child.stderr, "");
-  const help = spawnSync(process.execPath, [bin, "--help"], { encoding: "utf8" });
-  assert.equal(help.status, 0);
-  assert.match(help.stdout, /signgraph\.holonomy\.affine/);
-});
-
-test("CLI input budget produces a failure receipt and still receives subsequent work", () => {
-  const child = spawnSync(process.execPath, [bin], {
-    input: JSON.stringify({ operation: "signgraph.holonomy.topology", input: { typo: "x".repeat(300000) } }) +
-      "\n" + JSON.stringify({ operation: "signgraph.holonomy.topology", input: triangle() }),
-    encoding: "utf8", timeout: 10000,
-  });
-  assert.equal(child.status, 1, child.stderr);
-  const receipts = child.stdout.trim().split("\n").map(x => JSON.parse(x));
-  assert.equal(receipts.length, 2);
-  assert.match(receipts[0].error, /64KiB/);
-  assert.equal(receipts[1].ok, true);
-});
-
-test("CLI enforces its 1024-request batch limit with a failing exit code", () => {
-  const request = JSON.stringify({ operation: "signgraph.holonomy.topology", input: triangle() });
-  const child = spawnSync(process.execPath, [bin], {
-    input: Array(1025).fill(request).join("\n") + "\n",
-    encoding: "utf8", timeout: 20000, maxBuffer: 6 * 1024 * 1024,
-  });
-  assert.equal(child.status, 1, child.stderr);
-  const lines = child.stdout.trim().split("\n").map(line => JSON.parse(line));
-  assert.equal(lines.length, 1025);
-  assert.ok(lines.slice(0, 1024).every(line => line.ok));
-  assert.equal(lines[1024].ok, false);
-  assert.match(lines[1024].error, /1024 requests/);
-});
-
 /** A tetrahedral closed exterior plus its one three-cell.
  * The face orientations represent ∂[a,b,c,d].
  */
@@ -283,29 +225,6 @@ test("volume operations refuse unclosed shells, oversized volumes and excess fac
   }), /array of volumes/);
 });
 
-test("installed CLI returns the 3D Stokes and homology receipts in JSONL", () => {
-  const solid = tetrahedron();
-  const input = [
-    { operation: "signgraph.holonomy.topology", input: solid },
-    { operation: "signgraph.holonomy.burgers", input: {
-      ...solid, edgeDisplacements: solid.edges.map((_, i) =>
-        i === 0 ? [1, 0, -3] : [0, 0, 0]),
-    }},
-  ].map(JSON.stringify).join("\n") + "\n";
-  const child = spawnSync(process.execPath, [bin], {
-    input, encoding: "utf8", timeout: 10000,
-  });
-  assert.equal(child.status, 0, child.stderr);
-  const [topology, burgers] = child.stdout.trim().split("\n").map(JSON.parse);
-  assert.equal(topology.ok, true);
-  assert.equal(burgers.ok, true);
-  assert.deepEqual(topology.receipt.betti, { h0: 1, h1: 0, h2: 0, h3: 0 });
-  assert.equal(burgers.receipt.dimension, 3);
-  assert.equal(burgers.receipt.volumeConservation.holds, true);
-  assert.deepEqual(burgers.receipt.volumeResidues[0].burgers, [0, 0, 0]);
-});
-
-
 test("source-qualified J26 holes are a real original bounded operation with addressed Burgers", () => {
   const target = { removedFaces: ["leftTop", "leftBottom"], retention: "face-support" };
   const receipt = executeOperation("signgraph.j26.puncture", target);
@@ -373,35 +292,3 @@ test("J26 original operation refuses anonymous, incomplete and unauthorized sour
     { ...target, overflow: "x".repeat(66000) }), /only removedFaces/);
 });
 
-test("existing SignGraph holonomy JSONL CLI receives J26 topology AND addressed global holonomy", () => {
-  const adjacent = { removedFaces: ["leftTop", "leftSide1"], retention: "face-support" };
-  const separated = { removedFaces: ["leftTop", "leftBottom"], retention: "face-support" };
-  const source = executeOperation("signgraph.j26.puncture", separated);
-  const edgeField = source.edges.map(edge => {
-    const endpoints = new Set([edge.from, edge.to]);
-    const z = endpoints.has("q0") && endpoints.has("a") ? (edge.from === "q0" ? 1 : -1)
-      : endpoints.has("q3") && endpoints.has("b") ? (edge.from === "q3" ? 1 : -1) : 0;
-    return { edge: edge.id, vector: [0, 0, z] };
-  });
-  const linesIn = [
-    { operation: "signgraph.j26.puncture", input: adjacent },
-    { operation: "signgraph.j26.puncture", input: { ...separated, edgeField } },
-  ].map(JSON.stringify).join("\n") + "\n";
-  const child = spawnSync(process.execPath, [bin], {
-    input: linesIn, encoding: "utf8", timeout: 10000,
-  });
-  assert.equal(child.status, 0, child.stderr);
-  assert.equal(child.stderr, "");
-  const lines = child.stdout.trim().split("\n").map(JSON.parse);
-  assert.equal(lines.length, 2);
-  assert.deepEqual(lines.map(line => line.ok), [true, true]);
-  const [topology, holonomy] = lines.map(line => line.receipt);
-  assert.equal(topology.kind, "signgraph.j26.puncture-receipt.v1");
-  assert.deepEqual(topology.topology.betti, { h0: 1, h1: 0, h2: 0 });
-  assert.equal(topology.edges.length, 13);
-  assert.equal(topology.faces.length, 6);
-  assert.deepEqual(holonomy.topology.betti, { h0: 1, h1: 1, h2: 0 });
-  assert.equal(holonomy.burgers.classification, "global-holonomy");
-  assert.equal(holonomy.burgers.localFlat, true);
-  assert.equal(holonomy.burgers.exact, false);
-});

@@ -18,7 +18,7 @@
  */
 import { isMark } from "@red-cup-engineering/signcell/mark";
 import { isUtterance, traceOfArticulating } from "@red-cup-engineering/signcell/utterance";
-import { semanticId } from "@red-cup-engineering/semiotic-content-address";
+import { semanticId } from "@red-cup-engineering/signcell/cell";
 import { charPoly, fromInts, toInt } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { cohomologyOfEdgeGraph } from "./cohomology.mjs";
 

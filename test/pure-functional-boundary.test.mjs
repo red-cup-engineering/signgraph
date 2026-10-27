@@ -5,7 +5,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const packageName = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).name;
+const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+const packageName = manifest.name;
 const family = packageName.split("/").at(-1);
 const higher = {
   signcell: ["signchain", "signgraph", "signcraft"],
@@ -14,6 +15,17 @@ const higher = {
   signcraft: [],
 }[family];
 if (!higher) throw new Error("this assay belongs to one of the four Sign libraries");
+
+test("the published SignGraph surface contains pure library entries and no command payload", () => {
+  assert.equal(manifest.bin, undefined, "process commands belong to the downstream effect owner");
+  assert.ok(!manifest.files.some(path => path === "scripts" || path.startsWith("scripts/")),
+    "effectful command scripts must not ship as a pure runtime payload");
+  for (const [name, target] of Object.entries(manifest.exports)) {
+    assert.ok(target === "./package.json" ||
+      (typeof target === "string" && target.startsWith("./src/") && !target.includes("/../")),
+    `${name} must expose only the inspected library`);
+  }
+});
 
 function* sourceFiles(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -26,7 +38,12 @@ function* sourceFiles(directory) {
 test("the Sign-family source is a pure functional substrate, not an effects provider", () => {
   let inspected = 0;
   const ambient = /\b(?:Date\.now\s*\(|Math\.random\s*\(|fetch\s*\(|process\.(?:env|stdin|stdout|stderr|exit|cwd)\b)/u;
-  for (const path of sourceFiles(join(root, "src"))) {
+  const inspectedSources = new Set(sourceFiles(join(root, "src")));
+  for (const target of Object.values(manifest.exports)) {
+    if (typeof target === "string" && target !== "./package.json")
+      inspectedSources.add(join(root, target));
+  }
+  for (const path of inspectedSources) {
     inspected++;
     const code = readFileSync(path, "utf8");
     const imports = [

@@ -1,0 +1,480 @@
+{
+  "kind": "published-signcell-supplier-receiving/v1",
+  "qualifiedAt": "2026-10-26T20:05:09.189247+00:00",
+  "consumer": "@red-cup-engineering/signgraph",
+  "originalMain": "05ab6da5d4b2b4269c1a4704a5faa0284e6d2000",
+  "sourceAcquisition": {
+    "kind": "exact-current-main-source-snapshot",
+    "repository": "https://github.com/red-cup-engineering/signgraph",
+    "originalBlobsVerified": 79,
+    "originalBlobsUnchangedAfterAdoption": 77,
+    "changedOriginalPaths": [
+      "package.json",
+      "pnpm-lock.yaml"
+    ],
+    "missingFiles": 0,
+    "syntheticGitHistory": false,
+    "baselineReconfirmedBeforeReceipt": true
+  },
+  "purpose": "Adopt the issued shared SignCell contract while preserving the consumer original structural and history receiving obligations.",
+  "supplier": {
+    "package": "@red-cup-engineering/signcell",
+    "version": "0.13.1-dev.198",
+    "gitHead": "1abcd4a218618408284014af35169459c8170a02",
+    "qualifiedSourceParent": "ce026a96e3c1ad20a3fa1f358af7d1eda4c56899",
+    "archiveSha256": "3057fcc98f8283927ea09e1b8accc8c73c19e5f6a49bbe0b5e2bf2e8562f9212",
+    "integrity": "sha512-0ZhJJxrGa/hSMBTx64D+M1Qeo68oJMYy/Jiq3gA7k0pInXqYQs0ISCFzlY0Dkimi2GoGuETl1ghfJKmSPO9T1w==",
+    "archiveBytes": 104141,
+    "archiveMembers": 44,
+    "supplierReceiving": {
+      "tests": 116,
+      "passed": 116,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "todo": 0,
+      "performedBy": "independent standards reviewer",
+      "receipt": "https://github.com/red-cup-engineering/signcell/blob/main/data/records/measurements/2026-10-26-signcell-198-published-receiving.json"
+    }
+  },
+  "priorPublishedConsumer": {
+    "version": "0.7.1-dev.353",
+    "gitHead": "7e67715a86099b699f3e905f657c73d4fe6243ee",
+    "comparisonToOriginalMain": {
+      "aheadBy": 2,
+      "behindBy": 0,
+      "changedPaths": [
+        "pnpm-workspace.yaml"
+      ]
+    }
+  },
+  "manifestChange": {
+    "dependency": "@red-cup-engineering/signcell",
+    "from": "0.13.1-dev.185",
+    "to": "0.13.1-dev.198",
+    "allOtherManifestFieldsUnchanged": true
+  },
+  "nativePackageManager": {
+    "node": "24.22.1",
+    "pnpm": "11.25.0",
+    "lockGeneration": {
+      "command": "pnpm install --lockfile-only --offline --ignore-scripts --reporter=append-only --store-dir /root/.local/share/pnpm/store",
+      "exitCode": 0,
+      "elapsedMilliseconds": 604,
+      "observations": [
+        "Native cached metadata lacked publication times for cbor2 and @cto.af/wtf8; pnpm reported skipping age checks for those pre-existing packages. No policy file or policy flag was changed."
+      ],
+      "rawToolOutputRetainedInFile": false
+    },
+    "frozenInstallation": {
+      "command": "pnpm install --frozen-lockfile --offline --ignore-scripts --reporter=append-only --store-dir /root/.local/share/pnpm/store",
+      "cwd": "/workspace/scratch/455c183ed200/signgraph",
+      "exitCode": 0,
+      "elapsedMilliseconds": 947,
+      "packagesReused": 55,
+      "packagesDownloaded": 0,
+      "lifecycleScriptsExecuted": false,
+      "initialNodeModules": "absent",
+      "method": "native pnpm cache hard links",
+      "rawToolOutputRetainedInFile": false
+    },
+    "lockDelta": {
+      "packages": {
+        "before": 54,
+        "after": 55,
+        "added": [
+          "@red-cup-engineering/signcell@0.13.1-dev.198"
+        ],
+        "removed": [],
+        "changed": []
+      },
+      "snapshots": {
+        "before": 54,
+        "after": 55,
+        "added": [
+          "@red-cup-engineering/signcell@0.13.1-dev.198"
+        ],
+        "removed": [],
+        "changed": []
+      }
+    },
+    "lockOtherFieldsUnchanged": true,
+    "policiesPreserved": {
+      ".npmrc": {
+        "bytes": 37,
+        "sha256": "8de08949bab508293e0d9aa76a511469ee2d306b1f6140a8f60c0d1de8b17fe2",
+        "gitBlob": "0a1f8151935f5a483c368cd930c26519cb3663cf"
+      },
+      "pnpm-workspace.yaml": {
+        "bytes": 523,
+        "sha256": "34334891f2807a7186fbc897b43b2293b1a712f0a79b42f8bddf5beb6319c6da",
+        "gitBlob": "fc573d82d72fd677ca8635bd24a38e95968a33a0"
+      }
+    }
+  },
+  "receiving": {
+    "command": [
+      "node",
+      "--test-isolation=none",
+      "--test",
+      "--test-reporter=tap",
+      "test/graph.test.mjs",
+      "test/token-sheaf.test.mjs",
+      "test/holonomy-operations.test.mjs",
+      "test/performed-head-observation.test.mjs",
+      "test/relational-value.test.mjs",
+      "test/cellular-sheaf.test.mjs",
+      "test/valuation-trace.test.mjs",
+      "test/evidence-order-receiving.test.mjs",
+      "test/pure-functional-boundary.test.mjs"
+    ],
+    "cwd": "/workspace/scratch/455c183ed200/signgraph",
+    "selection": "every original manifest receivingTests entry; no entries added or removed",
+    "testFiles": 9,
+    "exitCode": 0,
+    "tests": 119,
+    "passed": 119,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "todo": 0,
+    "durationMilliseconds": 4341.856533,
+    "rawTap": {
+      "path": "data/records/receiving-records/2026-10-26-signcell-198-adoption/receiving.tap",
+      "bytes": 28799,
+      "sha256": "45d0554b3c3a1d7c589730971e2344d9527dcb583c479629e2481d8eaa50ecc6",
+      "gitBlob": "387dce52afd0cf3547907dbf1909bf9af8b4a1ba"
+    }
+  },
+  "identities": {
+    "package.json": {
+      "bytes": 4177,
+      "sha256": "3d51d06a712747fc9127ce59e1a009f5a81a868326ac9d9b1afe395cb2b4fc14",
+      "gitBlob": "ae2a25e9fff07c6dc0302d4efaf9e97c0f0513dd"
+    },
+    "pnpm-lock.yaml": {
+      "bytes": 28247,
+      "sha256": "1bc7b88bfce49d1cd29fcf5ec9f504cfc62da0686578bd3a9bb9d2e89691acbf",
+      "gitBlob": "5fe7a5cf37e5be07024bcc07dbbe115c072d66f9"
+    },
+    "test/graph.test.mjs": {
+      "bytes": 40552,
+      "sha256": "9f1d965f2ffda6d32fbd4033deb102463cdcfa5ffb119e0af44209eb0458d084",
+      "gitBlob": "ce31c17622dc5b76bea106f25d9adc0e70b2720d"
+    },
+    "test/token-sheaf.test.mjs": {
+      "bytes": 17718,
+      "sha256": "e2d874e19889f0c4f64a9221794140f3afc65c4e0adc72c33dd4a09c209cea2c",
+      "gitBlob": "28da43aa1d1a19aa28b7d75200822778b91eaa0f"
+    },
+    "test/holonomy-operations.test.mjs": {
+      "bytes": 9993,
+      "sha256": "679c4dfe66325494f0b6e4444ef1c80a64ecae4cc695273f0e49129daab93724",
+      "gitBlob": "ced7532c16a5b3fe96407b27da54ec45a2887c1d"
+    },
+    "test/performed-head-observation.test.mjs": {
+      "bytes": 29463,
+      "sha256": "3ecfd74974a29f8a63302c453c068a1fcb967443f061658853c3357603f3b903",
+      "gitBlob": "95f967a28174ada604e80db4bbdfb303ccf88784"
+    },
+    "test/relational-value.test.mjs": {
+      "bytes": 18826,
+      "sha256": "67e007f39321f12a236b3f0782af42a1e5ec49a8ea94bd3d2a2f0e51374a62cf",
+      "gitBlob": "d8b58c1e0ccce2ce77dd848ab180546b899cd4aa"
+    },
+    "test/cellular-sheaf.test.mjs": {
+      "bytes": 35055,
+      "sha256": "9e5a212dd65e9ca1e398b8650c33caade7583c8ee139f517c19196a72c8b761d",
+      "gitBlob": "15d5205724acf5046dc20d3268b0f0375ece35d6"
+    },
+    "test/valuation-trace.test.mjs": {
+      "bytes": 6552,
+      "sha256": "f206c6487547dddec07fc3bea1c10e7196a2f5d77d59c7d51d2f4b09aee2bc35",
+      "gitBlob": "5877dfae121e5d03f31c56570c26f6b1301136cb"
+    },
+    "test/evidence-order-receiving.test.mjs": {
+      "bytes": 2977,
+      "sha256": "01546a2268947ea201edb85bb2fef3f0dbcc0713ddc557291bef5732d054f78e",
+      "gitBlob": "d042f0e214420bbdb66f84dc3758cee2297edeb3"
+    },
+    "test/pure-functional-boundary.test.mjs": {
+      "bytes": 3370,
+      "sha256": "d55b1c87a28f33474aa323680f2d21e4a0cfd4b1f7164062233f4aeb9fd1e719",
+      "gitBlob": "1866f835b87ce661166d01eda8b95c892c6f7d67"
+    }
+  },
+  "providerVerification": {
+    "publishedSignCell": {
+      "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+signcell@0.13.1-dev.198/node_modules/@red-cup-engineering/signcell",
+      "membersCompared": 44,
+      "mismatches": [],
+      "version": "0.13.1-dev.198",
+      "gitHead": "1abcd4a218618408284014af35169459c8170a02"
+    },
+    "dataBrandProvider": {
+      "directRealpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+computer-data-engineering-services-section@0.7.1/node_modules/@red-cup-engineering/computer-data-engineering-services-section",
+      "signcellRealpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+computer-data-engineering-services-section@0.7.1/node_modules/@red-cup-engineering/computer-data-engineering-services-section"
+    },
+    "directProviders": {
+      "@red-cup-engineering/uri-services-section": {
+        "version": "0.1.1",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+uri-services-section@0.1.1/node_modules/@red-cup-engineering/uri-services-section",
+        "manifestSha256": "ad2294be4d435b8c12871d030a5976686259c15579818e1dd1eb84d0f96e1dc4"
+      },
+      "@red-cup-engineering/metrologic": {
+        "version": "0.14.3-dev.3",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+metrologic@0.14.3-dev.3/node_modules/@red-cup-engineering/metrologic",
+        "manifestSha256": "9ed80a693a78dae74b8a86efcc0d107a9daf6de00ca67eaaf19f14e48aaebfb5"
+      },
+      "@red-cup-engineering/cbor-services-section": {
+        "version": "0.1.1",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+cbor-services-section@0.1.1/node_modules/@red-cup-engineering/cbor-services-section",
+        "manifestSha256": "e967ffa7703297662ce57efcc05937681f46a75c012c49f17e8c222b7242be49"
+      },
+      "@red-cup-engineering/json-services-section": {
+        "version": "0.4.0",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+json-services-section@0.4.0/node_modules/@red-cup-engineering/json-services-section",
+        "manifestSha256": "1b5945abba04ed87ad57a2a97586ee03b4742d8539fe43c2fabdec1161c181be"
+      },
+      "@red-cup-engineering/eavt-services-section": {
+        "version": "0.11.0",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+eavt-services-section@0.11.0/node_modules/@red-cup-engineering/eavt-services-section",
+        "manifestSha256": "07b0aab00b1fec97f2e4d09541971e8843b7efd2361d2f7934df286cd2f92a1c"
+      },
+      "@red-cup-engineering/computer-content-engineering-services-section": {
+        "version": "0.1.0",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+computer-content-engineering-services-section@0.1.0/node_modules/@red-cup-engineering/computer-content-engineering-services-section",
+        "manifestSha256": "8c3fcefb26e2e1b7b3309e9e8655c97e34a0b7f70328490f2ec4af808df642dc"
+      },
+      "@red-cup-engineering/xml-document-rendering-service": {
+        "version": "0.1.7",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+xml-document-rendering-service@0.1.7/node_modules/@red-cup-engineering/xml-document-rendering-service",
+        "manifestSha256": "597b74db020cc96a9b4845b718a15eeaae6816f0462c881345c23e1fdd908634"
+      },
+      "@red-cup-engineering/computer-data-engineering-services-section": {
+        "version": "0.7.1",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+computer-data-engineering-services-section@0.7.1/node_modules/@red-cup-engineering/computer-data-engineering-services-section",
+        "manifestSha256": "563eabcb8919db7123f1092dd47906ecdfcd86ea1ef5706fac708c91d8478bc7"
+      },
+      "@red-cup-engineering/exact-number-data-service": {
+        "version": "0.1.7",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+exact-number-data-service@0.1.7/node_modules/@red-cup-engineering/exact-number-data-service",
+        "manifestSha256": "fee44ec85f799bfa7733f3b1e48ed9cce06bde6c70f9ca218e6a12cb22e3bbc1"
+      },
+      "@red-cup-engineering/signcell": {
+        "version": "0.13.1-dev.198",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+signcell@0.13.1-dev.198/node_modules/@red-cup-engineering/signcell",
+        "manifestSha256": "77c8230fdb639048b8ebc6d30ca3f0f6911f3ec19b17677985010af8836520e5"
+      },
+      "@red-cup-engineering/signchain": {
+        "version": "0.4.2-dev.64",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+signchain@0.4.2-dev.64/node_modules/@red-cup-engineering/signchain",
+        "manifestSha256": "f8c8c1dab3bcfd78fef2a62a270694d3f96548c61207bb3cf3b8b0a705cde041"
+      },
+      "@red-cup-engineering/json-schema-services-section": {
+        "version": "0.5.0",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+json-schema-services-section@0.5.0/node_modules/@red-cup-engineering/json-schema-services-section",
+        "manifestSha256": "e2e9018c1e2b1cf8bb90072932cae24d26f4f9748fad812627a09a8429d1c2e7"
+      },
+      "@red-cup-engineering/semiotic-content-address": {
+        "version": "0.1.1",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+semiotic-content-address@0.1.1/node_modules/@red-cup-engineering/semiotic-content-address",
+        "manifestSha256": "808a818b081125ddaeca3d8022a677150e7bd412ffe30f4fe7f153c596f42f31"
+      },
+      "@red-cup-engineering/computer-code-engineering-services-section": {
+        "version": "0.1.2",
+        "realpath": "/workspace/scratch/455c183ed200/signgraph/node_modules/.pnpm/@red-cup-engineering+computer-code-engineering-services-section@0.1.2/node_modules/@red-cup-engineering/computer-code-engineering-services-section",
+        "manifestSha256": "a321bd7f6007af98179887a797580e074b3ff250962e0a81f6db05c8aefb0c9b"
+      }
+    }
+  },
+  "intake": {
+    "main": "05ab6da5d4b2b4269c1a4704a5faa0284e6d2000",
+    "sourceUrl": "https://github.com/red-cup-engineering/signgraph",
+    "openIssues": [
+      {
+        "number": 30,
+        "title": "Deliver Keratin Graph workbench: source-witnessed sheaf/fiber graphs with holes and observer obstructions",
+        "url": "https://github.com/red-cup-engineering/signgraph/issues/30"
+      },
+      {
+        "number": 26,
+        "title": "Source-witness eligible unused transport paths for HITS agentic Physarum Work routing",
+        "url": "https://github.com/red-cup-engineering/signgraph/issues/26"
+      },
+      {
+        "number": 24,
+        "title": "Derive typed channel–message–resource exchange incidence for multicellular SignCraft",
+        "url": "https://github.com/red-cup-engineering/signgraph/issues/24"
+      }
+    ],
+    "openPullRequests": [
+      {
+        "number": 35,
+        "title": "Receive original Articulating Mark reactions through FOUR evidence without losing histories",
+        "url": "https://github.com/red-cup-engineering/signgraph/pull/35",
+        "head": "bd7ba66e200c8ce08031c448dd1ee2ea470f2577",
+        "headBranch": "feat/source-mark-nonboolean-receiving-20261021"
+      },
+      {
+        "number": 34,
+        "title": "Receive J26 puncture holonomy through original SignGraph cell complex",
+        "url": "https://github.com/red-cup-engineering/signgraph/pull/34",
+        "head": "7e4800639548a9779ba30085fc0589257a27d603",
+        "headBranch": "feat/j26-native-puncture-receiving-20261021"
+      },
+      {
+        "number": 33,
+        "title": "Receive witnessed FOUR↔Record towers in original oriented SignGraph and Chu projections",
+        "url": "https://github.com/red-cup-engineering/signgraph/pull/33",
+        "head": "92614310cfa411f8c9e29bfb83d6ab4b9b1b4f2f",
+        "headBranch": "feat/receive-source-record-towers-20261021"
+      },
+      {
+        "number": 32,
+        "title": "Project witnessed agent–actor relations as Alexandrov topology",
+        "url": "https://github.com/red-cup-engineering/signgraph/pull/32",
+        "head": "16a983a02a34c68e24018e296c03ed8950284ef9",
+        "headBranch": "feat/alexandrov-agent-actor-topology-20261021"
+      },
+      {
+        "number": 31,
+        "title": "Deliver Keratin Graph hole-aware finite fiber/sheaf workbench and Graphviz readout",
+        "url": "https://github.com/red-cup-engineering/signgraph/pull/31",
+        "head": "61b2cae0295d1c443cede805f2f8bdffd1a00020",
+        "headBranch": "feat/keratin-graphs-hole-sheaf-workbench-20261021"
+      },
+      {
+        "number": 29,
+        "title": "Add provenance-preserving FEATHER-G projection codecs without confusing native feather graphs",
+        "url": "https://github.com/red-cup-engineering/signgraph/pull/29",
+        "head": "e29ef0d3faccc525726aef239a45aabbc612f844",
+        "headBranch": "feat/feather-g-signgraph-codecs-20261021"
+      },
+      {
+        "number": 17,
+        "title": "Realize exact 2-complex cellular sheaf and Matrix Market operator exchange",
+        "url": "https://github.com/red-cup-engineering/signgraph/pull/17",
+        "head": "a3e4fed7c0b505947f56bf02e5ced1acbdec5922",
+        "headBranch": "feat/cellular-2sheaf-matrix-market-20261019"
+      }
+    ],
+    "developmentBranches": [
+      {
+        "name": "feat/alexandrov-agent-actor-topology-20261021",
+        "head": "16a983a02a34c68e24018e296c03ed8950284ef9",
+        "status": "diverged",
+        "aheadBy": 9,
+        "behindBy": 134,
+        "changedPaths": [
+          "package.json",
+          "src/alexandrov.mjs",
+          "test/alexandrov.test.mjs"
+        ]
+      },
+      {
+        "name": "feat/cellular-2sheaf-matrix-market-20261019",
+        "head": "a3e4fed7c0b505947f56bf02e5ced1acbdec5922",
+        "status": "diverged",
+        "aheadBy": 7,
+        "behindBy": 142,
+        "changedPaths": [
+          "package.json",
+          "src/README.md",
+          "src/cellular-sheaf-complex.mjs",
+          "test/cellular-sheaf-complex.test.mjs"
+        ]
+      },
+      {
+        "name": "feat/feather-g-signgraph-codecs-20261021",
+        "head": "e29ef0d3faccc525726aef239a45aabbc612f844",
+        "status": "diverged",
+        "aheadBy": 7,
+        "behindBy": 134,
+        "changedPaths": [
+          "package.json",
+          "src/feather-g-codec.md",
+          "src/feather-g-codec.mjs",
+          "test/feather-g-codec.test.mjs",
+          "test/feather-g-native-signgraph.test.mjs"
+        ]
+      },
+      {
+        "name": "feat/j26-native-puncture-receiving-20261021",
+        "head": "7e4800639548a9779ba30085fc0589257a27d603",
+        "status": "diverged",
+        "aheadBy": 8,
+        "behindBy": 134,
+        "changedPaths": [
+          "package.json",
+          "src/README.md",
+          "src/j26-surface.mjs",
+          "src/operations.mjs",
+          "test/holonomy-operations.test.mjs",
+          "test/j26-source-generated-patch.test.mjs"
+        ]
+      },
+      {
+        "name": "feat/keratin-graphs-hole-sheaf-workbench-20261021",
+        "head": "61b2cae0295d1c443cede805f2f8bdffd1a00020",
+        "status": "diverged",
+        "aheadBy": 20,
+        "behindBy": 134,
+        "changedPaths": [
+          "examples/keratin-hole-workbench.mjs",
+          "package.json",
+          "src/README.md",
+          "src/cellular-sheaf.mjs",
+          "src/keratin-graph.md",
+          "src/keratin-graph.mjs",
+          "test/cellular-sheaf.test.mjs",
+          "test/keratin-graph.test.mjs"
+        ]
+      },
+      {
+        "name": "feat/physarum-witnessed-transport-options-20261021",
+        "head": "8622a482e8bc3107ee18ba1131960d441c8f132b",
+        "status": "behind",
+        "aheadBy": 0,
+        "behindBy": 135,
+        "changedPaths": []
+      },
+      {
+        "name": "feat/receive-source-record-towers-20261021",
+        "head": "92614310cfa411f8c9e29bfb83d6ab4b9b1b4f2f",
+        "status": "diverged",
+        "aheadBy": 5,
+        "behindBy": 134,
+        "changedPaths": [
+          "src/cell-graph.mjs",
+          "test/source-record-tower-flow.test.mjs"
+        ]
+      },
+      {
+        "name": "feat/source-mark-nonboolean-receiving-20261021",
+        "head": "bd7ba66e200c8ce08031c448dd1ee2ea470f2577",
+        "status": "diverged",
+        "aheadBy": 2,
+        "behindBy": 134,
+        "changedPaths": [
+          "src/substitution-spectrum.mjs",
+          "test/mark-reaction-receiving.test.mjs"
+        ]
+      }
+    ],
+    "publishedToMain": {
+      "aheadBy": 2,
+      "behindBy": 0,
+      "changedPaths": [
+        "pnpm-workspace.yaml"
+      ]
+    }
+  },
+  "limitations": [
+    "This receipt covers the consumer source at the recorded main commit, a native frozen dependency installation, and all original manifest-enrolled receiving tests. It does not claim a newly published consumer artifact or deployment.",
+    "Only the direct SignCell requirement was advanced. Older SignCell editions legitimately remain in unchanged transitive supplier snapshots; no override rewrites their requirements.",
+    "SignChain remains the issued 0.4.2-dev.64. The newly landed SignChain claim-event reading release was not yet available when this adoption was qualified.",
+    "The complete source test glob was not run; the original receivingTests list is the explicit tested boundary.",
+    "Graph/Craft structural channel and resource relations do not provide runtime message delivery, subscriber authorization, retries, acknowledgements or broker custody."
+  ]
+}
