@@ -925,3 +925,32 @@ inference, actor authority or physical reaction. See
 including sixteen possible two-path FOUR readings, forged report controls,
 and bounded search refusal. Original SignCell/Metrologic package receiving
 and actual performed source verification remain independent gates.
+
+## Typed witnessed Alexandrov graph geometry
+
+`./alexandrov` derives a finite upper-set topology from **one
+explicitly declared homogeneous relation** in the existing
+`createSignGraph` carrier, using original SignCell/SignGraph re-admission
+and Metrologic directed reachability. It returns principal opens, source
+witnesses, strong components/T0 quotient readings, upper/open hull,
+topological closure, the directed Post/Box adjunction, and comparison
+of the identity map between separately supplied graph versions.
+
+The quotient does not identify or merge original actor/resource IDs:
+topological indistinguishability is not an institutional delegation,
+authenticated observation, ActivityPub delivery, or a licensed effect.
+The graph construction never infers a relation from familiar actor names
+or from a syntactic `Follow` field. Native receiving is in
+`test/alexandrov.test.mjs`; pinned supplier publication and an actual
+source-authorized downstream Actor/service consumer remain separate
+gates. Source mathematics:
+Obsmetrologia's Alexandrov and generated causal-order proofs.
+ 
+### Inert typed topology selectors
+
+Alexandrov projections now require own enumerable data descriptors for the
+two selected graph interpretation coordinates and for every inspected typed
+point reference. An inherited, hidden or getter-backed actor ID cannot
+silently become a locally admitted graph reference. This is a pure source
+reading guard rather than independent Actor authentication, and executable
+Proxy traps remain a separate host security problem.
