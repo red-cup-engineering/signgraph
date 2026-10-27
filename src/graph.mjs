@@ -448,8 +448,10 @@ function undirectedCycleClosingTransfers(transfers, excluded, observedVertices =
  * and test that the augmented multigraph is acyclic. Isolated vertices
  * impose no extra requirements. See Science #215 draft §7.21.
  *
- * proposedWitnessExchangeIds and proposedObservedCompartmentIds are only a
- * proposed INSTRUMENTATION DESIGN. If vertex IDs are omitted, the original
+ * proposedWitnessExchangeIds, proposedObservedCompartmentIds and optional
+ * proposedObservedCompartmentIdsByResource (Resource ID -> endpoint IDs) are only a
+ * proposed INSTRUMENTATION DESIGN. Nonempty global endpoint coverage is
+ * refused with multiple Resources: an A water reading is not an A energy reading. If vertex IDs are omitted, the original
  * full-node mathematical assumption is retained for compatibility, and the
  * output names that hypothetical coverage. If supplied (even []), only
  * exactly named source-admitted exchange endpoints are assumed observed.
@@ -464,6 +466,7 @@ function undirectedCycleClosingTransfers(transfers, excluded, observedVertices =
 export function channelFlowWitnessPlacement(graph, options = {}) {
   const proposals = options?.proposedWitnessExchangeIds ?? [];
   const vertices = options?.proposedObservedCompartmentIds;
+  const scopedVertices = options?.proposedObservedCompartmentIdsByResource;
   if (!Array.isArray(proposals) || proposals.length > 4096 ||
       proposals.some(id => typeof id !== "string" || !id.length) ||
       new Set(proposals).size !== proposals.length)
@@ -473,6 +476,24 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
        vertices.some(id => typeof id !== "string" || !id.length) ||
        new Set(vertices).size !== vertices.length))
     throw new TypeError("flow witness placement requires unique original endpoint IDs (at most 8192)");
+  // A compartment ID is not a resource measurement. An endpoint shared by
+  // water and energy cannot inherit water's proposed observation as energy.
+  if (scopedVertices !== undefined &&
+      (scopedVertices === null || typeof scopedVertices !== "object" ||
+       Array.isArray(scopedVertices) ||
+       ![Object.prototype, null].includes(Object.getPrototypeOf(scopedVertices))))
+    throw new TypeError("flow witness placement requires resource-to-endpoint observation arrays");
+  if (scopedVertices !== undefined && vertices !== undefined)
+    throw new TypeError("flow witness placement refuses mixed global and resource-scoped endpoint coverage");
+  const scopedEntries = scopedVertices === undefined ? null : Object.entries(scopedVertices);
+  if (scopedEntries !== null &&
+      (scopedEntries.length > 4096 ||
+       scopedEntries.some(([id,ids]) =>
+         !id.length || !Array.isArray(ids) || ids.length > 8192 ||
+         ids.some(v => typeof v !== "string" || !v.length) ||
+         new Set(ids).size !== ids.length) ||
+       scopedEntries.reduce((total,[,ids])=>total+ids.length,0) > 8192))
+    throw new TypeError("flow witness placement requires unique resource-scoped endpoint IDs (at most 8192 total)");
   const reading = channelResourceIncidence(graph, options);
   const original = new Map(), grouped = new Map(), endpoints = new Set();
   for (const transfer of reading.transfers) {
@@ -492,11 +513,32 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
   for (const id of vertices ?? [])
     if (!endpoints.has(id))
       throw new TypeError("proposed vertex reading does not name one admitted exchange endpoint");
+  // Empty global coverage is unambiguous; positive cross-resource coverage
+  // must be labelled by the ORIGINAL Resource identity, not by endpoint alone.
+  if (vertices?.length > 0 && grouped.size > 1)
+    throw new TypeError("multi-resource observations require resource-scoped endpoint IDs");
+  if (scopedEntries !== null) {
+    for (const [resourceId,ids] of scopedEntries) {
+      const owned = grouped.get(resourceId);
+      if (!owned)
+        throw new TypeError("proposed resource observation does not name one admitted resource");
+      const local = new Set();
+      for (const t of owned.transfers) {
+        local.add(t.from.id);
+        local.add(t.to.id);
+      }
+      for (const id of ids)
+        if (!local.has(id))
+          throw new TypeError("proposed resource endpoint does not belong to that resource's admitted exchanges");
+    }
+  }
   const proposed = new Set(proposals);
-  const observed = vertices === undefined ? null : new Set(vertices);
   const resources = [...grouped.values()]
     .sort((a,b) => a.resource.id < b.resource.id ? -1 : a.resource.id > b.resource.id ? 1 : 0)
     .map(({resource,transfers}) => {
+      const observed = scopedEntries !== null
+        ? new Set(Object.hasOwn(scopedVertices,resource.id) ? scopedVertices[resource.id] : [])
+        : vertices === undefined ? null : new Set(vertices);
       // Full-node special case (Science §7.20) differs from a sparse-row
       // observed incidence matrix (Science §7.21).
       const fullNodeMinimum = undirectedCycleClosingTransfers(transfers,new Set()).length;
@@ -529,7 +571,9 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
     graph:reading.graph,channel:reading.channel,
     resources:Object.freeze(resources),obstructions:reading.obstructions,
     proposalOnly:true,
-    vertexCoverageAssumption:observed === null ?
+    vertexCoverageAssumption:scopedEntries !== null ?
+      "explicit-resource-scoped-proposed-observed-endpoints-not-measured" :
+      vertices === undefined ?
       "all-admitted-exchange-endpoints-hypothetically-observed" :
       "explicit-proposed-observed-endpoints-not-measured",
     originalGraphCompleteness:"not-attested",
