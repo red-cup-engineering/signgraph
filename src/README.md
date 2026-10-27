@@ -750,3 +750,22 @@ to one comparison edge, yield the tensor equation `2x = 3y`. An observation
 `x = 3` extends to the exact section `(3, 2)`. A conflicting observation
 produces the corresponding exact obstruction. Each operation retains its
 input cell identities and the equations used in the result.
+
+## Coordinated sheaf core shared with the other SignGraph owner PR
+
+The original `./cellular-sheaf` implementation and corresponding source
+regression file have been deliberately made **byte-identical** across
+[exact two-complex/Matrix Market PR #17](https://github.com/red-cup-engineering/signgraph/pull/17)
+and [Keratin observed-fiber PR #31](https://github.com/red-cup-engineering/signgraph/pull/31).
+The shared implementation combines (1) canonical immutable vertex/edge IDs;
+(2) inert, frozen exact-rational source restrictions; and
+(3) the already-existing strict observed-data `cochain(...,{missing:"refuse"})`
+policy. Pure mathematical zero extension remains an explicit policy, not an
+inferred measurement. Its vertex lookup uses the same SignCell canonical
+coincidence classes as the sheaf and original oriented graphs.
+
+Do not cherry-pick an older version of `src/cellular-sheaf.mjs` or its
+tests from either PR over the other. Distinct features—2-complex Matrix Market
+on #17 versus hole/fiber Keratin views on #31—and their package exports
+still require independent installed receiving and eventual manifest
+reconciliation. Identical source bytes are not native CI qualification.
