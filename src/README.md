@@ -733,3 +733,72 @@ the same pair mechanism; no arbitrary iterable can secretly add or remove
 a cell. This does not convert these graph coordinate declarations into
 witnessed real-world observations. Numeric valuation and source authority
 still require their respective original producers.
+
+## Exact 2-complex cellular sheaves and Matrix Market exchange
+
+The native `./cellular-sheaf-complex` adds an oriented **source-supplied**
+2-complex with typed finite-dimensional rational stalks at vertices, edges,
+and faces, explicit incidence restrictions, `d0` and `d1`. It reuses the
+original `cellularSheaf`, `cellular2Complex`, and Exact Number matrix rank
+owners. A `d1*d0=0` assay and unique commuting restriction paths are
+both required: cancellation of signed edges is not enough to make a sheaf.
+Finite rational `H0/H1/H2` is conditional on those admitted assignments;
+the input does not itself establish source-derivation from a performed Mark.
+
+The original in-process `cellular2Sheaf` output may be exchanged by
+`matrixMarketCoboundary` as standard NIST Matrix Market coordinate text:
+integer entries exact, noninteger entries *explicitly rounded to binary64*
+under representability checks, one-based coordinates, native typed basis
+retained separately. The exporter refuses a copied or JSON-forged result with
+merely familiar `kind` text; a portable admitted reimport protocol has not
+been established and is not silently claimed.
+
+The native test `test/cellular-sheaf-complex.test.mjs` covers unfilled
+and filled cycles, H2, higher-rank stalks, noncommuting attachments,
+ambiguous repeated-incidence maps, output coordinates and unrepresentable
+rational coefficients. Its dependency-closed qualification and external
+Matrix Market solver reception are separate release gates. This is a
+source-preserving graph/mathematics reader, not a runtime ledger, message
+bus, effect executor, Lean kernel proof or authenticated observation.
+
+## Exact cellular sheaf source stability
+
+The original `cellularSheaf` now retains all vertex/edge endpoint identities
+through SignCell's existing canonical carrier, so incidence keys and typed
+basis names remain stable after an external request or model object changes.
+Mutable exact-number object restrictions are converted to canonical, frozen
+Data-owned rationals after validating their inert own data descriptors.
+Scalar strings, integers and finite inexact host floats keep their original
+numerical meaning. The exact-to-binary64 projection still belongs solely to
+the existing Exact Number provider. A hostile scalar getter is rejected
+without execution; no JSON-shaped number can become independently witnessed
+physical or financial evidence.
+
+The higher `cellular2Sheaf` reuses the same source-address owner for face
+identities and their edge-incidence references, building both the original
+cell complex and its typed rank/basis receipt from one source face snapshot.
+This repairs a source-provenance drift where immutable *wrappers* retained
+mutable caller-owned identifier objects and rational coefficients.
+Both the original `test/cellular-sheaf.test.mjs` and 2-sheaf
+`test/cellular-sheaf-complex.test.mjs` now include mutation and adversarial
+cases. The Matrix Market header remains standard NIST coordinate exchange;
+a numerical matrix file alone never authenticates its source cells.
+
+## Coordinated sheaf core shared with the other SignGraph owner PR
+
+The original `./cellular-sheaf` implementation and corresponding source
+regression file have been deliberately made **byte-identical** across
+[exact two-complex/Matrix Market PR #17](https://github.com/red-cup-engineering/signgraph/pull/17)
+and [Keratin observed-fiber PR #31](https://github.com/red-cup-engineering/signgraph/pull/31).
+The shared implementation combines (1) canonical immutable vertex/edge IDs;
+(2) inert, frozen exact-rational source restrictions; and
+(3) the already-existing strict observed-data `cochain(...,{missing:"refuse"})`
+policy. Pure mathematical zero extension remains an explicit policy, not an
+inferred measurement. Its vertex lookup uses the same SignCell canonical
+coincidence classes as the sheaf and original oriented graphs.
+
+Do not cherry-pick an older version of `src/cellular-sheaf.mjs` or its
+tests from either PR over the other. Distinct features—2-complex Matrix Market
+on #17 versus hole/fiber Keratin views on #31—and their package exports
+still require independent installed receiving and eventual manifest
+reconciliation. Identical source bytes are not native CI qualification.
