@@ -27,6 +27,42 @@ import { rankVanishing } from "./cohomology.mjs";
 
 const freezeMatrix = (matrix) => Object.freeze(matrix.map((row) => Object.freeze([...row])));
 
+/**
+ * Read a supplied sheaf record by own enumerable data descriptor ONLY.
+ * This is a structural input boundary; it does not canonicalize opaque Cell
+ * identities (SignCell), interpret numbers (Exact Number), or authenticate a
+ * source actor. JavaScript Proxy traps still need a host security boundary.
+ */
+export function sheafSourceField(record, name, optional = false) {
+  if (!record || typeof record !== "object" || Array.isArray(record) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(record)))
+    throw new TypeError("cellularSheaf: source must be a plain data record");
+  const field = Object.getOwnPropertyDescriptor(record, name);
+  if (!field) {
+    if (optional) return undefined;
+    throw new TypeError("cellularSheaf: missing own source " + name);
+  }
+  if (!field.enumerable || !Object.hasOwn(field, "value"))
+    throw new TypeError("cellularSheaf: source " + name + " must be inert own data");
+  return field.value;
+}
+
+/** A dense, unadorned, bounded-by-actual-length copy of source array slots. */
+export function sheafSourceArray(value, label) {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype)
+    throw new TypeError("cellularSheaf: " + label + " must be an ordinary data array");
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (Reflect.ownKeys(descriptors).length !== value.length + 1)
+    throw new TypeError("cellularSheaf: " + label + " cannot be sparse or decorated");
+  return Object.freeze(Array.from({length:value.length},(_,index)=>{
+    const entry = descriptors[String(index)];
+    if (!entry || !entry.enumerable || !Object.hasOwn(entry,"value"))
+      throw new TypeError("cellularSheaf: " + label + " array slots must be inert own data");
+    return entry.value;
+  }));
+}
+
+
 const dimensionOf = (value, label) => {
   if (!Number.isSafeInteger(value) || value < 0) throw new RangeError(`cellularSheaf: ${label} must be a non-negative integer dimension`);
   return value;
@@ -58,16 +94,18 @@ const numericProduct = (a, b, caller) => {
 /** Build a frozen, validated cellular sheaf on a graph.
  *  vertices: [{ id, dim }]; edges: [{ id, from, to, dim, restrict: { from: M, to: M } }] with M an
  *  edge.dim × vertex.dim array of rows. Ids are compared by SignCell coincidence. */
-export function cellularSheaf({ vertices, edges }) {
+export function cellularSheaf(source) {
+  const vertices = sheafSourceArray(sheafSourceField(source, "vertices"), "vertices");
+  const edges = sheafSourceArray(sheafSourceField(source, "edges"), "edges");
   const vertexIndex = new Map();
   const vertexOffsets = [];
   let c0 = 0;
   const vs = vertices.map((vertex, index) => {
-    const id = canonicalCarrier(vertex.id);
+    const id = canonicalCarrier(sheafSourceField(vertex,"id"));
     const key = coincidenceKey(id);
     if (vertexIndex.has(key)) throw new RangeError("cellularSheaf: duplicate vertex id");
     vertexIndex.set(key, index);
-    const dim = dimensionOf(vertex.dim, "a vertex dim");
+    const dim = dimensionOf(sheafSourceField(vertex,"dim"), "a vertex dim");
     vertexOffsets.push(c0);
     c0 += dim;
     return Object.freeze({ id, dim });
@@ -79,18 +117,24 @@ export function cellularSheaf({ vertices, edges }) {
   const es = edges.map((edge) => {
     // Detached canonical source identities must agree with incidence indices
     // for the entire lifetime of this mathematical section receipt.
-    const id = canonicalCarrier(edge.id);
-    const fromId = canonicalCarrier(edge.from), toId = canonicalCarrier(edge.to);
+    const id = canonicalCarrier(sheafSourceField(edge,"id"));
+    const fromId = canonicalCarrier(sheafSourceField(edge,"from")), toId = canonicalCarrier(sheafSourceField(edge,"to"));
     const key = coincidenceKey(id);
     if (edgeKeys.has(key)) throw new RangeError("cellularSheaf: duplicate edge id");
     edgeKeys.add(key);
     const fi = vertexIndex.get(coincidenceKey(fromId)), ti = vertexIndex.get(coincidenceKey(toId));
     if (fi === undefined || ti === undefined) throw new RangeError("cellularSheaf: an edge names a vertex that is not in the sheaf");
-    const dim = dimensionOf(edge.dim, "an edge dim");
+    const dim = dimensionOf(sheafSourceField(edge,"dim"), "an edge dim");
     const check = (matrix, vertexDim, side) => {
-      if (!Array.isArray(matrix) || matrix.length !== dim || !matrix.every((row) => Array.isArray(row) && row.length === vertexDim)) {
+      if (!Array.isArray(matrix) || matrix.length !== dim) {
         throw new RangeError(`cellularSheaf: restriction ${side} of an edge must be ${dim} × ${vertexDim}`);
       }
+      const rows = sheafSourceArray(matrix, "restriction " + side);
+      const detachedRows = rows.map(row=>{
+        if (!Array.isArray(row) || row.length !== vertexDim)
+          throw new RangeError(`cellularSheaf: restriction ${side} of an edge must be ${dim} × ${vertexDim}`);
+        return sheafSourceArray(row,"restriction row " + side);
+      });
       // Exact Number retains the scalar mathematics; this source boundary
       // must additionally detach caller-owned rational records before any
       // later rank, coboundary or Matrix Market consumer can inspect them.
@@ -117,9 +161,13 @@ export function cellularSheaf({ vertices, edges }) {
         const [numerator, denominator] = ratPairOfEntry(inert);
         return rationalOfBigInts(numerator, denominator);
       };
-      return freezeMatrix(matrix.map(row => row.map(stableEntry)));
+      return freezeMatrix(detachedRows.map(row => row.map(stableEntry)));
     };
-    const restrict = Object.freeze({ from: check(edge.restrict?.from, vs[fi].dim, "from"), to: check(edge.restrict?.to, vs[ti].dim, "to") });
+    const sourceRestrict = sheafSourceField(edge,"restrict");
+    const restrict = Object.freeze({
+      from: check(sheafSourceField(sourceRestrict,"from"), vs[fi].dim, "from"),
+      to: check(sheafSourceField(sourceRestrict,"to"), vs[ti].dim, "to")
+    });
     from.push(fi); to.push(ti);
     edgeOffsets.push(c1);
     c1 += dim;
@@ -155,20 +203,25 @@ export function constantSheaf(vertexIds, edgeList, dim = 1) {
  * Repeated identical readings are idempotent; disagreeing ones refuse.
  * Witnesses, source authority and FOUR remain with their original owners.
  */
-export function cochain(sheaf, entries, { missing = "zero" } = {}) {
+export function cochain(sheaf, entries, options = {}) {
+  const missing = sheafSourceField(options,"missing",true) ?? "zero";
   if (!["zero", "refuse"].includes(missing))
     throw new TypeError("cochain: missing policy must be zero or refuse");
   // Own one canonical index per admitted vertex rather than repeatedly
   // searching every stalk. The key is SignCell's coincidence identity, not
   // a copied serialization, string spelling or JavaScript object identity.
-  const positions = new Map(sheaf.vertices.map((v, i) => [coincidenceKey(v.id), i]));
-  const out = new Array(sheaf.c0).fill(0);
+  const stalks = sheafSourceArray(sheafSourceField(sheaf,"vertices"),"cochain stalks");
+  const offsets = sheafSourceArray(sheafSourceField(sheaf,"vertexOffsets"),"cochain offsets");
+  const positions = new Map(stalks.map((v, i) => [coincidenceKey(sheafSourceField(v,"id")), i]));
+  const out = new Array(sheafSourceField(sheaf,"c0")).fill(0);
   const seen = new Map();
-  for (const { vertex, value } of entries) {
+  for (const entry of sheafSourceArray(entries,"cochain entries")) {
+    const vertex = sheafSourceField(entry,"vertex");
+    const value = sheafSourceField(entry,"value");
     const index = positions.get(coincidenceKey(vertex));
     if (index === undefined) throw new RangeError("cochain: unknown vertex");
-    const values = Array.isArray(value) ? value : [value];
-    if (values.length !== sheaf.vertices[index].dim) throw new RangeError("cochain: value has the wrong dimension");
+    const values = Array.isArray(value) ? sheafSourceArray(value,"cochain values") : [value];
+    if (values.length !== sheafSourceField(stalks[index],"dim")) throw new RangeError("cochain: value has the wrong dimension");
     if (values.some(v => typeof v !== "number" || !Number.isFinite(v)))
       throw new RangeError("cochain: stalk values must be finite numbers");
     if (seen.has(index)) {
@@ -177,10 +230,10 @@ export function cochain(sheaf, entries, { missing = "zero" } = {}) {
       continue;
     }
     seen.set(index, [...values]);
-    values.forEach((v, k) => { out[sheaf.vertexOffsets[index] + k] = v; });
+    values.forEach((v, k) => { out[offsets[index] + k] = v; });
   }
   if (missing === "refuse") {
-    const missingCount = sheaf.vertices.filter((v, i) => v.dim > 0 && !seen.has(i)).length;
+    const missingCount = stalks.filter((v, i) => sheafSourceField(v,"dim") > 0 && !seen.has(i)).length;
     if (missingCount)
       throw new RangeError("cochain: incomplete observation omitted " + missingCount + " positive-dimensional stalks");
   }
