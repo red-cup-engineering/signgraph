@@ -751,6 +751,92 @@ to one comparison edge, yield the tensor equation `2x = 3y`. An observation
 produces the corresponding exact obstruction. Each operation retains its
 input cell identities and the equations used in the result.
 
+## FOUR predicate-fiber producer and consumer qualification
+
+The original `./fiber` now distinguishes in-process source-produced FOUR
+fibers, generator morphisms, and order carriers from arbitrary JSON objects
+carrying a matching `kind` string. A mathematical readout uses a fiber only
+after the producer's own `predicateFiber` successfully captured finite
+pair readings. Fusion, residuation, truth comparison, generator pullback,
+both Metrologic adjoints and Frobenius/preservation checks refuse forged
+callable `at()` objects or caller-supplied generator/order methods before
+executing them. Source identity still belongs to SignCell/SCA, FOUR belongs
+to Computer Data, and adjoints remain Metrologic's original implementation.
+
+This is an IN-PROCESS construction-origin boundary, not an authenticated
+external witness, persistent identity, licensed actor or proof that a
+source described a real state. Serialized fibers must be re-derived from
+their original Cell/valuation source; copying a `kind` field can never
+constitute admission. Original regression tests are now in the native
+receiving manifest. Installed dependencies and independent consumers remain
+release gates.
+
+## Frozen generator sites and inert source arrays
+
+Finite entity and pair lists are admitted via own enumerable data array
+slots; a decorated/sparse array or a getter-backed pair is not a source of
+mathematical incidence. The published `generator.domain` and
+`generator.codomain` now retain the **same canonical copies of the
+original pairs** used to construct the Metrologic morphism index. Mutating
+external entity objects after a generator has been created cannot change
+the public diagram while its pullback continues to use older addresses.
+
+Caller-declared support and truth-comparison subsets are admitted through
+the same pair mechanism; no arbitrary iterable can secretly add or remove
+a cell. This does not convert these graph coordinate declarations into
+witnessed real-world observations. Numeric valuation and source authority
+still require their respective original producers.
+
+## Exact 2-complex cellular sheaves and Matrix Market exchange
+
+The native `./cellular-sheaf-complex` adds an oriented **source-supplied**
+2-complex with typed finite-dimensional rational stalks at vertices, edges,
+and faces, explicit incidence restrictions, `d0` and `d1`. It reuses the
+original `cellularSheaf`, `cellular2Complex`, and Exact Number matrix rank
+owners. A `d1*d0=0` assay and unique commuting restriction paths are
+both required: cancellation of signed edges is not enough to make a sheaf.
+Finite rational `H0/H1/H2` is conditional on those admitted assignments;
+the input does not itself establish source-derivation from a performed Mark.
+
+The original in-process `cellular2Sheaf` output may be exchanged by
+`matrixMarketCoboundary` as standard NIST Matrix Market coordinate text:
+integer entries exact, noninteger entries *explicitly rounded to binary64*
+under representability checks, one-based coordinates, native typed basis
+retained separately. The exporter refuses a copied or JSON-forged result with
+merely familiar `kind` text; a portable admitted reimport protocol has not
+been established and is not silently claimed.
+
+The native test `test/cellular-sheaf-complex.test.mjs` covers unfilled
+and filled cycles, H2, higher-rank stalks, noncommuting attachments,
+ambiguous repeated-incidence maps, output coordinates and unrepresentable
+rational coefficients. Its dependency-closed qualification and external
+Matrix Market solver reception are separate release gates. This is a
+source-preserving graph/mathematics reader, not a runtime ledger, message
+bus, effect executor, Lean kernel proof or authenticated observation.
+
+## Exact cellular sheaf source stability
+
+The original `cellularSheaf` now retains all vertex/edge endpoint identities
+through SignCell's existing canonical carrier, so incidence keys and typed
+basis names remain stable after an external request or model object changes.
+Mutable exact-number object restrictions are converted to canonical, frozen
+Data-owned rationals after validating their inert own data descriptors.
+Scalar strings, integers and finite inexact host floats keep their original
+numerical meaning. The exact-to-binary64 projection still belongs solely to
+the existing Exact Number provider. A hostile scalar getter is rejected
+without execution; no JSON-shaped number can become independently witnessed
+physical or financial evidence.
+
+The higher `cellular2Sheaf` reuses the same source-address owner for face
+identities and their edge-incidence references, building both the original
+cell complex and its typed rank/basis receipt from one source face snapshot.
+This repairs a source-provenance drift where immutable *wrappers* retained
+mutable caller-owned identifier objects and rational coefficients.
+Both the original `test/cellular-sheaf.test.mjs` and 2-sheaf
+`test/cellular-sheaf-complex.test.mjs` now include mutation and adversarial
+cases. The Matrix Market header remains standard NIST coordinate exchange;
+a numerical matrix file alone never authenticates its source cells.
+
 ## Coordinated sheaf core shared with the other SignGraph owner PR
 
 The original `./cellular-sheaf` implementation and corresponding source

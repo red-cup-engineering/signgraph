@@ -17,6 +17,9 @@
     "test/evidence-order-receiving.test.mjs",
     "test/pure-functional-boundary.test.mjs",
     "test/cell-content-owner.test.mjs",
+    "test/fiber.test.mjs",
+    "test/fiber-adjoints.test.mjs",
+    "test/cellular-sheaf-complex.test.mjs",
     "test/keratin-graph.test.mjs",
     "examples/keratin-hole-workbench.mjs"
   ],
@@ -52,6 +55,7 @@
     "./j26-surface": "./src/j26-surface.mjs",
     "./semantic-graph": "./src/semantic-graph.mjs",
     "./semantic-graph-schema": "./src/semantic-graph-schema.mjs",
+    "./cellular-sheaf-complex": "./src/cellular-sheaf-complex.mjs",
     "./keratin-graph": "./src/keratin-graph.mjs"
   },
   "dependencies": {
@@ -95,6 +99,9 @@
     "test/evidence-order-receiving.test.mjs",
     "test/pure-functional-boundary.test.mjs",
     "test/cell-content-owner.test.mjs",
+    "test/fiber.test.mjs",
+    "test/fiber-adjoints.test.mjs",
+    "test/cellular-sheaf-complex.test.mjs",
     "test/keratin-graph.test.mjs"
   ]
 }
