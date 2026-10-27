@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cell } from "@red-cup-engineering/signcell/cell";
 import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
-  apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf,
+  apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf, sheafSourceScalar,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
   weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection, tensorCellularSheaves, pullbackCellularSheaf, glueCellularSheafPatches,
 } from "../src/cellular-sheaf.mjs";
@@ -15,6 +15,12 @@ const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} !~ ${
 test("cochain: finite numeric vertex readings admit idempotent repetition, not false gluing", () => {
   const s = cellularSheaf({ vertices: [{ id: "a", dim: 2 }, { id: "b", dim: 1 }], edges: [] });
   assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "b", value: 3 }]), [1, 2, 3]);
+  assert.throws(() => cochain(s, [{ vertex: "a", value: [1, 2] }], { missing: "refuse" }),
+    /incomplete observation omitted 1 positive-dimensional stalks/u);
+  assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "b", value: 0 }], { missing: "refuse" }), [1, 2, 0],
+    "an actually supplied zero differs from zero extension");
+  assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }], { missing: "zero" }), [1, 2, 0]);
+  assert.throws(() => cochain(s, [], { missing: "unknown" }), /missing policy/u);
   assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "a", value: [1, 2] }]), [1, 2, 0]);
   assert.throws(
     () => cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "a", value: [1, 3] }]),
@@ -652,4 +658,108 @@ test("different original enterprise/cloud stalks pull back to one witnessed base
     /exact oriented incidence/u);
   assert.deepEqual(A.vertices.map(x=>x.id),["aws:tenant","aws:capacity"],
     "pullback cannot rename original cloud resource identities");
+});
+
+test("cochain indexes canonical structured stalks without manufacturing missing data", () => {
+  const original = { name: "é", details: { b: 2, a: 1 } };
+  const equivalent = { details: { a: 1, b: 2 }, name: "é" };
+  const ids = [original, { name: "second" }, { name: "empty-dimension" }];
+  const sheaf = cellularSheaf({ vertices: [
+    { id: ids[0], dim: 1 }, { id: ids[1], dim: 1 }, { id: ids[2], dim: 0 }
+  ], edges: [] });
+  assert.deepEqual(cochain(sheaf, [
+    { vertex: equivalent, value: 7 }, { vertex: ids[1], value: 0 },
+    { vertex: original, value: 7 }
+  ], { missing: "refuse" }), [7, 0]);
+  assert.throws(() => cochain(sheaf, [{ vertex: equivalent, value: 7 }], { missing: "refuse" }),
+    /incomplete observation omitted 1 positive-dimensional stalks/u);
+  assert.throws(() => cochain(sheaf, [
+    { vertex: original, value: 7 }, { vertex: equivalent, value: 8 }
+  ]), /conflicting duplicate vertex readings/u);
+  const many = Array.from({ length: 250 }, (_, i) => "stalk-" + i);
+  const full = constantSheaf(many, []);
+  const reversed = [...many].reverse().map((vertex, index) => ({vertex, value:index}));
+  const vector = cochain(full, reversed, { missing: "refuse" });
+  assert.equal(vector.length, many.length);
+  assert.equal(vector[0], 249);
+  assert.equal(vector[249], 0);
+});
+
+test("original cellular stalk IDs and restriction data remain immutable after caller edits",()=>{
+ const alpha={source:"A",coordinates:{side:"left"}};
+ const beta={source:"B",coordinates:{side:"right"}};
+ const sourceEdge={address:"edge:original"};
+ const entry={kind:"exactNumber.rational",num:"1",den:"3"};
+ const from=[[entry]],to=[[1]];
+ const sheaf=cellularSheaf({
+   vertices:[{id:alpha,dim:1},{id:beta,dim:1}],
+   edges:[{id:sourceEdge,from:alpha,to:beta,dim:1,restrict:{from,to}}],
+ });
+ const original={vertex:JSON.stringify(sheaf.vertices[0].id),edge:JSON.stringify(sheaf.edges[0].id),
+   restriction:JSON.stringify(sheaf.edges[0].restrict.from)};
+ alpha.coordinates.side="changed";beta.source="changed";sourceEdge.address="rewritten";entry.num="999";
+ assert.equal(JSON.stringify(sheaf.vertices[0].id),original.vertex);
+ assert.equal(JSON.stringify(sheaf.edges[0].id),original.edge);
+ assert.equal(JSON.stringify(sheaf.edges[0].restrict.from),original.restriction);
+ assert.equal(Object.isFrozen(sheaf.vertices[0].id.coordinates),true);
+ assert.equal(Object.isFrozen(sheaf.edges[0].restrict.from[0][0]),true);
+ assert.equal(cellularSheafCohomology(sheaf).h0,1,
+   "the original exact rank cannot change when a caller mutates old input");
+});
+test("source rational getter cannot execute during original sheaf restriction admission",()=>{
+ let reads=0;
+ const hostile={kind:"exactNumber.rational",den:"2"};
+ Object.defineProperty(hostile,"num",{enumerable:true,get(){reads++;return "1";}});
+ assert.throws(()=>cellularSheaf({
+   vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+   edges:[{id:"ab",from:"a",to:"b",dim:1,
+     restrict:{from:[[hostile]],to:[[1]]}}],
+ }),/exact source scalar cannot contain accessors/u);
+ assert.equal(reads,0);
+});
+
+test("sheaf source records and stalk arrays refuse foreign executable accessors",()=>{
+ let reads=0;
+ const source={edges:[]};
+ Object.defineProperty(source,"vertices",{enumerable:true,get(){reads++;return [{id:"a",dim:1}];}});
+ assert.throws(()=>cellularSheaf(source),/inert own data/u);
+ const vertex={dim:1};
+ Object.defineProperty(vertex,"id",{enumerable:true,get(){reads++;return "a";}});
+ assert.throws(()=>cellularSheaf({vertices:[vertex],edges:[]}),/inert own data/u);
+ const edge={id:"ab",from:"a",to:"b",dim:1};
+ Object.defineProperty(edge,"restrict",{enumerable:true,get(){reads++;return {from:[[1]],to:[[1]]};}});
+ assert.throws(()=>cellularSheaf({vertices:[{id:"a",dim:1},{id:"b",dim:1}],edges:[edge]}),/inert own data/u);
+ const row=[1];
+ Object.defineProperty(row,"0",{enumerable:true,get(){reads++;return 1;}});
+ assert.throws(()=>cellularSheaf({vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+  edges:[{id:"ab",from:"a",to:"b",dim:1,restrict:{from:[row],to:[[1]]}}]}),/array slots must be inert own data/u);
+ assert.equal(reads,0);
+});
+
+test("strict observed cochains refuse getters without promoting missing stalks to zeros",()=>{
+ const sheaf=cellularSheaf({vertices:[{id:"a",dim:1},{id:"b",dim:1}],edges:[]});
+ let reads=0;
+ const row={value:1};
+ Object.defineProperty(row,"vertex",{enumerable:true,get(){reads++;return "a";}});
+ assert.throws(()=>cochain(sheaf,[row]),/inert own data/u);
+ const options={};
+ Object.defineProperty(options,"missing",{enumerable:true,get(){reads++;return "refuse";}});
+ assert.throws(()=>cochain(sheaf,[],options),/inert own data/u);
+ const vector=[1];
+ Object.defineProperty(vector,"0",{enumerable:true,get(){reads++;return 1;}});
+ assert.throws(()=>cochain(sheaf,[{vertex:"a",value:vector}]),/array slots must be inert own data/u);
+ assert.equal(reads,0);
+ assert.deepEqual(cochain(sheaf,[{vertex:"a",value:0},{vertex:"b",value:0}],{missing:"refuse"}),[0,0]);
+ assert.throws(()=>cochain(sheaf,[{vertex:"a",value:0}],{missing:"refuse"}),/incomplete observation/u);
+});
+
+test("canonical exact source scalar is inert and immutable",()=>{
+ let reads=0;
+ const bad={kind:"exactNumber.rational",den:"3"};
+ Object.defineProperty(bad,"num",{enumerable:true,get(){reads++;return "1";}});
+ assert.throws(()=>sheafSourceScalar(bad),/accessors or hidden data/u);
+ assert.equal(reads,0);
+ const admitted=sheafSourceScalar({kind:"exactNumber.rational",num:"2",den:"6"});
+ assert.deepEqual([admitted.num,admitted.den],["1","3"]);
+ assert.equal(Object.isFrozen(admitted),true);
 });
