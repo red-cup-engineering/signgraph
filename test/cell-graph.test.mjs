@@ -135,7 +135,7 @@ test("cellGraph presents one stable SignCell point despite contrary later testim
 });
 
 test("canonical coincidence-indexed flow agrees on Unicode, byte terms and repeated predication presentations",()=>{
-  const first={name:"e\\u0301",bits:new Uint8Array([1,2,3])};
+  const first={name:"é",bits:new Uint8Array([1,2,3])};
   const same={bits:new Uint8Array([1,2,3]),name:"é"};
   const other={name:"other",bits:new Uint8Array([4])};
   const source=[
@@ -152,13 +152,13 @@ test("canonical coincidence-indexed flow agrees on Unicode, byte terms and repea
   assert.equal(oriented.edges[0].fromIndex,oriented.edges[1].fromIndex);
   assert.equal(oriented.edges[0].toIndex,oriented.edges[1].toIndex);
   assert.equal(oriented.edges.length,3,"reflexive equivalence is excluded only from boundary edges");
-  assert.equal(oriented.terms[0].name,"e\\u0301","first source presentation remains readable");
+  assert.equal(oriented.terms[0].name,"é","first source presentation remains readable");
 });
 
 test("canonical vertex index matches independent coincidence scans on varied finite source graphs",()=>{
   const terms=[
     "a","b","c","d", {left:1,right:[2,3]}, {right:[2,3],left:1},
-    "e\\u0301","é", {bytes:new Uint8Array([0,255])},{bytes:new Uint8Array([0,255])}
+    "é","é", {bytes:new Uint8Array([0,255])},{bytes:new Uint8Array([0,255])}
   ];
   for(let size=1;size<=70;size+=7){
     const source=Array.from({length:size},(_,i)=>cell(
