@@ -147,28 +147,42 @@ export function constantSheaf(vertexIds, edgeList, dim = 1) {
   });
 }
 
-/** A finite numeric 0-cochain over vertex stalks, in vertex order. Absent vertices read zero.
- * Repeated identical local readings are idempotent; disagreeing readings of one stalk cannot be
- * silently glued by last-write-wins. Witnesses/FOUR belong in the separate sign evidence fibers. */
-export function cochain(sheaf, entries) {
+/** A finite numeric 0-cochain over vertex stalks, in vertex order.
+ * The historical default mathematically extends absent values by zero;
+ * no observer may interpret that default as a measured zero.
+ * Observational receivers require { missing: "refuse" } and must supply one
+ * independent measured value for every positive-dimensional source stalk.
+ * Repeated identical readings are idempotent; disagreeing ones refuse.
+ * Witnesses, source authority and FOUR remain with their original owners.
+ */
+export function cochain(sheaf, entries, { missing = "zero" } = {}) {
+  if (!["zero", "refuse"].includes(missing))
+    throw new TypeError("cochain: missing policy must be zero or refuse");
+  // Own one canonical index per admitted vertex rather than repeatedly
+  // searching every stalk. The key is SignCell's coincidence identity, not
+  // a copied serialization, string spelling or JavaScript object identity.
+  const positions = new Map(sheaf.vertices.map((v, i) => [coincidenceKey(v.id), i]));
   const out = new Array(sheaf.c0).fill(0);
   const seen = new Map();
   for (const { vertex, value } of entries) {
-    const index = sheaf.vertices.findIndex((candidate) => coincidenceKey(candidate.id) === coincidenceKey(vertex));
-    if (index < 0) throw new RangeError("cochain: unknown vertex");
+    const index = positions.get(coincidenceKey(vertex));
+    if (index === undefined) throw new RangeError("cochain: unknown vertex");
     const values = Array.isArray(value) ? value : [value];
     if (values.length !== sheaf.vertices[index].dim) throw new RangeError("cochain: value has the wrong dimension");
-    if (values.some((v) => typeof v !== "number" || !Number.isFinite(v))) {
+    if (values.some(v => typeof v !== "number" || !Number.isFinite(v)))
       throw new RangeError("cochain: stalk values must be finite numbers");
-    }
     if (seen.has(index)) {
-      if (values.some((v, k) => v !== seen.get(index)[k])) {
+      if (values.some((v, k) => v !== seen.get(index)[k]))
         throw new RangeError("cochain: conflicting duplicate vertex readings");
-      }
       continue;
     }
     seen.set(index, [...values]);
     values.forEach((v, k) => { out[sheaf.vertexOffsets[index] + k] = v; });
+  }
+  if (missing === "refuse") {
+    const missingCount = sheaf.vertices.filter((v, i) => v.dim > 0 && !seen.has(i)).length;
+    if (missingCount)
+      throw new RangeError("cochain: incomplete observation omitted " + missingCount + " positive-dimensional stalks");
   }
   return out;
 }

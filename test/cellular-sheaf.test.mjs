@@ -15,6 +15,12 @@ const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} !~ ${
 test("cochain: finite numeric vertex readings admit idempotent repetition, not false gluing", () => {
   const s = cellularSheaf({ vertices: [{ id: "a", dim: 2 }, { id: "b", dim: 1 }], edges: [] });
   assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "b", value: 3 }]), [1, 2, 3]);
+  assert.throws(() => cochain(s, [{ vertex: "a", value: [1, 2] }], { missing: "refuse" }),
+    /incomplete observation omitted 1 positive-dimensional stalks/u);
+  assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "b", value: 0 }], { missing: "refuse" }), [1, 2, 0],
+    "an actually supplied zero differs from zero extension");
+  assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }], { missing: "zero" }), [1, 2, 0]);
+  assert.throws(() => cochain(s, [], { missing: "unknown" }), /missing policy/u);
   assert.deepEqual(cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "a", value: [1, 2] }]), [1, 2, 0]);
   assert.throws(
     () => cochain(s, [{ vertex: "a", value: [1, 2] }, { vertex: "a", value: [1, 3] }]),
@@ -652,6 +658,31 @@ test("different original enterprise/cloud stalks pull back to one witnessed base
     /exact oriented incidence/u);
   assert.deepEqual(A.vertices.map(x=>x.id),["aws:tenant","aws:capacity"],
     "pullback cannot rename original cloud resource identities");
+});
+
+test("cochain indexes canonical structured stalks without manufacturing missing data", () => {
+  const original = { name: "é", details: { b: 2, a: 1 } };
+  const equivalent = { details: { a: 1, b: 2 }, name: "é" };
+  const ids = [original, { name: "second" }, { name: "empty-dimension" }];
+  const sheaf = cellularSheaf({ vertices: [
+    { id: ids[0], dim: 1 }, { id: ids[1], dim: 1 }, { id: ids[2], dim: 0 }
+  ], edges: [] });
+  assert.deepEqual(cochain(sheaf, [
+    { vertex: equivalent, value: 7 }, { vertex: ids[1], value: 0 },
+    { vertex: original, value: 7 }
+  ], { missing: "refuse" }), [7, 0]);
+  assert.throws(() => cochain(sheaf, [{ vertex: equivalent, value: 7 }], { missing: "refuse" }),
+    /incomplete observation omitted 1 positive-dimensional stalks/u);
+  assert.throws(() => cochain(sheaf, [
+    { vertex: original, value: 7 }, { vertex: equivalent, value: 8 }
+  ]), /conflicting duplicate vertex readings/u);
+  const many = Array.from({ length: 250 }, (_, i) => "stalk-" + i);
+  const full = constantSheaf(many, []);
+  const reversed = [...many].reverse().map((vertex, index) => ({vertex, value:index}));
+  const vector = cochain(full, reversed, { missing: "refuse" });
+  assert.equal(vector.length, many.length);
+  assert.equal(vector[0], 249);
+  assert.equal(vector[249], 0);
 });
 
 test("original cellular stalk IDs and restriction data remain immutable after caller edits",()=>{

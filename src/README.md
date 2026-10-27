@@ -748,3 +748,22 @@ Both the original `test/cellular-sheaf.test.mjs` and 2-sheaf
 `test/cellular-sheaf-complex.test.mjs` now include mutation and adversarial
 cases. The Matrix Market header remains standard NIST coordinate exchange;
 a numerical matrix file alone never authenticates its source cells.
+
+## Coordinated sheaf core shared with the other SignGraph owner PR
+
+The original `./cellular-sheaf` implementation and corresponding source
+regression file have been deliberately made **byte-identical** across
+[exact two-complex/Matrix Market PR #17](https://github.com/red-cup-engineering/signgraph/pull/17)
+and [Keratin observed-fiber PR #31](https://github.com/red-cup-engineering/signgraph/pull/31).
+The shared implementation combines (1) canonical immutable vertex/edge IDs;
+(2) inert, frozen exact-rational source restrictions; and
+(3) the already-existing strict observed-data `cochain(...,{missing:"refuse"})`
+policy. Pure mathematical zero extension remains an explicit policy, not an
+inferred measurement. Its vertex lookup uses the same SignCell canonical
+coincidence classes as the sheaf and original oriented graphs.
+
+Do not cherry-pick an older version of `src/cellular-sheaf.mjs` or its
+tests from either PR over the other. Distinct features—2-complex Matrix Market
+on #17 versus hole/fiber Keratin views on #31—and their package exports
+still require independent installed receiving and eventual manifest
+reconciliation. Identical source bytes are not native CI qualification.
