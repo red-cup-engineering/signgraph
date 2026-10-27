@@ -122,3 +122,21 @@ test('ordinary parsed FEATHER-G inputs roundtrip without mutation or forged sour
   assert.deepEqual(first.graphs[0].incidences[0].endpoints,[0,1]);
   assert.match(first.sourceQualification,/unwitnessed/u);
 });
+
+test('descriptor reader rejects forged structural kinds and export getters before execution',()=>{
+  let calls=0;
+  const counterfeit={graphs:[]};
+  Object.defineProperty(counterfeit,'kind',{enumerable:true,
+    get(){calls++;return 'signgraph.featherG.structuralCollection.v1';}});
+  assert.throws(()=>decodeFeatherGEmbeddingCsv('id,x_0,x_1\n0,1,0',
+    counterfeit,{order:1,evalPoints:1}),/graph IDs/);
+  const exportInput={kind:'signgraph.featherG.exportProjection.v1'};
+  Object.defineProperty(exportInput,'graphs',{enumerable:true,
+    get(){calls++;return {'0':[[0,1]]};}});
+  assert.throws(()=>decodeFeatherGEmbeddingCsv('id,x_0,x_1\n0,1,0',
+    exportInput,{order:1,evalPoints:1}),/graph IDs/);
+  assert.equal(calls,0);
+  const ordinary={kind:'signgraph.featherG.exportProjection.v1',graphs:{'0':[[0,1]]}};
+  assert.equal(decodeFeatherGEmbeddingCsv('id,x_0,x_1\n0,1,0',
+    ordinary,{order:1,evalPoints:1}).embeddings.length,1);
+});

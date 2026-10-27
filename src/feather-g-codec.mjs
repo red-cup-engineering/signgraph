@@ -261,9 +261,26 @@ export function decodeFeatherGEmbeddingCsv(csv, graphCollection, model = {}) {
     fail('invalid FEATHER-G model configuration');
   const width = 2 * order * evalPoints;
   if (width < 1 || width > MAX_DIMENSIONS) fail('embedding width exceeds bounded work budget');
-  const input = graphCollection?.kind === 'signgraph.featherG.exportProjection.v1'
-    ? graphCollection.graphs : graphCollection;
-  const decoded = decodedCollections.has(graphCollection) ? graphCollection : decodeFeatherGGraphCollection(input);
+  // A branded in-process readout may be consumed directly; its JSON clone
+  // is NOT an admitted readout. Never invoke caller-controlled getters on
+  // `kind` or `graphs` before deciding this source boundary.
+  const kindSlot = isRecord(graphCollection)
+    ? Object.getOwnPropertyDescriptor(graphCollection, 'kind') : undefined;
+  if (kindSlot && (!kindSlot.enumerable || !Object.hasOwn(kindSlot, 'value')))
+    fail('graph IDs require inert original readout data, not accessors');
+  const kind = kindSlot?.value;
+  if (kind === 'signgraph.featherG.structuralCollection.v1' &&
+      !decodedCollections.has(graphCollection))
+    fail('graph IDs must originate from an admitted in-process structural readout');
+  let input = graphCollection;
+  if (kind === 'signgraph.featherG.exportProjection.v1') {
+    const graphsSlot = Object.getOwnPropertyDescriptor(graphCollection, 'graphs');
+    if (!graphsSlot || !graphsSlot.enumerable || !Object.hasOwn(graphsSlot, 'value'))
+      fail('graph IDs require inert exported graph data');
+    input = graphsSlot.value;
+  }
+  const decoded = decodedCollections.has(graphCollection)
+    ? graphCollection : decodeFeatherGGraphCollection(input);
   if (typeof csv !== 'string') fail('embedding CSV must be text');
   const lines = csv.trim().split(/\r?\n/);
   const header = lines.shift()?.split(',');

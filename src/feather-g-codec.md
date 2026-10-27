@@ -102,3 +102,16 @@ the same structural checks. This does **not** make a hostile ECMAScript Proxy
 safe to evaluate in process: admitting executable foreign objects requires a
 host sandbox/capability boundary. It also does not make imported edge lists
 source-witnessed native SignCells or bestow a reversible embedding.
+
+## In-process structural readout custody and external wire input
+
+`decodeFeatherGEmbeddingCsv` admits an original returned FEATHER-G structural
+collection only through the decoder's existing in-process construction receipt.
+A cloned or hand-assembled object advertising
+`signgraph.featherG.structuralCollection.v1` cannot borrow its identity by
+copying `kind` and `graphs`. Its failure is explicitly attributed to
+unadmitted *graph IDs* rather than accidentally parsing the cloned object as a
+new ordinary graph collection. Optional external export-projection graph data
+may still be re-read as plain structural wire input, through own enumerable
+data descriptors. Neither branch runs `kind` or `graphs` getters.
+These are in-process boundary checks, not authenticated external graph sources.
