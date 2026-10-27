@@ -24,7 +24,9 @@
     "examples/keratin-hole-workbench.mjs",
     "test/source-record-tower-flow.test.mjs",
     "test/cell-graph.test.mjs",
-    "test/cohomology-canonical-incidence.test.mjs"
+    "test/cohomology-canonical-incidence.test.mjs",
+    "test/feather-g-codec.test.mjs",
+    "test/feather-g-native-signgraph.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -59,7 +61,8 @@
     "./semantic-graph": "./src/semantic-graph.mjs",
     "./semantic-graph-schema": "./src/semantic-graph-schema.mjs",
     "./cellular-sheaf-complex": "./src/cellular-sheaf-complex.mjs",
-    "./keratin-graph": "./src/keratin-graph.mjs"
+    "./keratin-graph": "./src/keratin-graph.mjs",
+    "./feather-g-codec": "./src/feather-g-codec.mjs"
   },
   "dependencies": {
     "@red-cup-engineering/uri-services-section": "0.1.1",
@@ -108,6 +111,8 @@
     "test/keratin-graph.test.mjs",
     "test/source-record-tower-flow.test.mjs",
     "test/cell-graph.test.mjs",
-    "test/cohomology-canonical-incidence.test.mjs"
+    "test/cohomology-canonical-incidence.test.mjs",
+    "test/feather-g-codec.test.mjs",
+    "test/feather-g-native-signgraph.test.mjs"
   ]
 }

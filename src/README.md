@@ -882,3 +882,27 @@ published SignCell producer, the native Metrologic/Exact Number packages,
 and an actual authorized downstream consumer before publication. Raw
 Record counts are not a universal invertible FOUR regime tower,
 physical C4 flux, source authentication or a sheaf-gluing theorem.
+
+## Explicit-loss FEATHER-G structural interoperability
+
+The additive `./feather-g-codec` now imports the reference FEATHER-G
+undirected edge-list collection as non-witnessed structural data. It
+projects original source-position feather graphs and re-admitted SignGraphs
+with an explicit `projection: "undirected-simple"` acknowledgement that
+direction, predicates, parallel edge identities, and isolated sources may
+be lost. A separate sidecar retains original occurrence and witness IDs
+where supplied. Numeric embedding CSVs remain non-invertible descriptors.
+
+The decoder accepts only bounded inert JSON edge lists, refusing getter-
+backed and decorated records. A cloned `structuralCollection.v1` cannot
+reuse an in-process admission receipt by copying its `kind` field;
+optional plain export graphs may be re-read as ordinary structural
+wire data through the same source guard.
+
+See `src/feather-g-codec.md` and native
+`test/feather-g-codec.test.mjs` /
+`test/feather-g-native-signgraph.test.mjs` for exact boundaries.
+The original SignCell identities, source/physical witness authority,
+FEATHER-G numerical model execution, and published package receiving
+belong to their separate owners. No direction, evidence, or operational
+permission is inferred from an embedding.
