@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cell } from "@red-cup-engineering/signcell/cell";
 import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
-  apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf,
+  apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf, sheafSourceScalar,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
   weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection, tensorCellularSheaves, pullbackCellularSheaf, glueCellularSheafPatches,
 } from "../src/cellular-sheaf.mjs";
@@ -751,4 +751,15 @@ test("strict observed cochains refuse getters without promoting missing stalks t
  assert.equal(reads,0);
  assert.deepEqual(cochain(sheaf,[{vertex:"a",value:0},{vertex:"b",value:0}],{missing:"refuse"}),[0,0]);
  assert.throws(()=>cochain(sheaf,[{vertex:"a",value:0}],{missing:"refuse"}),/incomplete observation/u);
+});
+
+test("canonical exact source scalar is inert and immutable",()=>{
+ let reads=0;
+ const bad={kind:"exactNumber.rational",den:"3"};
+ Object.defineProperty(bad,"num",{enumerable:true,get(){reads++;return "1";}});
+ assert.throws(()=>sheafSourceScalar(bad),/accessors or hidden data/u);
+ assert.equal(reads,0);
+ const admitted=sheafSourceScalar({kind:"exactNumber.rational",num:"2",den:"6"});
+ assert.deepEqual([admitted.num,admitted.den],["1","3"]);
+ assert.equal(Object.isFrozen(admitted),true);
 });

@@ -63,6 +63,32 @@ export function sheafSourceArray(value, label) {
 }
 
 
+/** Source-inert exact scalar retention. Does not redefine the original
+ * Exact Number rationals or authorize an observer's reported coefficient.
+ */
+export const sheafSourceScalar = entry => {
+  if (typeof entry === "number") { numberOfEntry(entry); return entry; }
+  if (entry === null || typeof entry !== "object") {
+    ratPairOfEntry(entry); return entry;
+  }
+  if (![Object.prototype, null].includes(Object.getPrototypeOf(entry)))
+    throw new TypeError("cellularSheaf: exact source scalar must be plain data");
+  const descriptors = Object.getOwnPropertyDescriptors(entry);
+  const names = Reflect.ownKeys(descriptors);
+  if (names.some(name => typeof name !== "string" ||
+      !descriptors[name].enumerable || !Object.hasOwn(descriptors[name], "value")))
+    throw new TypeError("cellularSheaf: exact source scalar cannot contain accessors or hidden data");
+  const inert = Object.create(null);
+  for (const name of names) {
+    const part = descriptors[name].value;
+    if (!["string","number","bigint","boolean"].includes(typeof part))
+      throw new TypeError("cellularSheaf: exact source scalar contains executable content");
+    Object.defineProperty(inert, name, {value: part, enumerable: true});
+  }
+  const [numerator, denominator] = ratPairOfEntry(inert);
+  return rationalOfBigInts(numerator, denominator);
+};
+
 const dimensionOf = (value, label) => {
   if (!Number.isSafeInteger(value) || value < 0) throw new RangeError(`cellularSheaf: ${label} must be a non-negative integer dimension`);
   return value;
@@ -139,29 +165,7 @@ export function cellularSheaf(source) {
       // must additionally detach caller-owned rational records before any
       // later rank, coboundary or Matrix Market consumer can inspect them.
       // Inexact finite host floats keep their original numeric meaning.
-      const stableEntry = entry => {
-        if (typeof entry === "number") { numberOfEntry(entry); return entry; }
-        if (entry === null || typeof entry !== "object") {
-          ratPairOfEntry(entry); return entry;
-        }
-        if (![Object.prototype, null].includes(Object.getPrototypeOf(entry)))
-          throw new TypeError("cellularSheaf: exact source scalar must be plain data");
-        const descriptors = Object.getOwnPropertyDescriptors(entry);
-        const names = Reflect.ownKeys(descriptors);
-        if (names.some(name => typeof name !== "string" ||
-            !descriptors[name].enumerable || !Object.hasOwn(descriptors[name], "value")))
-          throw new TypeError("cellularSheaf: exact source scalar cannot contain accessors or hidden data");
-        const inert = Object.create(null);
-        for (const name of names) {
-          const part = descriptors[name].value;
-          if (!["string","number","bigint","boolean"].includes(typeof part))
-            throw new TypeError("cellularSheaf: exact source scalar contains executable content");
-          Object.defineProperty(inert, name, {value: part, enumerable: true});
-        }
-        const [numerator, denominator] = ratPairOfEntry(inert);
-        return rationalOfBigInts(numerator, denominator);
-      };
-      return freezeMatrix(detachedRows.map(row => row.map(stableEntry)));
+      return freezeMatrix(detachedRows.map(row => row.map(sheafSourceScalar)));
     };
     const sourceRestrict = sheafSourceField(edge,"restrict");
     const restrict = Object.freeze({
