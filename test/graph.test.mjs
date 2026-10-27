@@ -942,3 +942,88 @@ test("separate resources, self-loops, and truly parallel exchanges preserve the 
     ...qq,proposedWitnessExchangeIds:[at.ex1.id],
   }).resources[0].unmeteredComplementIsUndirectedForest,true);
 });
+
+
+test("source-limited vertex observations require an anchored forest, not a plain forest",()=>{
+  const {graph,at,roles}=stockAmbiguityFixture({broken:true});
+  // This fixture is the original resource path A->B->C->D.
+  const q={channel:at.channel,relations:roles};
+  const all=channelFlowWitnessPlacement(graph,q);
+  assert.equal(all.resources[0].minimumIndependentEdgeMeterCount,0);
+  assert.equal(all.resources[0].unmeteredComplementIsUndirectedForest,true);
+  assert.equal(all.vertexCoverageAssumption,
+    "all-admitted-exchange-endpoints-hypothetically-observed");
+  const onlyB=channelFlowWitnessPlacement(graph,{
+    ...q,proposedObservedCompartmentIds:[at.B.id],
+  });
+  assert.equal(onlyB.resources[0].minimumEdgeMeterCountWithFullVertexCoverage,0);
+  assert.equal(onlyB.resources[0].minimumIndependentEdgeMeterCount,2);
+  assert.equal(onlyB.resources[0].unmeteredComplementIsUndirectedForest,true);
+  assert.equal(onlyB.resources[0].unmeteredComplementHasAtMostOneUnobservedVertexPerTree,false);
+  assert.equal(onlyB.resources[0].unmeteredCycleClosingTransfers.length,2);
+  assert.equal(onlyB.resources[0].structuralCondition,"conditional-linear-observation-has-kernel");
+  assert.equal(onlyB.vertexCoverageAssumption,"explicit-proposed-observed-endpoints-not-measured");
+
+  const enough=channelFlowWitnessPlacement(graph,{
+    ...q,proposedObservedCompartmentIds:[at.B.id],
+    proposedWitnessExchangeIds:[at.e1.id,at.e3.id],
+  });
+  assert.equal(enough.resources[0].unmeteredComplementIsUndirectedForest,true);
+  assert.equal(enough.resources[0].unmeteredComplementHasAtMostOneUnobservedVertexPerTree,true);
+  assert.equal(enough.resources[0].structuralCondition,
+    "conditional-linear-observation-full-rank-if-all-premises-hold");
+  assert.deepEqual(enough.resources[0].proposedObservedCompartmentIds,[at.B.id]);
+  assert.equal(enough.physicalMeterReadings,"not-supplied");
+
+  const knownThree=channelFlowWitnessPlacement(graph,{
+    ...q,proposedObservedCompartmentIds:[at.A.id,at.B.id,at.C.id],
+  });
+  assert.equal(knownThree.resources[0].minimumIndependentEdgeMeterCount,0);
+  assert.equal(knownThree.resources[0].unmeteredComplementHasAtMostOneUnobservedVertexPerTree,true);
+  const noStocks=channelFlowWitnessPlacement(graph,{
+    ...q,proposedObservedCompartmentIds:[],
+  });
+  assert.equal(noStocks.resources[0].minimumIndependentEdgeMeterCount,3);
+  assert.equal(noStocks.resources[0].unmeteredComplementHasAtMostOneUnobservedVertexPerTree,false);
+  const everyEdge=channelFlowWitnessPlacement(graph,{
+    ...q,proposedObservedCompartmentIds:[],
+    proposedWitnessExchangeIds:[at.e1.id,at.e2.id,at.e3.id],
+  });
+  assert.equal(everyEdge.resources[0].unmeteredComplementHasAtMostOneUnobservedVertexPerTree,true);
+  assert.deepEqual(channelFlowWitnessPlacement(wire(graph),{
+    ...q,proposedObservedCompartmentIds:[at.B.id],
+    proposedWitnessExchangeIds:[at.e1.id,at.e3.id],
+  }),enough);
+  assert.throws(()=>channelFlowWitnessPlacement(graph,{
+    ...q,proposedObservedCompartmentIds:[at.B.id,at.B.id],
+  }),/unique original endpoint IDs/);
+  assert.throws(()=>channelFlowWitnessPlacement(graph,{
+    ...q,proposedObservedCompartmentIds:["ni:forged"],
+  }),/one admitted exchange endpoint/);
+  assert.throws(()=>channelFlowWitnessPlacement(graph,{
+    ...q,proposedObservedCompartmentIds:{observed:at.B.id},
+  }),/unique original endpoint IDs/);
+});
+
+test("partial vertex coverage cannot be inherited across different resources",()=>{
+  const {graph,at,roles}=stockAmbiguityFixture({otherResource:true});
+  const q={channel:at.channel,relations:roles,
+    proposedObservedCompartmentIds:[at.B.id]};
+  const r=channelFlowWitnessPlacement(graph,q);
+  assert.equal(r.resources.length,2);
+  assert.equal(r.proposalOnly,true);
+  const water=r.resources.find(row=>row.resource.id===at.water.id);
+  const energy=r.resources.find(row=>row.resource.id===at.energy.id);
+  assert.equal(water.exchangeCount,2);
+  assert.equal(water.minimumIndependentEdgeMeterCount,1);
+  assert.deepEqual(water.proposedObservedCompartmentIds,[at.B.id]);
+  assert.equal(energy.exchangeCount,1);
+  assert.equal(energy.minimumIndependentEdgeMeterCount,1);
+  assert.deepEqual(energy.proposedObservedCompartmentIds,[]);
+  assert.equal(energy.unmeteredComplementHasAtMostOneUnobservedVertexPerTree,false);
+  assert.equal(channelFlowWitnessPlacement(graph,{
+    ...q,proposedObservedCompartmentIds:[at.A.id,at.B.id,at.C.id],
+  }).resources.every(row=>row.minimumIndependentEdgeMeterCount===0),true);
+  // No resource is declared measured by submitting endpoint IDs.
+  assert.equal(r.nodeStocksAndExternalPorts,"not-supplied");
+});
