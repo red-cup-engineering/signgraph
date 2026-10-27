@@ -90,6 +90,59 @@ obligations of [Obsmetrologia issue #79](https://github.com/lenticule-science/ob
 The present pure implementation is a **conditional view over caller-qualified
 source acts**, not a theorem or authenticated source importer.
 
+## Keratin Graphs: hole-aware sheaf/fiber graphing
+
+The `./keratin-graph` export is a **real finite computation and Graphviz
+workbench** over the EXISTING original source-positioned `./feather-graph`
+reading. It preserves directed source predication occurrences, gives each
+performed position an explicitly supplied finite state stalk, and assigns
+source-identified directed compatibility tables to every relation. It
+calculates exact global section counts under a finite work budget, identifies
+minimal incompatible contact cores, retains append-only source-labeled lock
+events as monotone information exclusion, and compares caller-declared
+observer scopes with globally liftable reports.
+
+Original filled 2-cells and candidate unfilled boundary walks are **different
+input families**. The existing exact `cellular2Complex` engine computes the
+actual supplied complex and counterfactual single/aggregate filling probes;
+no candidate hole is silently inserted as a face. A graph cycle, a candidate
+unfilled boundary, a global-section obstruction, and a causally inaccessible
+interior are *not equivalent*. A separate `keratinLinearSheaf` reading
+delegates vector-stalk restrictions and exact rational H0/H1 to the original
+`cellularSheaf` engine. Graph-sheaf H1 is not asserted to equal filled-surface
+H1.
+
+`assessKeratinLinearObservations` is the strict **observed information → numeric
+geometry** gate on that exact linear source graph. Each local numeric reading
+carries separately named positive and negative witnesses and is evaluated
+through the original Computer Data FOUR algebra. Unobserved stalks, source
+disagreement, and any unknown/denied/contested testimony preserve their
+source identities but produce **no numeric cochain or compatibility verdict**.
+Only complete, unopposed readings go through the *existing*
+`cochain → coboundary → apply` operations, returning source-identified edge
+residuals. The pure cochain kernel's default zero-extension remains valid
+mathematics, but observed input requires its explicit `{missing:'refuse'}`
+mode. This consumer first checks FOUR testimony and complete source
+coverage, **then** invokes that original cochain in strict mode: omitted
+measurement can never become a measured zero at either layer. The results are conditional host-float
+numerical geometry, not an authenticated measurement, exact gluing theorem,
+material physics or derived causal horizon.
+
+`keratinGraphToDot` renders directed source arrows separately from dotted
+hole/filled-face **annotations**, retaining source record IDs and exact
+analysis status. Graphviz is a standard visualization projection, never
+source authorization. Run `npm run demo:keratin`, `npm run test:keratin`
+and `node examples/keratin-hole-workbench.mjs --dot | dot -Tsvg > hole.svg`.
+See [the Keratin Graph manual](./keratin-graph.md) and
+[original engineering Work #30](https://github.com/red-cup-engineering/signgraph/issues/30).
+
+The science-derived `Articulating.Beneath` admission bridge and causal
+`ShroudIndexedKeratin` transport remain
+[Obsmetrologia #79](https://github.com/lenticule-science/obsmetrologia/issues/79).
+A caller's labels for source, hole or observer are **not** proofs; the
+package export is not a deployed service. It also does not replace the
+separate FEATHER-G numerical embedding codec PR.
+
 ## Flat-file graph stores: additive SQLite and CouchDB obligations
 
 The Leader has additionally named **SQLite** and **Apache CouchDB** as
@@ -698,25 +751,196 @@ to one comparison edge, yield the tensor equation `2x = 3y`. An observation
 produces the corresponding exact obstruction. Each operation retains its
 input cell identities and the equations used in the result.
 
-## Source-qualified J26 puncture geometry
+## FOUR predicate-fiber producer and consumer qualification
 
-The original `./j26-surface` now provides `j26PunctureView`, admitting
-an explicit nonempty proper selection of original J26 exterior face IDs.
-A caller must choose one of two mathematically DIFFERENT operations:
-`skeleton` removes open faces but retains the entire original one-skeleton;
-`face-support` retains only edges/vertices supporting surviving faces.
-Both delegate **exact** finite homology to the original SignGraph
-`cellular2Complex`, not a new rank algorithm or visual guess.
+The original `./fiber` now distinguishes in-process source-produced FOUR
+fibers, generator morphisms, and order carriers from arbitrary JSON objects
+carrying a matching `kind` string. A mathematical readout uses a fiber only
+after the producer's own `predicateFiber` successfully captured finite
+pair readings. Fusion, residuation, truth comparison, generator pullback,
+both Metrologic adjoints and Frobenius/preservation checks refuse forged
+callable `at()` objects or caller-supplied generator/order methods before
+executing them. Source identity still belongs to SignCell/SCA, FOUR belongs
+to Computer Data, and adjoints remain Metrologic's original implementation.
 
-The existing `./operations` executor exposes a bounded
-`signgraph.j26.puncture` operation with named source edges and optional
-independently reported integral Burgers vectors. An externally supplied edge
-field is not authenticated experimental data, physical energy, right to
-remove material, or a proof of a temporal causal hole. Source receipt and
-mathematical classification remain distinct. The original J26 source
-regressions exhaust all 254 nonempty proper face-removal masks and compare
-closed-cell support with an independent face-dual connectivity oracle.
-The modern operation registry, input limits, native tests and pure-module
-boundary remain intact; historical executable CLI tests from the old draft
-are NOT resurrected. Source publication and pinned downstream receiving
-are still independent obligations.
+This is an IN-PROCESS construction-origin boundary, not an authenticated
+external witness, persistent identity, licensed actor or proof that a
+source described a real state. Serialized fibers must be re-derived from
+their original Cell/valuation source; copying a `kind` field can never
+constitute admission. Original regression tests are now in the native
+receiving manifest. Installed dependencies and independent consumers remain
+release gates.
+
+## Frozen generator sites and inert source arrays
+
+Finite entity and pair lists are admitted via own enumerable data array
+slots; a decorated/sparse array or a getter-backed pair is not a source of
+mathematical incidence. The published `generator.domain` and
+`generator.codomain` now retain the **same canonical copies of the
+original pairs** used to construct the Metrologic morphism index. Mutating
+external entity objects after a generator has been created cannot change
+the public diagram while its pullback continues to use older addresses.
+
+Caller-declared support and truth-comparison subsets are admitted through
+the same pair mechanism; no arbitrary iterable can secretly add or remove
+a cell. This does not convert these graph coordinate declarations into
+witnessed real-world observations. Numeric valuation and source authority
+still require their respective original producers.
+
+## Exact 2-complex cellular sheaves and Matrix Market exchange
+
+The native `./cellular-sheaf-complex` adds an oriented **source-supplied**
+2-complex with typed finite-dimensional rational stalks at vertices, edges,
+and faces, explicit incidence restrictions, `d0` and `d1`. It reuses the
+original `cellularSheaf`, `cellular2Complex`, and Exact Number matrix rank
+owners. A `d1*d0=0` assay and unique commuting restriction paths are
+both required: cancellation of signed edges is not enough to make a sheaf.
+Finite rational `H0/H1/H2` is conditional on those admitted assignments;
+the input does not itself establish source-derivation from a performed Mark.
+
+The original in-process `cellular2Sheaf` output may be exchanged by
+`matrixMarketCoboundary` as standard NIST Matrix Market coordinate text:
+integer entries exact, noninteger entries *explicitly rounded to binary64*
+under representability checks, one-based coordinates, native typed basis
+retained separately. The exporter refuses a copied or JSON-forged result with
+merely familiar `kind` text; a portable admitted reimport protocol has not
+been established and is not silently claimed.
+
+The native test `test/cellular-sheaf-complex.test.mjs` covers unfilled
+and filled cycles, H2, higher-rank stalks, noncommuting attachments,
+ambiguous repeated-incidence maps, output coordinates and unrepresentable
+rational coefficients. Its dependency-closed qualification and external
+Matrix Market solver reception are separate release gates. This is a
+source-preserving graph/mathematics reader, not a runtime ledger, message
+bus, effect executor, Lean kernel proof or authenticated observation.
+
+## Exact cellular sheaf source stability
+
+The original `cellularSheaf` now retains all vertex/edge endpoint identities
+through SignCell's existing canonical carrier, so incidence keys and typed
+basis names remain stable after an external request or model object changes.
+Mutable exact-number object restrictions are converted to canonical, frozen
+Data-owned rationals after validating their inert own data descriptors.
+Scalar strings, integers and finite inexact host floats keep their original
+numerical meaning. The exact-to-binary64 projection still belongs solely to
+the existing Exact Number provider. A hostile scalar getter is rejected
+without execution; no JSON-shaped number can become independently witnessed
+physical or financial evidence.
+
+The higher `cellular2Sheaf` reuses the same source-address owner for face
+identities and their edge-incidence references, building both the original
+cell complex and its typed rank/basis receipt from one source face snapshot.
+This repairs a source-provenance drift where immutable *wrappers* retained
+mutable caller-owned identifier objects and rational coefficients.
+Both the original `test/cellular-sheaf.test.mjs` and 2-sheaf
+`test/cellular-sheaf-complex.test.mjs` now include mutation and adversarial
+cases. The Matrix Market header remains standard NIST coordinate exchange;
+a numerical matrix file alone never authenticates its source cells.
+
+## Coordinated sheaf core shared with the other SignGraph owner PR
+
+The original `./cellular-sheaf` implementation and corresponding source
+regression file have been deliberately made **byte-identical** across
+[exact two-complex/Matrix Market PR #17](https://github.com/red-cup-engineering/signgraph/pull/17)
+and [Keratin observed-fiber PR #31](https://github.com/red-cup-engineering/signgraph/pull/31).
+The shared implementation combines (1) canonical immutable vertex/edge IDs;
+(2) inert, frozen exact-rational source restrictions; and
+(3) the already-existing strict observed-data `cochain(...,{missing:"refuse"})`
+policy. Pure mathematical zero extension remains an explicit policy, not an
+inferred measurement. Its vertex lookup uses the same SignCell canonical
+coincidence classes as the sheaf and original oriented graphs.
+
+Do not cherry-pick an older version of `src/cellular-sheaf.mjs` or its
+tests from either PR over the other. Distinct features—2-complex Matrix Market
+on #17 versus hole/fiber Keratin views on #31—and their package exports
+still require independent installed receiving and eventual manifest
+reconciliation. Identical source bytes are not native CI qualification.
+
+## Source-ordered FOUR-Record tower reception
+
+The original `./cell-graph` now receives source-qualified
+`chargeRecordTowerOfCell` from the actual SignCell `./charge-spin`
+producer through `sourceRecordTowerFlowOfCells(cells, towerOfCell)`.
+The caller supplies the producer so this library does not pretend that
+a historical pinned SignCell package contains the newly merged export.
+The receiver keeps all original source presentation positions and every
+told-for/told-against witness, including repeated equal triples. The
+original oriented `flowNetworkOfCells` and original Chu `cellGraph`
+are retained; the Chu states separately project evidence presence
+and posited charge, which can disagree without asserting a measurement.
+
+Source terms are indexed with SignCell's original canonical coincidence
+instead of host object identity. Directed graph incidence and cohomology
+retain nontrivial self-loop/parallel-edge identities and finite
+signed boundaries. Source-tower claims are rechecked at reception;
+a foreign changed tally, missing address or invented evidence refuses.
+
+The `test/source-record-tower-flow.test.mjs`, `test/cell-graph.test.mjs`
+and `test/cohomology-canonical-incidence.test.mjs` are enrolled in
+package receiving. An independent receiving run must use a pinned
+published SignCell producer, the native Metrologic/Exact Number packages,
+and an actual authorized downstream consumer before publication. Raw
+Record counts are not a universal invertible FOUR regime tower,
+physical C4 flux, source authentication or a sheaf-gluing theorem.
+
+## Explicit-loss FEATHER-G structural interoperability
+
+The additive `./feather-g-codec` now imports the reference FEATHER-G
+undirected edge-list collection as non-witnessed structural data. It
+projects original source-position feather graphs and re-admitted SignGraphs
+with an explicit `projection: "undirected-simple"` acknowledgement that
+direction, predicates, parallel edge identities, and isolated sources may
+be lost. A separate sidecar retains original occurrence and witness IDs
+where supplied. Numeric embedding CSVs remain non-invertible descriptors.
+
+The decoder accepts only bounded inert JSON edge lists, refusing getter-
+backed and decorated records. A cloned `structuralCollection.v1` cannot
+reuse an in-process admission receipt by copying its `kind` field;
+optional plain export graphs may be re-read as ordinary structural
+wire data through the same source guard.
+
+See `src/feather-g-codec.md` and native
+`test/feather-g-codec.test.mjs` /
+`test/feather-g-native-signgraph.test.mjs` for exact boundaries.
+The original SignCell identities, source/physical witness authority,
+FEATHER-G numerical model execution, and published package receiving
+belong to their separate owners. No direction, evidence, or operational
+permission is inferred from an embedding.
+
+## Source-generated Mark reaction evidence receiving
+
+The existing `./substitution-spectrum` now exposes
+`receiveSourceMarkReactions`. It re-executes the same original
+performed-Articulating Mark substitution selector before accepting
+source-addressed SignCell reports. Each candidate path receives
+independent FOUR testimony with distinct positive and opposing witnesses;
+multiple paths to one final word do not merge their source identities.
+Unobserved, opposed and contested reports remain different outcomes.
+Capacity obstruction is never treated as proof of unreachable targets.
+
+The reader delegates canonical Cell identity, testimony joins and
+Record counts to SignCell; it adds no new solver, graph schema, causal
+inference, actor authority or physical reaction. See
+`test/mark-reaction-receiving.test.mjs` for eight original test cases
+including sixteen possible two-path FOUR readings, forged report controls,
+and bounded search refusal. Original SignCell/Metrologic package receiving
+and actual performed source verification remain independent gates.
+
+## Source-generated J26 puncture reception
+
+`./j26-surface` now provides `j26PunctureView` for explicit removal
+of one or more original J26 exterior face cells, distinguishing an
+open-face `skeleton` (retains the entire original one-skeleton) from
+`face-support` (retains only cells incident to surviving faces).
+Both delegate exact H0/H1/H2 computations to SignGraph's original
+`cellular2Complex`; the `signgraph.j26.puncture` operation uses the
+existing bounded operations registry, accepting named original source
+edges and separately supplied Burgers vectors.
+
+Original regressions in `test/j26-source-generated-patch.test.mjs`
+check all 254 proper nonempty face-removal masks against independent
+face-dual connectivity and the source Science J26 face cycles.
+A source-defined hole does not automatically imply a physical defect,
+causal shroud, conserved energy or permission to remove material.
+Lean J26 source-generation proof and full pinned native dependency
+receiving remain independent obligations.
