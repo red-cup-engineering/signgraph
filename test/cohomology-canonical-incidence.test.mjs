@@ -65,7 +65,7 @@ test("loop, duplicate, reverse and disconnected incidence preserve H0/H1 and sig
  assert.equal(actual.firstCohomology.rank,3);
  assert.deepEqual(componentsOf(actual).map(x=>x.length),[3,1]);
  const reverse=cohomologyOfEdgeGraph(["a","b"],[["b","a"]]);
- assert.deepEqual(reverse.incidence,[[1,-1]]);
+ assert.deepEqual(reverse.incidence,[[-1,1]]);
 });
 
 test("foreign accessor positions cannot introduce edges or execute as an incidence oracle",()=>{

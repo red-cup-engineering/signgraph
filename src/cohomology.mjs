@@ -109,7 +109,7 @@ export function cohomologyOfCells(cells, extraEntities = []) {
     zeroCohomology: Object.freeze({
       rank: roots.length,
       cocycleBasis: Object.freeze(roots.map(root => Object.freeze(
-        entities.map((_, index) => find(index) === root ? 1 : 0))),
+        entities.map((_, index) => find(index) === root ? 1 : 0)))),
     }),
     firstCohomology: Object.freeze({ rank: h1, vanishing: rankVanishing(h1) }),
   });
