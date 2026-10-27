@@ -954,3 +954,22 @@ point reference. An inherited, hidden or getter-backed actor ID cannot
 silently become a locally admitted graph reference. This is a pure source
 reading guard rather than independent Actor authentication, and executable
 Proxy traps remain a separate host security problem.
+
+## Source-generated J26 puncture reception
+
+`./j26-surface` now provides `j26PunctureView` for explicit removal
+of one or more original J26 exterior face cells, distinguishing an
+open-face `skeleton` (retains the entire original one-skeleton) from
+`face-support` (retains only cells incident to surviving faces).
+Both delegate exact H0/H1/H2 computations to SignGraph's original
+`cellular2Complex`; the `signgraph.j26.puncture` operation uses the
+existing bounded operations registry, accepting named original source
+edges and separately supplied Burgers vectors.
+
+Original regressions in `test/j26-source-generated-patch.test.mjs`
+check all 254 proper nonempty face-removal masks against independent
+face-dual connectivity and the source Science J26 face cycles.
+A source-defined hole does not automatically imply a physical defect,
+causal shroud, conserved energy or permission to remove material.
+Lean J26 source-generation proof and full pinned native dependency
+receiving remain independent obligations.
