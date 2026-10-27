@@ -3,7 +3,7 @@ import test from "node:test";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
 import { defineType, isSubtypeOf } from "@red-cup-engineering/signcell/type-system";
 import { createSignGraph } from "../src/semantic-graph.mjs";
-import { projectSignGraphTopology, findSignGraphRoute, channelResourceIncidence, channelTransportPossibilities, channelStockFlowAmbiguity } from "../src/graph.mjs";
+import { projectSignGraphTopology, findSignGraphRoute, channelResourceIncidence, channelTransportPossibilities, channelStockFlowAmbiguity, channelFlowWitnessPlacement } from "../src/graph.mjs";
 
 const accepted = (r) => { assert.equal(r.ok, true, JSON.stringify(r)); return r.value; };
 const t = accepted(defineType({
@@ -829,4 +829,116 @@ test("acyclic diamond preserves undetermined stock-only route identification eve
   assert.deepEqual(stockDelta(lower),[-1,0,0,1]);
   assert.equal(upper.reduce((n,q)=>n+q,0),lower.reduce((n,q)=>n+q,0));
   assert.notDeepEqual(upper,lower);
+});
+
+
+test("individual meter placement is hypothetical and deduplicates source-reported exchanges",()=>{
+  const {graph,at,roles}=stockAmbiguityFixture();
+  const query={channel:at.channel,relations:roles};
+  const empty=channelFlowWitnessPlacement(graph,query);
+  assert.equal(empty.kind,"signgraph.channelFlowWitnessPlacement.v1");
+  assert.equal(empty.proposalOnly,true);
+  assert.equal(empty.physicalMeterReadings,"not-supplied");
+  assert.equal(empty.actorBodyAndClock,"not-established");
+  assert.deepEqual(empty.obstructions,[]);
+  assert.equal(empty.resources.length,1);
+  const water=empty.resources[0];
+  assert.equal(water.exchangeCount,3,"m2 reporting e1 must not be a fourth exchange");
+  assert.equal(water.minimumIndependentEdgeMeterCount,1);
+  assert.equal(water.unmeteredComplementIsUndirectedForest,false);
+  assert.equal(water.unmeteredCycleClosingTransfers.length,1);
+  const proposed=channelFlowWitnessPlacement(graph,{
+    ...query,proposedWitnessExchangeIds:[at.e2.id],
+  });
+  assert.equal(proposed.resources[0].proposedIndividualEdgeMeters[0].id,at.e2.id);
+  assert.equal(proposed.resources[0].unmeteredComplementIsUndirectedForest,true);
+  assert.equal(proposed.resources[0].structuralCondition,
+    "conditional-linear-observation-full-rank-if-all-premises-hold");
+  assert.equal(proposed.originalGraphCompleteness,"not-attested");
+  assert.equal(proposed.nodeStocksAndExternalPorts,"not-supplied");
+  assert.deepEqual(channelFlowWitnessPlacement(wire(graph),{
+    ...query,proposedWitnessExchangeIds:[at.e2.id],
+  }),proposed);
+  assert.throws(()=>channelFlowWitnessPlacement(graph,{
+    ...query,proposedWitnessExchangeIds:[at.e1.id,at.e1.id],
+  }),/unique original exchange IDs/);
+  assert.throws(()=>channelFlowWitnessPlacement(graph,{
+    ...query,proposedWitnessExchangeIds:["ni:forged"],
+  }),/one admitted channel exchange/);
+  assert.throws(()=>channelFlowWitnessPlacement(graph,{
+    ...query,proposedWitnessExchangeIds:"metered",
+  }),/unique original exchange IDs/);
+  const invalid=wire(graph);invalid.edges[0].id="ni:forged";
+  assert.throws(()=>channelFlowWitnessPlacement(invalid,query),TypeError);
+});
+
+test("two same-loop meters fail on figure-eight, two chord meters suffice structurally",()=>{
+  const roles={contains:"contains",reports:"reports",resource:"resource",from:"from",to:"to"};
+  const edgesOf=[["ab","A","B"],["bc","B","C"],["ca","C","A"],
+    ["ad","A","D"],["de","D","E"],["ea","E","A"]];
+  const names=["channel","m","water","w","A","B","C","D","E",...edgesOf.map(x=>x[0])];
+  const marks=names.map(name=>accepted(createTypedMark(t,name)));
+  const at=Object.fromEntries(names.map((name,i)=>[name,referenceOf(marks[i])]));
+  const edge=(from,role,to)=>({subject:at[from],predicate:roles[role],
+    object:at[to],witness:at.w});
+  const edges=[edge("channel","contains","m")];
+  for(const [id,from,to] of edgesOf)edges.push(edge("m","reports",id),
+    edge(id,"resource","water"),edge(id,"from",from),edge(id,"to",to));
+  const graph=accepted(createSignGraph({cells:marks,
+    relations:Object.values(roles).map(id=>({
+      id,subjectTypes:[t.id],objectTypes:[t.id],witnessTypes:[t.id],
+    })),edges}));
+  const query={channel:at.channel,relations:roles};
+  const baseline=channelFlowWitnessPlacement(graph,query);
+  assert.equal(baseline.resources[0].exchangeCount,6);
+  assert.equal(baseline.resources[0].minimumIndependentEdgeMeterCount,2);
+  assert.equal(baseline.resources[0].unmeteredCycleClosingTransfers.length,2);
+  const poor=channelFlowWitnessPlacement(graph,{
+    ...query,proposedWitnessExchangeIds:[at.ab.id,at.bc.id],
+  });
+  assert.equal(poor.resources[0].unmeteredComplementIsUndirectedForest,false,
+    "two meter count is necessary but placement on one loop is insufficient");
+  const right=channelFlowWitnessPlacement(graph,{
+    ...query,proposedWitnessExchangeIds:[at.ca.id,at.ea.id],
+  });
+  assert.equal(right.resources[0].unmeteredComplementIsUndirectedForest,true);
+  assert.equal(right.resources[0].unmeteredCycleClosingTransfers.length,0);
+});
+
+test("separate resources, self-loops, and truly parallel exchanges preserve the cycle rank",()=>{
+  const separated=stockAmbiguityFixture({otherResource:true});
+  const r=channelFlowWitnessPlacement(separated.graph,{
+    channel:separated.at.channel,relations:separated.roles,
+  });
+  assert.equal(r.resources.length,2);
+  assert.ok(r.resources.every(x=>x.minimumIndependentEdgeMeterCount===0));
+  const loop=stockAmbiguityFixture({selfLoop:true});
+  const q={channel:loop.at.channel,relations:loop.roles};
+  const candidate=channelFlowWitnessPlacement(loop.graph,q);
+  assert.equal(candidate.resources[0].minimumIndependentEdgeMeterCount,1);
+  assert.equal(candidate.resources[0].unmeteredComplementIsUndirectedForest,false);
+  assert.equal(channelFlowWitnessPlacement(loop.graph,{
+    ...q,proposedWitnessExchangeIds:[loop.at.e3.id],
+  }).resources[0].unmeteredComplementIsUndirectedForest,true);
+  const roles={contains:"contains",reports:"reports",resource:"resource",from:"from",to:"to"};
+  const names=["ch","m1","m2","ex1","ex2","r","A","B","w"];
+  const marks=names.map(name=>accepted(createTypedMark(t,name)));
+  const at=Object.fromEntries(names.map((name,i)=>[name,referenceOf(marks[i])]));
+  const e=(s,p,o)=>({subject:at[s],predicate:roles[p],object:at[o],witness:at.w});
+  const edges=[e("ch","contains","m1"),e("ch","contains","m2"),
+    e("m1","reports","ex1"),e("m2","reports","ex1"),e("m2","reports","ex2")];
+  for(const id of ["ex1","ex2"])edges.push(
+    e(id,"resource","r"),e(id,"from","A"),e(id,"to","B"));
+  const g=accepted(createSignGraph({cells:marks,
+    relations:Object.values(roles).map(id=>({
+      id,subjectTypes:[t.id],objectTypes:[t.id],witnessTypes:[t.id],
+    })),edges}));
+  const qq={channel:at.ch,relations:roles};
+  const p=channelFlowWitnessPlacement(g,qq);
+  assert.equal(p.resources[0].exchangeCount,2,"two EXCHANGES are distinct");
+  assert.equal(p.resources[0].minimumIndependentEdgeMeterCount,1,
+    "parallel original exchanges make an undirected two-edge cycle");
+  assert.equal(channelFlowWitnessPlacement(g,{
+    ...qq,proposedWitnessExchangeIds:[at.ex1.id],
+  }).resources[0].unmeteredComplementIsUndirectedForest,true);
 });
