@@ -11,7 +11,7 @@
  */
 import { canonicalCarrier, coincidenceKey } from '@red-cup-engineering/signcell/cell';
 import { cellular2Complex } from './cohomology.mjs';
-import { cellularSheaf } from './cellular-sheaf.mjs';
+import { cellularSheaf, sheafSourceArray, sheafSourceField, sheafSourceScalar } from './cellular-sheaf.mjs';
 import { ratPairOfEntry, ratRank } from '@red-cup-engineering/exact-number-data-service/rational-matrix';
 import { rationalOfBigInts, ratZero, ratAdd, ratMultiply, ratNegate, ratIsZero, rationalParts } from '@red-cup-engineering/exact-number-data-service/exact-number';
 import { rationalToFiniteNumber } from '@red-cup-engineering/exact-number-data-service/exact-number-host';
@@ -19,7 +19,7 @@ import { rationalToFiniteNumber } from '@red-cup-engineering/exact-number-data-s
 // Matrix exchange is a capability of actually admitted in-process cochain
 // readings; JSON-shaped forged structs cannot turn into certified operators.
 const admittedReadings = new WeakSet();
-const rational = entry => rationalOfBigInts(...ratPairOfEntry(entry));
+const rational = entry => rationalOfBigInts(...ratPairOfEntry(sheafSourceScalar(entry)));
 const fraction = value => {
   const [num, den] = rationalParts(value);
   return `${num}/${den}`;
@@ -40,21 +40,24 @@ const frozenRows = rows => Object.freeze(rows.map(row => Object.freeze(row.map(f
  * @param {{id:unknown,dim:number,boundary:{edge:unknown,direction:1|-1,restrict:unknown[][]}[]}[]} input.faces - degree-2 stalks with a map FROM each incidence edge TO the face
  * @returns admitted complex, exact matrices, rational cohomology, and cell basis labels
  */
-export function cellular2Sheaf({ vertices, edges, faces }) {
-  if (![vertices, edges, faces].every(Array.isArray))
-    throw new TypeError('cellular2Sheaf: vertices, edges, faces must be arrays');
+export function cellular2Sheaf(source) {
+  const vertices = sheafSourceArray(sheafSourceField(source,"vertices"),"vertices");
+  const edges = sheafSourceArray(sheafSourceField(source,"edges"),"edges");
+  const faces = sheafSourceArray(sheafSourceField(source,"faces"),"faces");
   const sheaf = cellularSheaf({ vertices, edges });
   if (!sheaf.exact) throw new RangeError('cellular2Sheaf: all restrictions must be exact rational entries');
   // Read original face/edge identities ONCE through the same SignCell content
   // owner as vertex/edge stalk IDs. Otherwise the returned complex, native
   // basis and Matrix Market receipt could disagree after caller mutation.
-  const sourceFaces = faces.map(face => ({
-    id: canonicalCarrier(face.id), dim: face.dim,
-    boundary: face.boundary.map(step => ({
-      edge: canonicalCarrier(step.edge),
-      direction: step.direction,
-      restrict: step.restrict,
-    })),
+  const sourceFaces = faces.map(face => Object.freeze({
+    id: canonicalCarrier(sheafSourceField(face,"id")),
+    dim: sheafSourceField(face,"dim"),
+    boundary: Object.freeze(sheafSourceArray(sheafSourceField(face,"boundary"),"face boundary")
+      .map(step => Object.freeze({
+        edge: canonicalCarrier(sheafSourceField(step,"edge")),
+        direction: sheafSourceField(step,"direction"),
+        restrict: sheafSourceField(step,"restrict"),
+      }))),
   }));
   const complex = cellular2Complex({
     vertices: sheaf.vertices.map(v => v.id),
@@ -72,11 +75,17 @@ export function cellular2Sheaf({ vertices, edges, faces }) {
     const boundary = face.boundary.map((step, j) => {
       const e = edgeIndex.get(coincidenceKey(step.edge));
       const width = sheaf.edges[e].dim;
-      if (!Array.isArray(step.restrict) || step.restrict.length !== dim ||
-          !step.restrict.every(row => Array.isArray(row) && row.length === width))
+      const rawMatrix = step.restrict;
+      if (!Array.isArray(rawMatrix) || rawMatrix.length !== dim)
         throw new RangeError(`cellular2Sheaf: face ${index} incidence ${j} needs ${dim} x ${width} restriction`);
+      const rows = sheafSourceArray(rawMatrix,"face restriction matrix");
+      const data = rows.map(row => {
+        if (!Array.isArray(row) || row.length !== width)
+          throw new RangeError(`cellular2Sheaf: face ${index} incidence ${j} needs ${dim} x ${width} restriction`);
+        return sheafSourceArray(row,"face restriction row");
+      });
       return Object.freeze({ edge: step.edge, direction: step.direction,
-        restrict: frozenRows(step.restrict.map(row => row.map(rational))) });
+        restrict: frozenRows(data.map(row => row.map(rational))) });
     });
     return Object.freeze({ id: face.id, dim, boundary: Object.freeze(boundary) });
   });

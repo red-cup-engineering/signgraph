@@ -151,3 +151,28 @@ test("structured vertex, edge and face identities remain stable across exact cel
  assert.equal(Object.isFrozen(built.sheaf.vertices[0].id.detail),true);
  assert.deepEqual(built.cohomology,{h0:1,h1:0,h2:1});
 });
+
+test("2-sheaf face identities and rational face matrices reject executable getters",()=>{
+ let calls=0;
+ const original=triangle();
+ const hostile={edges:original.edges,faces:[]};
+ Object.defineProperty(hostile,"vertices",{enumerable:true,get(){calls++;return original.vertices;}});
+ assert.throws(()=>cellular2Sheaf(hostile),/inert own data/u);
+ const badFace={dim:1,boundary:walk()};
+ Object.defineProperty(badFace,"id",{enumerable:true,get(){calls++;return "forged-face";}});
+ assert.throws(()=>cellular2Sheaf({...original,faces:[badFace]}),/inert own data/u);
+ const boundary=walk();
+ Object.defineProperty(boundary[0],"edge",{enumerable:true,get(){calls++;return "ab";}});
+ assert.throws(()=>cellular2Sheaf({...original,faces:[face("bad",boundary)]}),/inert own data/u);
+ const matrix=walk();
+ Object.defineProperty(matrix[0].restrict[0],"0",{enumerable:true,get(){calls++;return "1/2";}});
+ assert.throws(()=>cellular2Sheaf({...original,faces:[face("bad",matrix)]}),/array slots must be inert own data/u);
+ const scalar=walk();
+ const badScalar={kind:"exactNumber.rational",den:"2"};
+ Object.defineProperty(badScalar,"num",{enumerable:true,get(){calls++;return "1";}});
+ scalar[0].restrict=[[badScalar]];
+ assert.throws(()=>cellular2Sheaf({...original,faces:[face("bad",scalar)]}),/accessors or hidden data/u);
+ assert.equal(calls,0);
+ const valid=cellular2Sheaf({...original,faces:[face("valid")]});
+ assert.deepEqual(valid.cohomology,{h0:1,h1:0,h2:0});
+});
