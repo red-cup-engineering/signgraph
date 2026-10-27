@@ -105,7 +105,7 @@ export function conditionalFlowCutErrorBudgets(transfers, {
       .sort((a,b) => a.atoms === null ? (b.atoms === null ?
         compare(a.side.join("\u0000"),b.side.join("\u0000")) : 1) :
         b.atoms === null ? -1 : a.atoms < b.atoms ? -1 : a.atoms > b.atoms ? 1 :
-        compare(a.side.join("\u00000"),b.side.join("\u0000"));
+        compare(a.side.join("\u0000"),b.side.join("\u0000")));
     const winner = possibilities[0];
     if (!winner) return Object.freeze({exchange:e.exchange,
       status:"structurally-undetermined",radius:null});
