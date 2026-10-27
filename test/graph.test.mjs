@@ -1089,3 +1089,71 @@ test("observed vertex coverage is original Resource-scoped, not inherited from a
   }),/refuses mixed global and resource-scoped/);
   assert.equal(r.nodeStocksAndExternalPorts,"not-supplied");
 });
+
+
+test("source-admitted hypothetical calibration preserves real resource IDs and refuses missing custody",()=>{
+  const {graph,at,roles}=stockAmbiguityFixture({broken:true});
+  const proposed={channel:at.channel,relations:roles,
+    proposedObservedCompartmentIds:[at.B.id],
+    proposedWitnessExchangeIds:[at.e1.id,at.e3.id]};
+  const ceilings={vertex:{[at.B.id]:{atoms:"2",unit:"kg"}},edge:{
+    [at.e1.id]:{atoms:"3",unit:"kg"},[at.e3.id]:{atoms:"3",unit:"kg"}}};
+  const arg={...proposed,hypotheticalErrorCeilings:{[at.water.id]:ceilings}};
+  const result=channelFlowWitnessPlacement(graph,arg);
+  assert.equal(result.proposalOnly,true);
+  assert.equal(result.physicalMeterReadings,"not-supplied");
+  assert.equal(result.actualCirculation,"not-established");
+  assert.equal(result.resources[0].structuralCondition,
+    "conditional-linear-observation-full-rank-if-all-premises-hold");
+  const budget=result.resources[0].hypotheticalResolution;
+  assert.equal(budget.actualReadings,"not-supplied");
+  assert.equal(budget.actualTransfers,"not-established");
+  assert.equal(budget.unmeteredExchanges.length,1);
+  assert.equal(budget.unmeteredExchanges[0].exchange.id,at.e2.id);
+  assert.equal(budget.unmeteredExchanges[0].status,"conditional-error-radius");
+  assert.deepEqual(budget.unmeteredExchanges[0].radius,{atoms:"5",unit:"kg"});
+  assert.deepEqual(channelFlowWitnessPlacement(wire(graph),arg),result);
+  const uncalibrated=channelFlowWitnessPlacement(graph,{
+    ...proposed,hypotheticalErrorCeilings:{[at.water.id]:{vertex:ceilings.vertex,edge:{}}}});
+  assert.equal(uncalibrated.resources[0].hypotheticalResolution.unmeteredExchanges[0].status,
+    "calibration-unprovided");
+  assert.equal(Object.hasOwn(channelFlowWitnessPlacement(graph,proposed).resources[0],
+    "hypotheticalResolution"),false);
+  assert.throws(()=>channelFlowWitnessPlacement(graph,{
+    ...proposed,hypotheticalErrorCeilings:{"foreign-resource":ceilings}}),/original resource/);
+  assert.throws(()=>channelFlowWitnessPlacement(graph,{
+    ...proposed,hypotheticalErrorCeilings:{[at.water.id]:{
+      vertex:{[at.A.id]:{atoms:"1",unit:"kg"}},edge:{}}}}),/vertex error ceiling/);
+  assert.throws(()=>channelFlowWitnessPlacement(graph,{
+    ...proposed,hypotheticalErrorCeilings:{[at.water.id]:{
+      vertex:{},edge:{"foreign-exchange":{atoms:"1",unit:"kg"}}}}}),/edge error ceiling/);
+  assert.throws(()=>channelFlowWitnessPlacement(graph,{
+    ...proposed,hypotheticalErrorCeilings:{[at.water.id]:{
+      vertex:{[at.B.id]:{atoms:"1",unit:"kg"}},
+      edge:{[at.e1.id]:{atoms:"1",unit:"gram"}}}}}),/mixed units/);
+});
+
+test("multi-resource observation and calibrated units remain independently scoped",()=>{
+  const {graph,at,roles}=stockAmbiguityFixture({otherResource:true});
+  const result=channelFlowWitnessPlacement(graph,{
+    channel:at.channel,relations:roles,
+    proposedObservedCompartmentIdsByResource:{
+      [at.water.id]:[at.A.id,at.B.id,at.C.id],
+      [at.energy.id]:[at.C.id,at.A.id],
+    },
+    hypotheticalErrorCeilings:{
+      [at.water.id]:{vertex:{
+        [at.A.id]:{atoms:"1",unit:"kg"},
+        [at.B.id]:{atoms:"1",unit:"kg"},
+        [at.C.id]:{atoms:"1",unit:"kg"}},edge:{}},
+      [at.energy.id]:{vertex:{
+        [at.C.id]:{atoms:"3",unit:"joule"},
+        [at.A.id]:{atoms:"3",unit:"joule"}},edge:{}},
+    },
+  });
+  assert.equal(result.resources.length,2);
+  const byId=new Map(result.resources.map(r=>[r.resource.id,r]));
+  assert.equal(byId.get(at.water.id).hypotheticalResolution.unit,"kg");
+  assert.equal(byId.get(at.energy.id).hypotheticalResolution.unit,"joule");
+  assert.ok(result.resources.every(r=>r.hypotheticalResolution.actualReadings==="not-supplied"));
+});

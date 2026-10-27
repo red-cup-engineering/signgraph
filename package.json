@@ -36,7 +36,8 @@
     "test/alexandrov.test.mjs",
     "test/j26-source-generated-patch.test.mjs",
     "test/meridian-flow-observability.test.mjs",
-    "test/meridian-partial-stock-observability.test.mjs"
+    "test/meridian-partial-stock-observability.test.mjs",
+    "test/meridian-flow-calibration.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -134,6 +135,7 @@
     "test/alexandrov.test.mjs",
     "test/j26-source-generated-patch.test.mjs",
     "test/meridian-flow-observability.test.mjs",
-    "test/meridian-partial-stock-observability.test.mjs"
+    "test/meridian-partial-stock-observability.test.mjs",
+    "test/meridian-flow-calibration.test.mjs"
   ]
 }

@@ -1,3 +1,4 @@
+import { conditionalFlowCutErrorBudgets } from "./flow-resolution-budget.mjs";
 import { createGraph, shortestPath } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { glueSignGraphs, querySignGraph } from "./semantic-graph.mjs";
 
@@ -533,12 +534,39 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
     }
   }
   const proposed = new Set(proposals);
+  // Proposed error ceilings are design constraints, NEVER actual sensor readings.
+  const ceilings = options?.hypotheticalErrorCeilings;
+  const plain = value => value !== null && typeof value === "object" &&
+    !Array.isArray(value) &&
+    (Object.getPrototypeOf(value) === Object.prototype ||
+      Object.getPrototypeOf(value) === null);
+  if (ceilings !== undefined) {
+    if (!plain(ceilings) || Object.keys(ceilings).length > 4096)
+      throw new TypeError("hypothetical error ceilings require bounded resource-ID maps");
+    for (const [resourceId,budget] of Object.entries(ceilings))
+      if (!grouped.has(resourceId) || !plain(budget) ||
+          Object.keys(budget).sort().join(",") !== "edge,vertex" ||
+          !plain(budget.vertex) || !plain(budget.edge))
+        throw new TypeError("hypothetical error ceilings require original resource and vertex/edge maps");
+  }
   const resources = [...grouped.values()]
     .sort((a,b) => a.resource.id < b.resource.id ? -1 : a.resource.id > b.resource.id ? 1 : 0)
     .map(({resource,transfers}) => {
       const observed = scopedEntries !== null
         ? new Set(Object.hasOwn(scopedVertices,resource.id) ? scopedVertices[resource.id] : [])
         : vertices === undefined ? null : new Set(vertices);
+      if (ceilings !== undefined && Object.hasOwn(ceilings,resource.id)) {
+        const original = ceilings[resource.id];
+        const allowedVertices = new Set(transfers.flatMap(t => [t.from.id,t.to.id]));
+        const allowedMeters = new Set(transfers.filter(t => proposed.has(t.exchange.id))
+          .map(t => t.exchange.id));
+        for (const id of Object.keys(original.vertex))
+          if (!allowedVertices.has(id) || (observed !== null && !observed.has(id)))
+            throw new TypeError("vertex error ceiling names no proposed source-admitted observation for resource");
+        for (const id of Object.keys(original.edge))
+          if (!allowedMeters.has(id))
+            throw new TypeError("edge error ceiling names no proposed original resource exchange meter");
+      }
       // Full-node special case (Science §7.20) differs from a sparse-row
       // observed incidence matrix (Science §7.21).
       const fullNodeMinimum = undirectedCycleClosingTransfers(transfers,new Set()).length;
@@ -564,6 +592,14 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
         structuralCondition:remaining.length === 0 ?
           "conditional-linear-observation-full-rank-if-all-premises-hold" :
           "conditional-linear-observation-has-kernel",
+        ...(ceilings === undefined ? {} : {
+          hypotheticalResolution:conditionalFlowCutErrorBudgets(transfers,{
+            proposedWitnessExchangeIds:proposed,
+            proposedObservedCompartmentIds:observed,
+            hypotheticalErrorCeilings:ceilings[resource.id] ?? {vertex:{},edge:{}},
+            structuralIdentifiable:remaining.length === 0,
+          }),
+        }),
       });
     });
   return Object.freeze({
