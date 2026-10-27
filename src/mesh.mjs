@@ -1,4 +1,3 @@
-import { semanticId } from "@red-cup-engineering/semiotic-content-address";
 /**
  * mesh — reading a body of SignCell cells whose positions are terms.
  *
@@ -13,7 +12,7 @@ import { semanticId } from "@red-cup-engineering/semiotic-content-address";
  * its claims, how two subjects' readings relate, and the concepts subjects generate.
  */
 import { extent, intent, makeContext } from "@red-cup-engineering/metrologic/closure/formal-context";
-import { knowledgeReading } from "@red-cup-engineering/signcell/cell";
+import { knowledgeReading, semanticId } from "@red-cup-engineering/signcell/cell";
 import { census } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 
 const text = (value) => JSON.stringify(value);

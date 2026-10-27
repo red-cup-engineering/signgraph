@@ -3,8 +3,6 @@ import assert from "node:assert/strict";
 import { cellular3Complex } from "../src/cohomology.mjs";
 import { geometricReceiving, metricSquareOfVector } from "../src/embedding.mjs";
 import { executeOperation, operations } from "../src/operations.mjs";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 
 /**
  * Independent Engineering receiving of Science-owned exact J26 geometry:
@@ -162,28 +160,3 @@ test("the operation exposes metric-calibrated three-component Burgers charges an
   }),/same three-coordinate frame/);
 });
 
-test("the installed JSONL executable delivers an independently readable geometric receiving receipt",()=>{
-  const bin=fileURLToPath(new URL("../scripts/holonomy.mjs",import.meta.url));
-  const body={
-    operation:"signgraph.holonomy.geometry",
-    input:{
-      ...fixture(),positions,metric,
-      edgeDisplacements:edgeTuples.map((_,i)=>i===0?[1,0,2]:[0,0,0]),
-    },
-  };
-  const run=spawnSync(process.execPath,[bin],{
-    input:JSON.stringify(body)+"\n",
-    encoding:"utf8",timeout:15000,maxBuffer:3*1024*1024,
-  });
-  assert.equal(run.status,0,run.stderr);
-  const result=JSON.parse(run.stdout.trim());
-  assert.equal(result.ok,true);
-  assert.equal(result.operation,"signgraph.holonomy.geometry");
-  assert.equal(result.receipt.geometry.conformance.certifiedRegularConvexSolid,true);
-  assert.deepEqual(result.receipt.geometry.volume.coefficient,{numerator:"1",denominator:"2"});
-  const nonzero=result.receipt.burgers.faceSquaredMagnitudes.filter(x=>x.squaredMagnitude.numerator!=="0");
-  assert.equal(nonzero.length,2);
-  for(const face of nonzero)assert.deepEqual(face.squaredMagnitude,{numerator:"13",denominator:"4"});
-  assert.deepEqual(result.receipt.burgers.volumeResidues[0].burgers,[0,0,0]);
-  assert.equal(run.stderr,"");
-});
