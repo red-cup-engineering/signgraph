@@ -782,3 +782,51 @@ test("no directed same-resource witness is unknown, and invalid source never pas
   const forged=wire(graph);forged.edges[0].id="ni:forged";
   assert.throws(()=>channelStockFlowAmbiguity(forged,{channel:at.channel,relations:roles}),TypeError);
 });
+
+test("acyclic diamond preserves undetermined stock-only route identification even with balanced ports",()=>{
+  // Science #215 §7.19: no directed cycle, but two different performed
+  // edge-flow histories can produce identical signed node changes.
+  const roles={contains:"contains",reports:"reports",resource:"resource",from:"from",to:"to"};
+  const names=["channel","message","exchange-ab","exchange-bd","exchange-ac","exchange-cd",
+    "resource","A","B","C","D","witness"];
+  const marks=names.map(name=>accepted(createTypedMark(t,name)));
+  const at=Object.fromEntries(names.map((name,i)=>[name,referenceOf(marks[i])]));
+  const edge=(from,predicate,to)=>({
+    subject:at[from],predicate:roles[predicate],object:at[to],witness:at.witness,
+  });
+  const directed=[["exchange-ab","A","B"],["exchange-bd","B","D"],
+    ["exchange-ac","A","C"],["exchange-cd","C","D"]];
+  const edges=[edge("channel","contains","message")];
+  for(const [exchange,from,to] of directed)edges.push(
+    edge("message","reports",exchange),
+    edge(exchange,"resource","resource"),
+    edge(exchange,"from",from),edge(exchange,"to",to));
+  const graph=accepted(createSignGraph({
+    cells:marks,
+    relations:Object.values(roles).map(id=>({
+      id,subjectTypes:[t.id],objectTypes:[t.id],witnessTypes:[t.id],
+    })),edges,
+  }));
+  const reading=channelStockFlowAmbiguity(graph,{channel:at.channel,relations:roles});
+  assert.equal(reading.resources.length,1);
+  assert.equal(reading.resources[0].exchangeCount,4);
+  assert.equal(reading.resources[0].cycleTransfers,null);
+  assert.equal(reading.resources[0].stockOnlyIdentifiability,
+    "undetermined-without-complete-source-and-effect-law");
+  assert.equal(reading.actualCirculation,"not-established");
+  // Ordered flow along A→B→D vs A→C→D, both with throughput two.
+  const stockDelta=flows=>{
+    const change=new Map(["A","B","C","D"].map(name=>[name,0]));
+    for(let i=0;i<directed.length;i++){
+      const [,source,target]=directed[i];
+      change.set(source,change.get(source)-flows[i]);
+      change.set(target,change.get(target)+flows[i]);
+    }
+    return [...change.values()];
+  };
+  const upper=[1,1,0,0],lower=[0,0,1,1];
+  assert.deepEqual(stockDelta(upper),[-1,0,0,1]);
+  assert.deepEqual(stockDelta(lower),[-1,0,0,1]);
+  assert.equal(upper.reduce((n,q)=>n+q,0),lower.reduce((n,q)=>n+q,0));
+  assert.notDeepEqual(upper,lower);
+});
