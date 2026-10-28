@@ -37,7 +37,9 @@
     "test/j26-source-generated-patch.test.mjs",
     "test/meridian-flow-observability.test.mjs",
     "test/meridian-partial-stock-observability.test.mjs",
-    "test/meridian-flow-calibration.test.mjs"
+    "test/meridian-flow-calibration.test.mjs",
+    "scripts/verify-packed-receiving.mjs",
+    "test/packed-receiving-contract.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -98,7 +100,8 @@
     "test:holonomy": "node --test test/cellular-2complex.test.mjs test/sixfold-holonomy.test.mjs test/holonomy-operations.test.mjs test/geometric-receiving.test.mjs test/cellular-sheaf.test.mjs test/hierarchical-circuit.test.mjs test/performed-head-observation.test.mjs test/j26-source-generated-patch.test.mjs",
     "check:keratin": "node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs && node --check examples/keratin-hole-workbench.mjs",
     "test:keratin": "node --test test/cellular-sheaf.test.mjs test/keratin-graph.test.mjs",
-    "demo:keratin": "node examples/keratin-hole-workbench.mjs"
+    "demo:keratin": "node examples/keratin-hole-workbench.mjs",
+    "test:packed-receiving": "node scripts/verify-packed-receiving.mjs"
   },
   "repository": {
     "type": "git",
@@ -136,6 +139,7 @@
     "test/j26-source-generated-patch.test.mjs",
     "test/meridian-flow-observability.test.mjs",
     "test/meridian-partial-stock-observability.test.mjs",
-    "test/meridian-flow-calibration.test.mjs"
+    "test/meridian-flow-calibration.test.mjs",
+    "test/packed-receiving-contract.test.mjs"
   ]
 }
