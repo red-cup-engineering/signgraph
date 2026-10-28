@@ -19,7 +19,7 @@
  * Terms are opaque values compared by SignCell coincidence (canonical bytes).
  * Evidence is not part of a site: a site is where values can be, not what they are.
  */
-import { cell, coincidenceKey, coincides, triple, tripleKey } from "@red-cup-engineering/signcell/cell";
+import { admitCell, cell, coincidenceKey, coincides, retainedCarrier, triple, tripleKey } from "@red-cup-engineering/signcell/cell";
 import { rule } from "@red-cup-engineering/signchain/rules";
 import { createGraph, reachable } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 
@@ -34,9 +34,70 @@ const uniqueBy = (values, keyOf) => {
   return Object.freeze([...seen.values()]);
 };
 
-/** A specialization morphism: from a general predicate to a specialized one. */
-export const specializationMorphism = (specialized, general) => Object.freeze({ kind: "signgraph.specialization", domain: general, codomain: specialized });
-export const isSpecializationMorphism = (value) => value !== null && typeof value === "object" && value.kind === "signgraph.specialization";
+/** Inert finite source records: reject accessors, extra fields and inherited
+ * declarations before a caller's executable properties can affect a site.
+ * SignCell remains the owner of nested coordinate and evidence admission.
+ */
+const sourceRecord = (value, role) => {
+  if (value === null || typeof value !== "object" || Array.isArray(value) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(value)))
+    throw new TypeError(`signgraph site: ${role} must be a plain source record`);
+  return Object.getOwnPropertyDescriptors(value);
+};
+const dataField = (descriptors, name, role) => {
+  const slot = descriptors[name];
+  if (!slot || !slot.enumerable || !Object.hasOwn(slot, "value"))
+    throw new TypeError(`signgraph site: ${role}.${name} must be inert own data`);
+  return slot.value;
+};
+const exactFields = (descriptors, required, optional = []) => {
+  const names = Reflect.ownKeys(descriptors);
+  return names.every(name => typeof name === "string" &&
+    [...required, ...optional].includes(name)) &&
+    required.every(name => Object.hasOwn(descriptors, name)) &&
+    names.length >= required.length;
+};
+const sourceList = (value, role) => {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype ||
+      value.length > 16384)
+    throw new TypeError(`signgraph site: ${role} must be a bounded plain source array`);
+  const fields = Object.getOwnPropertyDescriptors(value);
+  if (Reflect.ownKeys(fields).length !== value.length + 1)
+    throw new TypeError(`signgraph site: ${role} must be dense and undecorated`);
+  return Array.from({length: value.length}, (_, index) =>
+    dataField(fields, String(index), role));
+};
+const sourceTriple = value => {
+  const fields = sourceRecord(value, "cell");
+  const names = ["subject", "predicate", "object"];
+  const hasEvidence = ["for", "against", "value"].some(name => Object.hasOwn(fields, name));
+  if (!exactFields(fields, hasEvidence ? [...names, "for", "against"] : names,
+      hasEvidence ? ["value"] : []))
+    throw new TypeError("signgraph site: a source cell must be an exact triple or evidence-bearing SignCell");
+  const terms = Object.fromEntries(names.map(name => [name, dataField(fields, name, "cell")]));
+  if (!hasEvidence) return triple(terms);
+  const evidence = {
+    for: sourceList(dataField(fields, "for", "cell"), "cell.for"),
+    against: sourceList(dataField(fields, "against", "cell"), "cell.against"),
+    ...(Object.hasOwn(fields, "value") ? {value: dataField(fields, "value", "cell")} : {}),
+  };
+  return triple(admitCell({...terms, ...evidence}));
+};
+
+/** A specialization morphism: general predicate to specialized predicate.
+ * Detach its terms with the existing SignCell carrier; no local content hash.
+ */
+export const specializationMorphism = (specialized, general) =>
+  retainedCarrier({ kind: "signgraph.specialization", domain: general, codomain: specialized });
+export const isSpecializationMorphism = value => {
+  if (value === null || typeof value !== "object" || Array.isArray(value) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(value))) return false;
+  const fields = Object.getOwnPropertyDescriptors(value);
+  return exactFields(fields, ["kind", "domain", "codomain"]) &&
+    ["kind", "domain", "codomain"].every(name =>
+      fields[name].enumerable && Object.hasOwn(fields[name], "value")) &&
+    fields.kind.value === "signgraph.specialization";
+};
 
 /** The distinct entity terms (subjects and objects) of a list of cells. */
 export const entitiesOf = (cells) => uniqueBy(cells.flatMap((value) => [value.subject, value.object]), coincidenceKey);
@@ -55,11 +116,25 @@ function baseCategory(cells, entities, predicates, specializations) {
   });
 }
 
-/** A site over cells (any SignCells or triples) and specialization morphisms, given in one list or two. */
+/** A site over the exact finite source SignCells/triples and specializations.
+ * The site projects EXTENSIONAL triples, not independent source evidence.
+ * A caller's getter cannot select a generator or change its source position.
+ */
 export function site(witnesses, specializations = []) {
-  const all = [...witnesses, ...specializations];
-  const cells = uniqueBy(all.filter((value) => !isSpecializationMorphism(value)).map(triple), tripleKey);
-  const morphisms = Object.freeze(all.filter(isSpecializationMorphism));
+  const all = [...sourceList(witnesses, "witnesses"), ...sourceList(specializations, "specializations")];
+  const originalCells = [], originalMorphisms = [];
+  for (const value of all) {
+    if (isSpecializationMorphism(value)) {
+      const fields = sourceRecord(value, "specialization");
+      originalMorphisms.push(specializationMorphism(
+        dataField(fields, "codomain", "specialization"),
+        dataField(fields, "domain", "specialization")));
+    } else {
+      originalCells.push(sourceTriple(value));
+    }
+  }
+  const cells = uniqueBy(originalCells, tripleKey);
+  const morphisms = Object.freeze(originalMorphisms);
   const entities = entitiesOf(cells), predicates = predicatesOf(cells);
   return Object.freeze({ kind: "signgraph.site", cells, entities, predicates, specializations: morphisms, base: baseCategory(cells, entities, predicates, morphisms) });
 }
