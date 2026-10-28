@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
-import { qualifyPackedRegistry, declaredRegistryScopes } from './qualify-packed-registry.mjs';
+import { qualifyPackedRegistry, declaredRegistryScopes, configuredRegistryScopes } from './qualify-packed-registry.mjs';
 
 const source = resolve(process.env.SIGNGRAPH_SOURCE_ROOT || process.cwd());
 const inventoryOnly = process.argv.slice(2).includes('--inventory-only');
@@ -27,6 +27,22 @@ const run = (command, args, cwd, maxMs = 600000, extraEnv = {}) => {
   }
   return p.stdout;
 };
+// Do not log, copy, or forward `npm config list --json`: it may contain
+// credential-bearing settings. Only its validated scoped-registry KEY NAMES
+// are used to reproduce original source selection in the unpacked consumer.
+function sourceConfiguredScopes() {
+  const env = {...process.env, npm_config_update_notifier:'false'};
+  delete env.NODE_TEST_CONTEXT;
+  const p = spawnSync('npm', ['config', 'list', '--json'], {
+    cwd:source, encoding:'utf8', timeout:120000, maxBuffer:4*1024*1024, env,
+  });
+  if (p.error || p.status !== 0)
+    throw new Error('cannot enumerate effective source npm registry scopes');
+  let config;
+  try { config = JSON.parse(p.stdout); }
+  catch { throw new Error('cannot parse effective source npm registry scopes'); }
+  return configuredRegistryScopes(config);
+}
 const filePath = id => typeof id === 'string' && /^test\/[a-zA-Z0-9._/-]+\.test\.mjs$/.test(id) &&
   !id.split('/').includes('..') && !id.split('/').includes('.');
 const unique = rows => new Set(rows).size === rows.length;
@@ -134,8 +150,11 @@ try {
     const handoff = qualifyPackedRegistry(
       (cwd, environment = {}, key = 'registry') =>
         run('npm', ['config', 'get', key], cwd, 120000, environment).trim(),
-      {source, packed, scopes:declaredRegistryScopes(pkg)});
+      {source, packed, scopes:[...new Set([
+        ...declaredRegistryScopes(pkg), ...sourceConfiguredScopes(),
+      ])].sort()});
     receipt.installRegistryOrigin = handoff.origin;
+    receipt.qualifiedRegistryScopeCount = handoff.scopes.length;
     run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false'],
       packed, 600000, handoff.environment);
     receipt.dependencyInstall = 'passed';
