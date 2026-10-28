@@ -130,6 +130,12 @@ export const fiberOfValuation = (valuation, predicate, entities) => predicateFib
 // Reindexing a fiber along an explicit generator is lawful; silently mixing
 // different entity contexts is not. Entity ordering is immaterial because the
 // fibers are content-addressed, and sparse pair support still reads ⊥ₖ.
+// Context identity is setwise and content-addressed, never array-position based.
+const sameEntityContext = (left, right) => {
+  const rightKeys = new Set(right.map(coincidenceKey));
+  return left.length === right.length &&
+    left.every((entity) => rightKeys.has(coincidenceKey(entity)));
+};
 const requireSharedContext = (left, right) => {
   // Inspect the in-process source owner before reading a caller's kind,
   // label, entities or programmable at() method. A JSON lookalike cannot
@@ -143,9 +149,7 @@ const requireSharedContext = (left, right) => {
   if (!coincides(left.label, right.label)) {
     throw new RangeError("fiber: distinct predicate labels cannot compose without a resulting predicate");
   }
-  const rightKeys = new Set(right.entities.map(coincidenceKey));
-  if (left.entities.length !== right.entities.length ||
-      left.entities.some((entity) => !rightKeys.has(coincidenceKey(entity)))) {
+  if (!sameEntityContext(left.entities, right.entities)) {
     throw new RangeError("fiber: distinct entity contexts cannot compose");
   }
 };
@@ -160,9 +164,20 @@ const cellwise = (operation) => (left, right, pairs) => {
   const domain = pairs ?? allPairs(left.entities);
   return predicateFiber(left.label, left.entities, (s, o) => operation(left.at(s, o), right.at(s, o)), domain);
 };
+// A comparison over foreign coordinates would compare two implicit knowledge
+// bottoms and incorrectly certify a site which was never admitted.
+const scopedComparisonPairs = (fiber, pairs) => {
+  const selected = pairs === undefined ? allPairs(fiber.entities) : sourcePairs(pairs);
+  const keys = new Set(fiber.entities.map(coincidenceKey));
+  if (selected.some(([subject, object]) =>
+    !keys.has(coincidenceKey(subject)) || !keys.has(coincidenceKey(object)))) {
+    throw new RangeError("fiber: comparison pair lies outside declared entity context");
+  }
+  return selected;
+};
 const sameFiber = (left, right, pairs) => {
   requireSharedContext(left, right);
-  return (pairs === undefined ? allPairs(left.entities) : sourcePairs(pairs))
+  return scopedComparisonPairs(left, pairs)
     .every(([s, o]) => samePoint(left.at(s, o), right.at(s, o)));
 };
 
@@ -174,7 +189,7 @@ export const fiberResiduum = cellwise(residuumReading);
 export const fiberLeqTruth = (left, right, pairs) => {
   requireSharedContext(left, right);
   const { leq } = orderOps("truth");
-  return (pairs === undefined ? allPairs(left.entities) : sourcePairs(pairs))
+  return scopedComparisonPairs(left, pairs)
     .every(([s, o]) => leq(left.at(s, o), right.at(s, o)));
 };
 
@@ -196,7 +211,18 @@ const onPairs = (fiber, pairs, readings) => {
  * subjects and objects or caller-owned references. In particular, a projection's
  * off-diagonal values are the EMPTY-FIBER bottom/top given by Metrologic, never
  * made-up witnesses. Graph-specific fiber presentation stays with SignGraph. */
-function finiteGenerator(name, ambient, local, imageOf) {
+function finiteGenerator(name, entities, ambient, local, imageOf) {
+  // This generator has an original entity context even when its selected
+  // source and target sites contain only one pair. A different universe can
+  // share that pair without authorizing a transport across contexts.
+  const context = Object.freeze(sourceArray(entities, "generator entities").map(canonicalCarrier));
+  if (new Set(context.map(coincidenceKey)).size !== context.length)
+    throw new RangeError("signgraph generator: duplicate entity identity");
+  const requireSourceContext = (fiber) => {
+    demandFiber(fiber);
+    if (!sameEntityContext(fiber.entities, context))
+      throw new RangeError("signgraph generator: fiber entity context differs from declared generator context");
+  };
   // Bind the published morphism's site to the SAME immutable canonical pairs
   // as the indexing map. A later caller mutation cannot rewrite the diagram.
   const sourceSite = sourcePairs(local), targetSite = sourcePairs(ambient);
@@ -204,8 +230,24 @@ function finiteGenerator(name, ambient, local, imageOf) {
   const target = targetSite.map(pairAddress);
   if (new Set(source).size !== source.length || new Set(target).size !== target.length)
     throw new RangeError("signgraph generator: a site cannot repeat a pair");
-  const images = new Map(sourceSite.map((pair) =>
-    [pairAddress(pair), pairAddress(sourcePair(imageOf(pair)))]));
+  // A declared generator is a typed morphism over ONE entity carrier, not
+  // an untyped pair-array that becomes valid by producing knowledge-bottom.
+  // Admit both sites and every image before issuing the generator receipt.
+  const members = new Set(context.map(coincidenceKey));
+  for (const [role, site] of [["source", sourceSite], ["target", targetSite]]) {
+    for (const [subject, object] of site) {
+      if (!members.has(coincidenceKey(subject)) || !members.has(coincidenceKey(object)))
+        throw new RangeError("signgraph generator: " + role + " site pair outside declared entity context");
+    }
+  }
+  const targetKeys = new Set(target);
+  const images = new Map(sourceSite.map((pair) => {
+    const image = sourcePair(imageOf(pair));
+    const address = pairAddress(image);
+    if (!targetKeys.has(address))
+      throw new RangeError("signgraph generator: source image absent from target site");
+    return [pairAddress(pair), address];
+  }));
   const morphism = Object.freeze({
     source, target,
     map: (key) => images.get(key),
@@ -213,15 +255,15 @@ function finiteGenerator(name, ambient, local, imageOf) {
   const admitted = Object.freeze({
     kind: "signgraph.generator", generator: name, domain: targetSite, codomain: sourceSite,
     pullback: (fiber) => {
-      demandFiber(fiber);
+      requireSourceContext(fiber);
       return onPairs(fiber, sourceSite, reindex(morphism, indexedFiber(fiber, targetSite)));
     },
     exists: (ord, fiber) => {
-      demandOrder(ord); demandFiber(fiber);
+      demandOrder(ord); requireSourceContext(fiber);
       return onPairs(fiber, targetSite, existsAlong(morphism, indexedFiber(fiber, sourceSite), ord.name));
     },
     forall: (ord, fiber) => {
-      demandOrder(ord); demandFiber(fiber);
+      demandOrder(ord); requireSourceContext(fiber);
       return onPairs(fiber, targetSite, forallAlong(morphism, indexedFiber(fiber, sourceSite), ord.name));
     },
   });
@@ -232,24 +274,24 @@ function finiteGenerator(name, ambient, local, imageOf) {
 /** Converse is a bijective finite reindexing (both adjoints are its inverse). */
 export function converse(entities) {
   const pairs = allPairs(entities);
-  return finiteGenerator("converse", pairs, pairs, ([s, o]) => [o, s]);
+  return finiteGenerator("converse", entities, pairs, pairs, ([s, o]) => [o, s]);
 }
 
 /** Diagonal projection: each row of a relation has the subject as its image. */
 export function subjectProjection(entities) {
   const pairs = allPairs(entities);
-  return finiteGenerator("subject-projection", pairs, pairs, ([s]) => [s, s]);
+  return finiteGenerator("subject-projection", entities, pairs, pairs, ([s]) => [s, s]);
 }
 
 /** Diagonal projection: each column has the object as its image. */
 export function objectProjection(entities) {
   const pairs = allPairs(entities);
-  return finiteGenerator("object-projection", pairs, pairs, ([, o]) => [o, o]);
+  return finiteGenerator("object-projection", entities, pairs, pairs, ([, o]) => [o, o]);
 }
 
 /** Restriction to a caller-admitted support: inclusion's two adjoints. */
 export function specialization(entities, support, ambient = allPairs(entities)) {
-  return finiteGenerator("specialization", ambient, sourcePairs(support), (pair) => pair);
+  return finiteGenerator("specialization", entities, ambient, sourcePairs(support), (pair) => pair);
 }
 
 /** Whether a generator's pullback commutes with fusion, and with residuum. */
