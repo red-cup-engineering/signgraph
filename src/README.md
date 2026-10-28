@@ -805,7 +805,14 @@ or re-admit the appropriate common site through the original source owner;
 they must not use coincident pair spellings, an empty report or a successful
 graph inequality as proof of a foreign provenance, Work right, performed
 effect or beneficiary acceptance. The source regression is
-`test/fiber-source-context.test.mjs`. No new serialization standard,
+`test/fiber-source-context.test.mjs`. The strict, original
+`npm run test:foundations:interop` receiving gate also checks an
+installed SignCell-produced predication base directly through SignChain's
+typed-theory receiver and back into the original SignGraph FOUR site. It
+must **fail**, not silently skip, when an old installed SignCell/SignChain
+package cannot honor source construction custody. A source-level test added
+to this Git tree does not prove the currently pinned registry versions pass
+that installed gate. No new serialization standard,
 cross-host source authentication, or external consumer receipt is claimed.
 
 This does not convert these graph coordinate declarations into witnessed
