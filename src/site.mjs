@@ -247,8 +247,8 @@ export const siteGeneratorsSchema = Object.freeze({
   required: ["kind", "cells", "specializations"],
   properties: {
     kind: { const: "signgraph.site" },
-    cells: { type: "array", items: { type: "object", required: ["subject", "predicate", "object"], properties: { subject: {}, predicate: {}, object: {} }, additionalProperties: false } },
-    specializations: { type: "array", items: { type: "object", required: ["kind", "domain", "codomain"], properties: { kind: { const: "signgraph.specialization" }, domain: {}, codomain: {} }, additionalProperties: false } },
+    cells: { type: "array", maxItems: 16384, items: { type: "object", required: ["subject", "predicate", "object"], properties: { subject: {}, predicate: {}, object: {} }, additionalProperties: false } },
+    specializations: { type: "array", maxItems: 16384, items: { type: "object", required: ["kind", "domain", "codomain"], properties: { kind: { const: "signgraph.specialization" }, domain: {}, codomain: {} }, additionalProperties: false } },
   },
   additionalProperties: false,
   title: "SiteGenerators",
