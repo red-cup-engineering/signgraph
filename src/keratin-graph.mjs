@@ -33,8 +33,33 @@ const DEFAULT_ASSIGNMENT_BUDGET = 250000;
 
 const fail = message => { throw new TypeError(`keratin graph: ${message}`); };
 function fields(record, keys, context) {
-  if (!isRecord(record) || Object.keys(record).some(key => !keys.includes(key)))
-    fail(`${context}: undeclared fields or invalid object`);
+  if (!isRecord(record) ||
+      ![Object.prototype,null].includes(Object.getPrototypeOf(record)))
+    fail(`${context}: undeclared fields or invalid object; requires plain source record`);
+  const descriptors=Object.getOwnPropertyDescriptors(record);
+  if(Reflect.ownKeys(descriptors).some(key => typeof key !== "string" ||
+      !keys.includes(key) || !descriptors[key].enumerable ||
+      !Object.hasOwn(descriptors[key],"value")))
+    fail(`${context}: undeclared fields or invalid object; requires inert own data`);
+}
+/** Reject accessor-backed, sparse, symbol-decorated or executable arrays
+ * BEFORE the original finite source loop can read their values.
+ * This does not authenticate external source witnesses; it is not a new
+ * canonical Cell codec. Host Proxy traps still require process isolation.
+ */
+function sourceArray(values, context, maximum = 256) {
+  if (!Array.isArray(values) || Object.getPrototypeOf(values)!==Array.prototype ||
+      values.length>maximum)
+    fail(`${context}: list exceeds work limit ${maximum}`);
+  const descriptors=Object.getOwnPropertyDescriptors(values);
+  if(Reflect.ownKeys(descriptors).length!==values.length+1)
+    fail(`${context}: array must be dense, undecorated inert data`);
+  for(let i=0;i<values.length;i++){
+    const field=descriptors[String(i)];
+    if(!field || !field.enumerable || !Object.hasOwn(field,"value"))
+      fail(`${context}: array slots must be inert data`);
+  }
+  return values;
 }
 function unique(xs, context) {
   const set = new Set(xs);
@@ -43,7 +68,10 @@ function unique(xs, context) {
 }
 const requireName = (x, context) => { if (!named(x)) fail(`${context}: nonempty source identity required`); return x; };
 const nameList = (xs, context, max = 256, {allowEmpty = false} = {}) => {
-  if (!Array.isArray(xs) || xs.length > max || (!allowEmpty && xs.length === 0) || !xs.every(named))
+  if (!Array.isArray(xs) || xs.length > max || (!allowEmpty && xs.length === 0))
+    fail(`${context}: invalid named list or exceeded work limit`);
+  sourceArray(xs, context, max);
+  if(!xs.every(named))
     fail(`${context}: invalid named list or exceeded work limit`);
   unique(xs, context);
   return frozen(xs);
@@ -59,6 +87,7 @@ export function keratinPositionKey(performed, side = 'token') {
 function boundaryWalk(raw, byOccurrence, label) {
   if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_RELATIONS)
     fail(`${label}: requires a bounded nonempty list of oriented source occurrences`);
+  sourceArray(raw, label, MAX_RELATIONS);
   const steps = raw.map((step, i) => {
     fields(step,['occurrence','direction'],`${label} step ${i}`);
     if (!byOccurrence.has(step.occurrence) || ![1,-1].includes(step.direction))
@@ -70,6 +99,7 @@ function boundaryWalk(raw, byOccurrence, label) {
 
 function limit(value, maximum, label) {
   if (!Array.isArray(value) || value.length > maximum) fail(`${label}: list exceeds work limit ${maximum}`);
+  sourceArray(value, label, maximum);
 }
 
 /**
@@ -105,11 +135,15 @@ export function keratinGraphOfPredications(input = {}) {
     if (!edge || contactMap.has(c.occurrence)) fail('contact must identify one unique original source predication');
     if (!Array.isArray(c.allowed) || c.allowed.length > MAX_ALLOWED_PAIRS)
       fail('contact admissibility must be a bounded array of ordered state pairs');
+    sourceArray(c.allowed, 'contact admissibility', MAX_ALLOWED_PAIRS);
     const a = new Set(stalkMap.get(edge.subject).states);
     const b = new Set(stalkMap.get(edge.object).states);
     const seen = new Set();
     const pairs = c.allowed.map(pair => {
-      if (!Array.isArray(pair) || pair.length !== 2 || !a.has(pair[0]) || !b.has(pair[1]))
+      if (!Array.isArray(pair) || pair.length !== 2)
+        fail(`contact ${c.occurrence}: pair must belong to ordered endpoint stalks`);
+      sourceArray(pair, 'directed contact pair', 2);
+      if (!a.has(pair[0]) || !b.has(pair[1]))
         fail(`contact ${c.occurrence}: pair must belong to ordered endpoint stalks`);
       const key = JSON.stringify(pair);
       if (seen.has(key)) fail('duplicate directed admissibility pair');

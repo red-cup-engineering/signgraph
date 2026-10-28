@@ -105,3 +105,22 @@ FEATHER-G is a different standard numerical embedding algorithm. The already ope
 4. Real consuming workloads (e.g., Semioverse provenance gaps, SignCraft-compatible fibers, and actual agency resource flows), graph interaction, actor rights, and packaging/installation must be independently received. A passing unit test or attractive SVG cannot close that institutional outcome.
 
 **Workload bounds:** 128 source positions, 256 original relations, 32 faces, 32 candidate holes, 512 lock events, 8 explicitly scoped observers; max 16 symbols per stalk, 256 permitted pairs per contact; default 250,000 finite assignments; explicit upper cap 2,000,000. Exceeding finite feasibility budget produces an unknown/not-evaluated **receipt** while exact topology remains available. The bounds are engineering work budgets, not a theorem constraining mathematical keratin.
+
+## Original-source admission for Keratin finite fibers (2026-10-27)
+
+The original Keratin graph workbench previously checked allowed record
+names with `Object.keys` and then read caller-owned source fields directly.
+A getter could fabricate a position, contact restriction or observer field
+after the check. It also enumerated sparse/decorated and getter-backed arrays
+as apparently declared stalk/edge witnesses.
+
+The existing `fields`, `nameList`, `limit`, `boundaryWalk` and
+directed contact table paths now refuse ordinary executable getters,
+inherited source fields, hidden or symbol-decorated data and sparse arrays
+before interpreting them. Existing original feather occurrences, source
+record names, Contact FOUR constraints, exact two-cell homology, observer
+scope and Graphviz semantics remain unchanged. SignCell retains identity;
+SignGraph retains geometric interpretation. This is NOT proof of genuine
+material keratin, source-generated Shroud topology, authenticated access,
+a free-floating ontology or an installed consumer. Proxy traps remain a
+separate host capability problem.
