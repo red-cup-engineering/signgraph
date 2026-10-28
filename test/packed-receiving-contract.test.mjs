@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { qualifyPackedRegistry, declaredRegistryScopes } from '../scripts/qualify-packed-registry.mjs';
 
 // This is a consumer test of the ORIGINAL receiver executable using real npm
 // tarballs, not a mock inventory or substitute JS test runner. The fixture has
@@ -153,4 +154,52 @@ test('a packaged test module that registers zero tests must refuse instead of co
   assert.equal(status,1);
   assert.equal(receipt.stage,'archive-native-tests');
   assert.match(receipt.obstruction,/no registered test cases/);
+});
+
+
+// This boundary is materially different from forwarding npm's default registry.
+// A project may resolve the same package name/version from its scoped provider
+// while an emitted package silently falls back to a different provider.
+test('declared scoped registry remains source-qualified in the emitted receiver', t => {
+  const root = mkdtempSync(join(tmpdir(), 'signgraph-scoped-registry-'));
+  t.after(() => rmSync(root, {recursive:true, force:true}));
+  const source = join(root, 'source'), packed = join(root, 'packed');
+  mkdirSync(source); mkdirSync(packed);
+  writeFileSync(join(source, '.npmrc'),
+    'registry=https://default.invalid/root/\n' +
+    '@red-cup-engineering:registry=https://scoped.invalid/house/\n');
+  const clear = {...process.env};
+  for (const key of ['npm_config_registry', 'NPM_CONFIG_REGISTRY',
+    'npm_config_@red-cup-engineering:registry', 'NPM_CONFIG_@red-cup-engineering:registry'])
+    delete clear[key];
+  const read = (cwd, extra = {}, name = 'registry') => {
+    const result = spawnSync('npm', ['config', 'get', name], {
+      cwd, encoding:'utf8', timeout:20000, env:{...clear, ...extra},
+    });
+    assert.equal(result.status, 0, String(result.stderr || result.error));
+    return result.stdout.trim();
+  };
+  const scopes = declaredRegistryScopes({dependencies:{
+    '@red-cup-engineering/receipt-probe':'1.0.0'
+  }, devDependencies:{other:'npm:@other-scope/lib@1.0.0'}});
+  assert.deepEqual(scopes, ['@other-scope', '@red-cup-engineering']);
+  const handoff = qualifyPackedRegistry(read, {source, packed,
+    scopes:['@red-cup-engineering']});
+  const key = 'npm_config_@red-cup-engineering:registry';
+  assert.equal(handoff.environment[key], 'https://scoped.invalid/house/');
+  assert.equal(read(packed, handoff.environment, '@red-cup-engineering:registry'),
+    'https://scoped.invalid/house/');
+  assert.equal(read(packed, handoff.environment, 'registry'),
+    'https://default.invalid/root/');
+  assert.throws(() => qualifyPackedRegistry(
+    (cwd, extra = {}, name = 'registry') =>
+      cwd === packed && name === '@red-cup-engineering:registry'
+        ? 'https://substituted.invalid/' : read(cwd, extra, name),
+    {source, packed, scopes:['@red-cup-engineering']}),
+    /scope registry differs/);
+  assert.throws(() => qualifyPackedRegistry(
+    (cwd, extra = {}, name = 'registry') =>
+      cwd === source && name === '@red-cup-engineering:registry'
+        ? 'https://user:password@scoped.invalid/' : read(cwd, extra, name),
+    {source, packed, scopes:['@red-cup-engineering']}), TypeError);
 });

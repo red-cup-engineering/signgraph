@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
-import { qualifyPackedRegistry } from './qualify-packed-registry.mjs';
+import { qualifyPackedRegistry, declaredRegistryScopes } from './qualify-packed-registry.mjs';
 
 const source = resolve(process.env.SIGNGRAPH_SOURCE_ROOT || process.cwd());
 const inventoryOnly = process.argv.slice(2).includes('--inventory-only');
@@ -132,9 +132,9 @@ try {
     // the registry, while the helper proves the extracted install uses it.
     // No credential or .npmrc is copied into the published artifact.
     const handoff = qualifyPackedRegistry(
-      (cwd, environment = {}) =>
-        run('npm', ['config', 'get', 'registry'], cwd, 120000, environment).trim(),
-      {source, packed});
+      (cwd, environment = {}, key = 'registry') =>
+        run('npm', ['config', 'get', key], cwd, 120000, environment).trim(),
+      {source, packed, scopes:declaredRegistryScopes(pkg)});
     receipt.installRegistryOrigin = handoff.origin;
     run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false'],
       packed, 600000, handoff.environment);
