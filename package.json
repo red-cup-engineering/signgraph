@@ -104,7 +104,8 @@
     "check:keratin": "node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs && node --check examples/keratin-hole-workbench.mjs",
     "test:keratin": "node --test test/cellular-sheaf.test.mjs test/keratin-graph.test.mjs",
     "demo:keratin": "node examples/keratin-hole-workbench.mjs",
-    "test:packed-receiving": "node scripts/verify-packed-receiving.mjs"
+    "test:packed-receiving": "node scripts/verify-packed-receiving.mjs",
+    "test:foundations:interop": "node --test test/evidence-order-receiving.test.mjs"
   },
   "repository": {
     "type": "git",
