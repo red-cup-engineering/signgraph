@@ -785,6 +785,10 @@ Caller-declared support and truth-comparison subsets are admitted through
 the same pair mechanism; no arbitrary iterable can secretly add or remove
 a cell. The complete original entity context is also part of each finite
 generator's contract, even if its declared support contains only one pair.
+Each supplied source pair and target pair must lie inside that carrier and
+every generator image must be a member of its *declared target site*. These
+checks happen at construction, before any source/adjoin operation can return
+a seemingly valid knowledge-bottom result for a foreign or unmapped pair.
 `pullback`, `exists`, and `forall` require a genuine SignGraph fiber
 whose entity content identities equal that original context as a set; a
 permutation of the same identities is lawful, while a foreign, narrower or
