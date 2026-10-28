@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { cell, coincides, valueOf } from "@red-cup-engineering/signcell/cell";
 import * as signCellPredication from "@red-cup-engineering/signcell/predication";
+import { utterance } from "@red-cup-engineering/signcell/utterance";
 import { createTypeSystem, defineType, getType, isSubtypeOf, specializeType, typeIdentity } from "@red-cup-engineering/signcell/type-system";
 import { admitTypeSystemDocument, typeSystemDocument } from "@red-cup-engineering/signcell/type-system/document";
 import * as signChainTheory from "@red-cup-engineering/signchain/typed-theory";
@@ -71,7 +72,23 @@ test("native original SignCell predication identity crosses SignChain theory int
     "installed SignCell lacks predication-base construction admission");
   assert.equal(typeof theoryOfBase, "function", "installed SignChain typed-theory receiver missing");
 
-  const source = cell("source", "reports", "target", { for: ["original-witness"] });
+  // The ordinary SignCell cell accepts plain data, but a predication base
+  // requires original Token/Claim/Predicate hands. Do not mistake a generic
+  // evidenced triple for an admitted specialized predication generator.
+  const reporting = utterance("source", "reports");
+  const reported = utterance("target", "received");
+  const source = signCellPredication.cell(
+    reporting.token,
+    signCellPredication.predicateOfClaim(reporting.claim),
+    reported.token,
+    { for: ["original-witness"] },
+  );
+  assert.equal(signCellPredication.isCell(source), true,
+    "original source-shaped Token/Claim predication must be admitted");
+  assert.throws(() => predicationSite([
+    cell("source", "reports", "target", { for: ["original-witness"] }),
+  ]), /unsupported or malformed source generator/u,
+  "ordinary Cell evidence cannot impersonate a typed predication source");
   const base = predicationSite([source]).base;
   assert.equal(isAdmittedPredicationBase(base), true);
   const received = theoryOfBase(base);
