@@ -3,12 +3,11 @@ import test from "node:test";
 import {conditionalFlowCutErrorBudgets} from "../src/flow-resolution-budget.mjs";
 const t = (id, from, to) => ({exchange:{id},from:{id:from},to:{id:to}});
 const exact = (ids, atoms="1", unit="kg") => Object.fromEntries(ids.map(id=>[id,{atoms,unit}]));
-const query = (transfers, {meters=[],observed=null,vertex={},edge={},identifiable=true}={}) =>
+const query = (transfers, {meters=[],observed=null,vertex={},edge={}}={}) =>
   conditionalFlowCutErrorBudgets(transfers,{
     proposedWitnessExchangeIds:new Set(meters),
     proposedObservedCompartmentIds:observed===null?null:new Set(observed),
     hypotheticalErrorCeilings:{vertex,edge},
-    structuralIdentifiable:identifiable,
   });
 test("eight-vertex source chain yields attained center 4 +/- 4, never unique 4",()=>{
   const vertices=Array.from({length:8},(_,i)=>"v"+i);
@@ -36,12 +35,12 @@ test("proposed meters contribute their own cut error; unknown budget never becom
 });
 test("cycles, self-loops, no measured vertex and unspecified calibration are explicit refusals",()=>{
   const loop=[t("ab","A","B"),t("ba","B","A")];
-  assert.ok(query(loop,{identifiable:false,vertex:exact(["A","B"])}).unmeteredExchanges.every(e=>
+  assert.ok(query(loop,{vertex:exact(["A","B"])}).unmeteredExchanges.every(e=>
     e.status==="structurally-undetermined"&&e.radius===null));
   const one=[t("a","A","B")];
   assert.equal(query(one,{observed:[],vertex:{}}).unmeteredExchanges[0].status,"structurally-undetermined");
   assert.equal(query(one).unmeteredExchanges[0].status,"calibration-unprovided");
-  assert.equal(query([t("loop","A","A")],{identifiable:false,vertex:exact(["A"])}).unmeteredExchanges[0].status,"structurally-undetermined");
+  assert.equal(query([t("loop","A","A")],{vertex:exact(["A"])}).unmeteredExchanges[0].status,"structurally-undetermined");
 });
 test("admitted identity, exact units and nonnegative atoms are mandatory",()=>{
   const transfers=[t("ab","A","B")];
@@ -112,7 +111,7 @@ test("observed bridge cut is bounded locally despite an independently ambiguous 
 
   // The local A-side meter is hypothetical and error-bounded; the
   // cyclic BC/CB exchange remains unknowable from stocks alone.
-  const result=query(transfers,{identifiable:false,observed:["A"],
+  const result=query(transfers,{observed:["A"],
     vertex:exact(["A"],"2")});
   const byId=new Map(result.unmeteredExchanges.map(e=>[e.exchange.id,e]));
   assert.equal(byId.get("bridge").status,"conditional-error-radius");
@@ -125,16 +124,16 @@ test("observed bridge cut is bounded locally despite an independently ambiguous 
   assert.equal(result.actualTransfers,"not-established");
   assert.equal(result.actualReadings,"not-supplied");
 
-  const uncalibrated=query(transfers,{identifiable:false,observed:["A"]});
+  const uncalibrated=query(transfers,{observed:["A"]});
   assert.equal(uncalibrated.unmeteredExchanges.find(e=>e.exchange.id==="bridge").status,
     "calibration-unprovided");
   assert.deepEqual(uncalibrated.unmeteredExchanges.find(e=>e.exchange.id==="bridge").missingAssumptions,
     ["vertex:A"]);
-  const partial=query(transfers,{identifiable:false,observed:["B"],
+  const partial=query(transfers,{observed:["B"],
     vertex:exact(["B"],"2")});
   assert.equal(partial.unmeteredExchanges.find(e=>e.exchange.id==="bridge").status,
     "structurally-undetermined");
-  const otherSide=query(transfers,{identifiable:false,observed:["B","C"],
+  const otherSide=query(transfers,{observed:["B","C"],
     vertex:exact(["B","C"],"3")});
   assert.deepEqual(otherSide.unmeteredExchanges.find(e=>e.exchange.id==="bridge").radius,
     {atoms:"6",unit:"kg"});
