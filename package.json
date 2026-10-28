@@ -37,7 +37,8 @@
     "test/j26-source-generated-patch.test.mjs",
     "test/meridian-flow-observability.test.mjs",
     "test/meridian-partial-stock-observability.test.mjs",
-    "test/meridian-flow-calibration.test.mjs"
+    "test/meridian-flow-calibration.test.mjs",
+    "test/meridian-temporal-aliasing.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -136,6 +137,7 @@
     "test/j26-source-generated-patch.test.mjs",
     "test/meridian-flow-observability.test.mjs",
     "test/meridian-partial-stock-observability.test.mjs",
-    "test/meridian-flow-calibration.test.mjs"
+    "test/meridian-flow-calibration.test.mjs",
+    "test/meridian-temporal-aliasing.test.mjs"
   ]
 }
