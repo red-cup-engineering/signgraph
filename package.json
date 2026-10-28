@@ -41,7 +41,8 @@
     "scripts/verify-packed-receiving.mjs",
     "test/packed-receiving-contract.test.mjs",
     "test/meridian-temporal-aliasing.test.mjs",
-    "scripts/qualify-packed-registry.mjs"
+    "scripts/qualify-packed-registry.mjs",
+    "test/fiber-source-context.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -103,7 +104,8 @@
     "check:keratin": "node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs && node --check examples/keratin-hole-workbench.mjs",
     "test:keratin": "node --test test/cellular-sheaf.test.mjs test/keratin-graph.test.mjs",
     "demo:keratin": "node examples/keratin-hole-workbench.mjs",
-    "test:packed-receiving": "node scripts/verify-packed-receiving.mjs"
+    "test:packed-receiving": "node scripts/verify-packed-receiving.mjs",
+    "test:foundations:interop": "node --test test/evidence-order-receiving.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -143,6 +145,7 @@
     "test/meridian-partial-stock-observability.test.mjs",
     "test/meridian-flow-calibration.test.mjs",
     "test/packed-receiving-contract.test.mjs",
-    "test/meridian-temporal-aliasing.test.mjs"
+    "test/meridian-temporal-aliasing.test.mjs",
+    "test/fiber-source-context.test.mjs"
   ]
 }
