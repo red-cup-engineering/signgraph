@@ -159,6 +159,25 @@ export const freeSite = (generators) => site(generators.cells, generators.specia
  * only where the source has a loop/cycle, not by inventing the identity edge.
  */
 export function closeSpecialization(base) {
+  // Public closure is a receiving boundary, too: a direct caller need not
+  // have entered through site(). Copy only inert own source fields, so spread
+  // cannot execute a getter after the graph has already been traversed.
+  const fields = sourceRecord(base, "base");
+  const original = [];
+  for (const key of Reflect.ownKeys(fields)) {
+    if (typeof key !== "string")
+      throw new TypeError("signgraph site: base keys must be string source data");
+    original.push([key, dataField(fields, key, "base")]);
+  }
+  const admittedBase = Object.fromEntries(original);
+  const declarations = sourceList(dataField(fields, "specialization", "base"),
+    "base.specialization").map(edge => {
+      if (!isSpecializationMorphism(edge))
+        throw new TypeError("signgraph site: invalid source specialization");
+      const positions = sourceRecord(edge, "specialization");
+      return [dataField(positions, "domain", "specialization"),
+        dataField(positions, "codomain", "specialization")];
+    });
   const graph = createGraph();
   const terms = new Map();
   const edges = [];
@@ -178,8 +197,8 @@ export function closeSpecialization(base) {
       codomain: terms.get(to),
     }));
   };
-  for (const edge of base.specialization) {
-    const from = keyOf(edge.domain), to = keyOf(edge.codomain);
+  for (const [domain, codomain] of declarations) {
+    const from = keyOf(domain), to = keyOf(codomain);
     graph.addEdge({ from, to, kind: "specializes" });
     include(from, to);
   }
@@ -188,7 +207,7 @@ export function closeSpecialization(base) {
   for (const { id: from } of graph.nodes())
     for (const to of reachable(graph, from, { kind: "specializes" }))
       include(from, to);
-  return Object.freeze({ ...base, specialization: Object.freeze(edges) });
+  return Object.freeze({ ...admittedBase, specialization: Object.freeze(edges) });
 }
 
 /** Cohere a site: its cells, and the residue with specialization closed. */
