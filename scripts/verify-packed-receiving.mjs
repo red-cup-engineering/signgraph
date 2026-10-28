@@ -15,7 +15,11 @@ const receipt = { kind: 'signgraph.packed-receiving.v1', source, mode: inventory
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const run = (command, args, cwd, maxMs = 600000) => {
   const p = spawnSync(command, args, { cwd, encoding: 'utf8', timeout: maxMs,
-    maxBuffer: 32 * 1024 * 1024, env: { ...process.env, npm_config_update_notifier: 'false' } });
+    maxBuffer: 32 * 1024 * 1024, env: (() => {
+      const env = { ...process.env, npm_config_update_notifier: 'false' };
+      delete env.NODE_TEST_CONTEXT; // prevent inherited parent node:test worker role
+      return env;
+    })() });
   if (p.error || p.status !== 0) {
     const message = (p.stderr || p.stdout || p.error?.message || '').slice(-3000);
     throw new Error(`${command} ${args[0]} failed (${p.status ?? 'no-exit'}): ${message}`);
@@ -95,8 +99,22 @@ try {
     run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false'], packed);
     receipt.dependencyInstall = 'passed';
     receipt.stage = 'archive-native-tests';
-    run(process.execPath, ['--test', ...tests], packed);
-    receipt.nativeReceivingTests = tests.length;
+    const executed = [];
+    for (const id of tests) {
+      // Every exact receiving file must actually execute. A zero-case green
+      // exit, including inherited NODE_TEST_CONTEXT, is not qualification.
+      const tap = run(process.execPath, ['--test', '--test-reporter=tap', id], packed);
+      const count = /^# tests (\d+)\r?$/mu.exec(tap);
+      const passed = /^# pass (\d+)\r?$/mu.exec(tap);
+      if (!count || !passed || Number(count[1]) < 1 ||
+          Number(count[1]) !== Number(passed[1]))
+        throw new Error('native package test did not positively execute: ' + id);
+      executed.push({ file: id, passed: Number(passed[1]) });
+    }
+    receipt.nativeReceivingTests = executed.length;
+    receipt.nativeReceivingCases = executed.reduce((n, file) => n + file.passed, 0);
+    receipt.executedTestFiles = executed;
+    receipt.nodeVersion = process.version;
     receipt.tests = 'passed';
     receipt.result = 'packed-tests-passed-not-installed';
     receipt.stage = 'qualified-source-package';
