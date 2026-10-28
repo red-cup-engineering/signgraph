@@ -29,6 +29,27 @@ const run = (command, args, cwd, maxMs = 600000) => {
 const filePath = id => typeof id === 'string' && /^test\/[a-zA-Z0-9._/-]+\.test\.mjs$/.test(id) &&
   !id.split('/').includes('..') && !id.split('/').includes('.');
 const unique = rows => new Set(rows).size === rows.length;
+// Package exports are a tree of subpaths, conditions and fallback arrays.
+// Every advertised candidate (not merely the default or first string) must
+// refer to an actual regular packed file, or receiving is not qualified.
+// Pattern exports require separate, finite coverage and therefore refuse here.
+function exportTargets(value, label='exports') {
+  if (value == null) return [];
+  if (typeof value === 'string') {
+    const parts = value.startsWith('./') ? value.slice(2).split('/') : [];
+    assert(parts.length > 0 && parts.every(x => x && x !== '.' && x !== '..') &&
+      !value.includes('\\') && !value.includes('\0') && !value.includes('*'),
+      `unsafe or unqualified package export target at ${label}: ${value}`);
+    return [value.slice(2)];
+  }
+  if (Array.isArray(value))
+    return value.flatMap((v, i) => exportTargets(v, `${label}[${i}]`));
+  assert(typeof value === 'object', `invalid package export at ${label}`);
+  return Object.entries(value).flatMap(([key, v]) => {
+    assert(!key.includes('*'), `unqualified package export pattern at ${label}.${key}`);
+    return exportTargets(v, `${label}.${key}`);
+  });
+}
 function contract(pkg) {
   assert(Array.isArray(pkg.files) && Array.isArray(pkg.receivingTests), 'explicit files and receivingTests required');
   assert(pkg.files.every(x => typeof x === 'string') && unique(pkg.files), 'unique package files required');
@@ -72,18 +93,28 @@ try {
   assert(inventory.has('package/package.json'), 'emitted package.json missing');
   for (const id of tests)
     assert(inventory.has(`package/${id}`), `receiving test absent from emitted archive: ${id}`);
-  for (const entry of Object.values(pkg.exports || {}))
-    if (typeof entry === 'string' && entry.startsWith('./'))
-      assert(inventory.has('package/' + entry.slice(2)), `export absent from emitted archive: ${entry}`);
+  const exported = [...new Set(exportTargets(pkg.exports))];
+  for (const id of exported)
+    assert(inventory.has(`package/${id}`), `export absent from emitted archive: ./${id}`);
+  receipt.checkedExportTargets = exported.length;
   receipt.stage = 'archive-extraction';
   run('tar', ['-xzf', tarball, '-C', dir], dir, 120000);
   const packed = join(dir, 'package');
-  for (const id of tests) {
+  let comparedFiles = 0;
+  for (const entry of entries) {
+    if (entry.endsWith('/')) continue;
+    const id = entry.slice('package/'.length);
     const artifact = join(packed, id);
-    assert(lstatSync(artifact).isFile(), `receiving test is not a regular file: ${id}`);
-    assert(sha256(readFileSync(artifact)) === sha256(readFileSync(join(source, id))),
-      `emitted receiving test differs from source: ${id}`);
+    const original = join(source, id);
+    assert(existsSync(original) && lstatSync(original).isFile() && lstatSync(artifact).isFile(),
+      `emitted file lacks original regular source: ${id}`);
+    assert(sha256(readFileSync(artifact)) === sha256(readFileSync(original)),
+      `emitted archive file differs from source: ${id}`);
+    comparedFiles++;
   }
+  for (const id of tests)
+    assert(lstatSync(join(packed, id)).isFile(), `receiving test is not a regular file: ${id}`);
+  receipt.sourceToArchiveFiles = comparedFiles;
   const packagedManifest = JSON.parse(readFileSync(join(packed, 'package.json'), 'utf8'));
   assert(packagedManifest.name === pkg.name && packagedManifest.version === pkg.version,
     'packed package identity diverges from source');
