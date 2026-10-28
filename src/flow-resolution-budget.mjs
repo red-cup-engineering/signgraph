@@ -41,7 +41,6 @@ export function conditionalFlowCutErrorBudgets(transfers, {
   proposedWitnessExchangeIds,
   proposedObservedCompartmentIds,
   hypotheticalErrorCeilings,
-  structuralIdentifiable,
 }) {
   const edges = [...transfers].sort((a,b) => compare(a.exchange.id,b.exchange.id));
   const meterIds = new Set(edges
@@ -94,8 +93,9 @@ export function conditionalFlowCutErrorBudgets(transfers, {
       missing:missing.sort(compare),side:[...side].sort(compare)};
   };
   const results = unmetered.map(e => {
-    if (!structuralIdentifiable) return Object.freeze({exchange:e.exchange,
-      status:"structurally-undetermined",radius:null});
+    // Whole-graph full rank is sufficient for all edges, not necessary for
+    // this one: an observed/calibrated cut bounds an individual bridge even
+    // when a different unmetered cycle is still unresolved.
     const left = reachable(e.from.id,e.exchange.id);
     const right = reachable(e.to.id,e.exchange.id);
     if ([...left].some(v=>right.has(v))) return Object.freeze({exchange:e.exchange,
