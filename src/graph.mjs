@@ -654,7 +654,6 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
             proposedWitnessExchangeIds:proposed,
             proposedObservedCompartmentIds:observed,
             hypotheticalErrorCeilings:ceilings[resource.id] ?? {vertex:{},edge:{}},
-            structuralIdentifiable:remaining.length === 0,
           }),
         }),
       });
