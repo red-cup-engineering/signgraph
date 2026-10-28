@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { qualifyPackedRegistry } from "../scripts/qualify-packed-registry.mjs";
 
 // Receive the explicit named test scripts through the SAME package artifact.
 // Source-tree "npm test" may intentionally include more tests than a packed
@@ -86,9 +87,24 @@ test("packed archive dependency registry follows original source config without 
       "the emitted package does not carry the source installation policy");
     // The verifier must pass this exact resolved source registry into the
     // unpacked install; its default may otherwise be a different provider.
-    const aligned = registry(unpacked, {npm_config_registry:sourceRegistry});
-    assert.equal(aligned, sourceRegistry);
+    const handoff = qualifyPackedRegistry(registry, {source:original, packed:unpacked});
+    assert.deepEqual(handoff.environment, {npm_config_registry:sourceRegistry});
+    assert.equal(handoff.origin, "https://registry.561.group");
+    assert.equal(registry(unpacked, handoff.environment), sourceRegistry);
   } finally {
     rmSync(root, {recursive:true, force:true});
   }
+});
+
+test("source registry handoff fails closed on absent, mismatched or credentialed providers", () => {
+  const places = {source:"source",packed:"packed"};
+  for(const bad of ["", "not-a-url", "http://registry.invalid/",
+    "https://user:password@registry.invalid/",
+    "https://registry.invalid/?token=secret", "https://registry.invalid/#secret"]) {
+    assert.throws(() => qualifyPackedRegistry(() => bad, places), TypeError);
+  }
+  assert.throws(() => qualifyPackedRegistry(
+    (cwd, env) => cwd === "source" ? "https://registry.561.group/" : "https://other.invalid/",
+    places), /archive installation registry differs/);
+  assert.throws(() => qualifyPackedRegistry(null,places), TypeError);
 });
