@@ -304,3 +304,44 @@ test('graph workbench refuses undeclared parameters and oversized computational 
   assert.throws(()=>analyzeKeratinGraph(specimen(),{maxAssignments:2000001}),/maxAssignments/);
   assert.throws(()=>analyzeKeratinGraph(specimen(),{surprise:true}),/undeclared fields/);
 });
+
+test('Keratin graph source admission rejects executable top-level and nested source records',()=>{
+ let calls=0;
+ const base={source,selectors,stalks,contacts:contacts(false),faces:[],holes:[],locks:[],observers:[]};
+ const first={...base};Object.defineProperty(first,'selectors',
+   {enumerable:true,get(){calls++;return selectors}});
+ const badStalk={...stalks[0]};Object.defineProperty(badStalk,'position',
+   {enumerable:true,get(){calls++;return id('a')}});
+ const contact={...contacts(false)[0]};Object.defineProperty(contact,'allowed',
+   {enumerable:true,get(){calls++;return parity(0)}});
+ const badPair=['0','0'];Object.defineProperty(badPair,'1',
+   {enumerable:true,get(){calls++;return '0'}});
+ const cases=[first,{...base,stalks:[badStalk,...stalks.slice(1)]},
+   {...base,contacts:[contact,...base.contacts.slice(1)]},
+   {...base,contacts:[{...base.contacts[0],allowed:[badPair]},...base.contacts.slice(1)]}];
+ for(const invalid of cases)assert.throws(()=>keratinGraphOfPredications(invalid),
+   /keratin graph:.*inert/u);
+ assert.equal(calls,0);
+});
+
+test('Keratin graph rejects hostile indexed source arrays, hidden fields and boundary steps',()=>{
+ let calls=0;
+ const base={source,selectors,stalks,contacts:contacts(false),faces:[],holes:[],locks:[],observers:[]};
+ const badArray=[...stalks];
+ Object.defineProperty(badArray,'0',{enumerable:true,get(){calls++;return stalks[0]}});
+ const hidden={...stalks[0]};Object.defineProperty(hidden,'authority',{value:'forged',enumerable:false});
+ const steps=[...boundary];Object.defineProperty(steps,'0',{enumerable:true,get(){calls++;return boundary[0]}});
+ const badDirection={occurrence:'a>b'};
+ Object.defineProperty(badDirection,'direction',{enumerable:true,get(){calls++;return 1}});
+ const cases=[
+   {...base,stalks:badArray},
+   {...base,stalks:[hidden,...stalks.slice(1)]},
+   {...base,holes:[{id:'hole',sourceRecord:'source:hole',boundary:steps}]},
+   {...base,holes:[{id:'hole',sourceRecord:'source:hole',boundary:[badDirection,...boundary.slice(1)]}]},
+ ];
+ for(const invalid of cases)
+   assert.throws(()=>keratinGraphOfPredications(invalid),TypeError);
+ assert.equal(calls,0);
+ const legitimate=keratinGraphOfPredications(base);
+ assert.equal(legitimate.kind,'signgraph.keratinGraph.v1');
+});
