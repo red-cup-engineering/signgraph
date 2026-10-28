@@ -47,3 +47,5 @@ jobs:
         run: npm run test:holonomy
       - name: Check the entire owning SignGraph suite
         run: npm test
+      - name: Qualify the emitted npm package through its original receiving suite
+        run: npm run test:packed-receiving

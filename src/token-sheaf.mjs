@@ -144,7 +144,10 @@ export function inheritedClaim(frame, token, predicate, object) {
  * Navigate the ACTUAL source-told sheaf, not a textual document index.
  *
  * The caller supplies a frame already scoped to the current legitimate
- * reader. An optional exact token, predicate, object and FOUR reading select
+ * reader. The exact NI of a witnessed claim Cell may filter the same finite
+ * source query for reversible SignCraft compact-page expansion; a content
+ * address does not grant source authorization. Token, predicate, object and
+ * FOUR reading still select
  * its witnessed cells; without a token this walks all admitted frame tokens.
  * The optimized exact-claim path uses the same SignCell claim-coordinate
  * index as inheritedClaim. Predicate-only/broad selections use the existing
@@ -163,14 +166,16 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
           !Object.hasOwn(Object.getOwnPropertyDescriptor(record, key), "value")))
       throw new TypeError("signgraph " + label + ": only declared plain data fields are admitted");
   };
-  admitted(selection, ["token", "predicate", "object", "reading"], "claim selection");
+  admitted(selection, ["token", "predicate", "object", "reading", "cellNi"], "claim selection");
   admitted(page, ["offset", "limit"], "claim page");
-  const { token, predicate, object, reading } = selection;
+  const { token, predicate, object, reading, cellNi } = selection;
   const { offset = 0, limit = 24 } = page;
   if (Reflect.ownKeys(selection).some((key) => selection[key] === undefined) ||
       !Number.isSafeInteger(offset) || offset < 0 ||
       !Number.isSafeInteger(limit) || limit < 1 || limit > 128 ||
-      (reading !== undefined && !["absurd", "potential", "active", "stable"].includes(reading)))
+      (reading !== undefined && !["absurd", "potential", "active", "stable"].includes(reading)) ||
+      (cellNi !== undefined && (typeof cellNi !== "string" ||
+        !/^ni:\/\/\/sha-256;[A-Za-z0-9_-]{43}$/u.test(cellNi))))
     throw new TypeError("signgraph claim query: noncanonical coordinate, reading or page");
   // Materialize one immutable, owned cut of any mutable wire presentation.
   // The original frame maker owns clone/merge/admission; this query never
@@ -221,6 +226,10 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
           (Object.hasOwn(selection, "object") && !coincides(at.object, object))) continue;
       const value = knowledgeReading(at);
       if (reading !== undefined && value !== reading) continue;
+      // SignCraft's existing Hydra source-claim @id is semanticId(at).
+      // Resolve it against the SAME admitted original frame, including
+      // source/against testimony. No alternate index or authority is minted.
+      if (cellNi !== undefined && semanticId(at) !== cellNi) continue;
       const position = total++;
       if (position < offset || entries.length === limit) continue;
       entries.push(Object.freeze({
