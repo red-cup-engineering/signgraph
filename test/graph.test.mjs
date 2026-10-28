@@ -3,7 +3,7 @@ import test from "node:test";
 import { createTypedMark, referenceOf } from "@red-cup-engineering/signcell/typed-mark";
 import { defineType, isSubtypeOf } from "@red-cup-engineering/signcell/type-system";
 import { createSignGraph } from "../src/semantic-graph.mjs";
-import { projectSignGraphTopology, findSignGraphRoute, channelResourceIncidence, channelTransportPossibilities, channelStockFlowAmbiguity, channelFlowWitnessPlacement } from "../src/graph.mjs";
+import { projectSignGraphTopology, findSignGraphRoute, channelResourceIncidence, channelTransportPossibilities, channelStockFlowAmbiguity, channelFlowWitnessPlacement, channelFlowTemporalAliasing } from "../src/graph.mjs";
 
 const accepted = (r) => { assert.equal(r.ok, true, JSON.stringify(r)); return r.value; };
 const t = accepted(defineType({
@@ -1252,4 +1252,40 @@ test("route and shared stock-flow source readers refuse option getters without e
  assert.equal(count,0);
  const safe=findSignGraphRoute(graph,refs.a,refs.b,{predicate:"supports"});
  assert.equal(safe.reachable,true);
+});
+
+test("source-admitted original exchanges retain their identity through conditional temporal windows",()=>{
+  const {graph,at,roles}=stockAmbiguityFixture();
+  const opts={channel:at.channel,relations:roles,
+    proposedMicrointervalCount:4,proposedWindowLengths:[4]};
+  const got=channelFlowTemporalAliasing(graph,opts);
+  assert.equal(got.kind,"signgraph.channelFlowTemporalAliasing.v1");
+  assert.equal(got.resources.length,1);
+  assert.equal(got.resources[0].exchangeCount,3,
+    "two Messages reporting one original exchange cannot create extra pulse channels");
+  assert.equal(got.resources[0].originalCycleRank,1);
+  assert.equal(got.resources[0].unresolvedEdgeHistoryDimension,3);
+  assert.equal(got.derivedClock,"not-established");
+  assert.equal(got.actualActorCirculation,"not-established");
+  assert.deepEqual(channelFlowTemporalAliasing(wire(graph),opts),got);
+  assert.equal(channelFlowTemporalAliasing(graph,{
+    ...opts,proposedWindowLengths:[1,1,1,1],
+  }).resources[0].unresolvedEdgeHistoryDimension,0);
+  const tree=stockAmbiguityFixture({broken:true});
+  assert.equal(channelFlowTemporalAliasing(tree.graph,{
+    ...opts,channel:tree.at.channel,
+  }).resources[0].unresolvedEdgeHistoryDimension,0);
+  const opposed=stockAmbiguityFixture({disputed:true});
+  const refused=channelFlowTemporalAliasing(opposed.graph,{
+    ...opts,channel:opposed.at.channel,
+  });
+  assert.equal(refused.resources.length,0,
+    "unaffected partial transfers cannot masquerade as a complete source graph");
+  assert.equal(refused.standing,"source-obstructed-no-complete-incidence");
+  assert.equal(refused.obstructions.length,1);
+  const forged=wire(graph);forged.edges[0].id="ni:forged";
+  assert.throws(()=>channelFlowTemporalAliasing(forged,opts),TypeError);
+  assert.throws(()=>channelFlowTemporalAliasing(graph,{
+    ...opts,proposedWindowLengths:[2],
+  }),TypeError);
 });
