@@ -85,10 +85,11 @@ const sourceTriple = value => {
 };
 
 /** A specialization morphism: general predicate to specialized predicate.
- * Detach its terms with the existing SignCell carrier; no local content hash.
+ * Preserve the original presentation at the constructor (including the first
+ * source representative); site() performs detached admission at its boundary.
  */
 export const specializationMorphism = (specialized, general) =>
-  retainedCarrier({ kind: "signgraph.specialization", domain: general, codomain: specialized });
+  Object.freeze({ kind: "signgraph.specialization", domain: general, codomain: specialized });
 export const isSpecializationMorphism = value => {
   if (value === null || typeof value !== "object" || Array.isArray(value) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(value))) return false;
@@ -126,9 +127,9 @@ export function site(witnesses, specializations = []) {
   for (const value of all) {
     if (isSpecializationMorphism(value)) {
       const fields = sourceRecord(value, "specialization");
-      originalMorphisms.push(specializationMorphism(
+      originalMorphisms.push(retainedCarrier(specializationMorphism(
         dataField(fields, "codomain", "specialization"),
-        dataField(fields, "domain", "specialization")));
+        dataField(fields, "domain", "specialization"))));
     } else {
       originalCells.push(sourceTriple(value));
     }
