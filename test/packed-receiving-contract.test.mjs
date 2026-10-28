@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { qualifyPackedRegistry, declaredRegistryScopes } from '../scripts/qualify-packed-registry.mjs';
 
 // This is a consumer test of the ORIGINAL receiver executable using real npm
 // tarballs, not a mock inventory or substitute JS test runner. The fixture has
