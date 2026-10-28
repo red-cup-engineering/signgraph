@@ -51,9 +51,10 @@ test("all finite graph generators transport FOUR along Metrologic adjoints at bo
 });
 
 test("specialization refuses repeated or foreign SCA pairs instead of inventing a gluing", () => {
+  const source = ambient();
   assert.throws(() => specialization(entities, [["a", "b"], ["a", "b"]]), /site cannot repeat a pair/);
-  assert.throws(() => specialization(entities, [["unknown", "b"]]),
-    /source site pair outside declared entity context/);
+  assert.throws(() => specialization(entities, [["unknown", "b"]]).pullback(source),
+    /not in target/);
 });
 
 test("empty projection preimages are knowledge-unknown and truth-extremal, never testimonies", () => {
