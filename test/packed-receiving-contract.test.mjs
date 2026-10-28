@@ -143,3 +143,14 @@ test('unsafe path traversal in export is refused without treating it as a packed
   assert.equal(receipt.stage,'archive-inventory');
   assert.match(receipt.obstruction,/unsafe or unqualified package export target/);
 });
+test('a packaged test module that registers zero tests must refuse instead of counting the file wrapper',t=>{
+  const {status,receipt}=execution(t, f=>{
+    // Node's native --test runner reports the file itself as one green
+    // subtest when the file registers no node:test case at all.
+    writeFileSync(join(f.root,'test','ping.test.mjs'),
+      '// This module intentionally registers no node:test test or suite.\nexport const ignored = 42;\n');
+  },'');
+  assert.equal(status,1);
+  assert.equal(receipt.stage,'archive-native-tests');
+  assert.match(receipt.obstruction,/no registered test cases/);
+});
