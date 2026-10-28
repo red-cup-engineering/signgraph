@@ -1,4 +1,5 @@
 import { conditionalFlowCutErrorBudgets } from "./flow-resolution-budget.mjs";
+import { conditionalTemporalFlowAliasing } from "./temporal-flow-aliasing.mjs";
 import { createGraph, shortestPath } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { glueSignGraphs, querySignGraph } from "./semantic-graph.mjs";
 
@@ -390,6 +391,49 @@ export function channelStockFlowAmbiguity(graph, options = {}) {
   });
 }
 
+
+/**
+ * Source-readmitted conditional temporal observation, grouped by original
+ * Resource. No aggregate meter, period, clock or Actor effect is asserted.
+ * Science #215 section 7.24; SignGraph #24; SignCraft #11.
+ */
+export function channelFlowTemporalAliasing(graph,options={}) {
+  const o=sourcePlacementRecord(options,"temporal-flow options");
+  const allowed=new Set(["channel","relations","maxMessages","maxExchanges","maxEdges",
+    "maxContainmentDepth","proposedMicrointervalCount","proposedWindowLengths"]);
+  if(Object.keys(o).some(k=>!allowed.has(k)))
+    throw new TypeError("temporal flow refuses unknown source options");
+  const microintervalCount=o.proposedMicrointervalCount;
+  const windowLengths=sourcePlacementCopy(o.proposedWindowLengths,"windowLengths");
+  conditionalTemporalFlowAliasing([],{microintervalCount,windowLengths});
+  const reading=channelResourceIncidence(graph,{
+    channel:o.channel,relations:sourcePlacementCopy(o.relations,"relations"),
+    maxMessages:o.maxMessages,maxExchanges:o.maxExchanges,maxEdges:o.maxEdges,
+    maxContainmentDepth:o.maxContainmentDepth,
+  });
+  const byResource=new Map();
+  if(!reading.obstructions.length)for(const transfer of reading.transfers){
+    const id=transfer.resource.id;
+    if(!byResource.has(id))byResource.set(id,{resource:transfer.resource,transfers:[]});
+    byResource.get(id).transfers.push(transfer);
+  }
+  return Object.freeze({
+    kind:"signgraph.channelFlowTemporalAliasing.v1",
+    graph:reading.graph,channel:reading.channel,
+    resources:Object.freeze([...byResource.values()]
+      .sort((a,b)=>a.resource.id<b.resource.id?-1:a.resource.id>b.resource.id?1:0)
+      .map(({resource,transfers})=>Object.freeze({
+        resource,...conditionalTemporalFlowAliasing(transfers,{microintervalCount,windowLengths}),
+      }))),
+    obstructions:reading.obstructions,
+    standing:reading.obstructions.length?
+      "source-obstructed-no-complete-incidence":"hypothetical-temporal-design-only",
+    originalGraphCompleteness:"not-attested",
+    observedStepStocksAndPorts:"not-supplied",
+    observedWindowEdgeTotals:"not-supplied",
+    actualActorCirculation:"not-established",derivedClock:"not-established",
+  });
+}
 
 /**
  * Report the source-identified edges that close an UNDIRECTED cycle after

@@ -39,7 +39,8 @@
     "test/meridian-partial-stock-observability.test.mjs",
     "test/meridian-flow-calibration.test.mjs",
     "scripts/verify-packed-receiving.mjs",
-    "test/packed-receiving-contract.test.mjs"
+    "test/packed-receiving-contract.test.mjs",
+    "test/meridian-temporal-aliasing.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -140,6 +141,7 @@
     "test/meridian-flow-observability.test.mjs",
     "test/meridian-partial-stock-observability.test.mjs",
     "test/meridian-flow-calibration.test.mjs",
-    "test/packed-receiving-contract.test.mjs"
+    "test/packed-receiving-contract.test.mjs",
+    "test/meridian-temporal-aliasing.test.mjs"
   ]
 }
