@@ -230,8 +230,24 @@ function finiteGenerator(name, entities, ambient, local, imageOf) {
   const target = targetSite.map(pairAddress);
   if (new Set(source).size !== source.length || new Set(target).size !== target.length)
     throw new RangeError("signgraph generator: a site cannot repeat a pair");
-  const images = new Map(sourceSite.map((pair) =>
-    [pairAddress(pair), pairAddress(sourcePair(imageOf(pair)))]));
+  // A declared generator is a typed morphism over ONE entity carrier, not
+  // an untyped pair-array that becomes valid by producing knowledge-bottom.
+  // Admit both sites and every image before issuing the generator receipt.
+  const members = new Set(context.map(coincidenceKey));
+  for (const [role, site] of [["source", sourceSite], ["target", targetSite]]) {
+    for (const [subject, object] of site) {
+      if (!members.has(coincidenceKey(subject)) || !members.has(coincidenceKey(object)))
+        throw new RangeError("signgraph generator: " + role + " site pair outside declared entity context");
+    }
+  }
+  const targetKeys = new Set(target);
+  const images = new Map(sourceSite.map((pair) => {
+    const image = sourcePair(imageOf(pair));
+    const address = pairAddress(image);
+    if (!targetKeys.has(address))
+      throw new RangeError("signgraph generator: source image absent from target site");
+    return [pairAddress(pair), address];
+  }));
   const morphism = Object.freeze({
     source, target,
     map: (key) => images.get(key),
