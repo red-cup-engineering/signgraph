@@ -13,10 +13,10 @@ const inventoryOnly = process.argv.slice(2).includes('--inventory-only');
 const receipt = { kind: 'signgraph.packed-receiving.v1', source, mode: inventoryOnly ? 'archive-only' : 'dependency-backed',
   stage: 'preflight', result: 'unverified' };
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-const run = (command, args, cwd, maxMs = 600000) => {
+const run = (command, args, cwd, maxMs = 600000, extraEnv = {}) => {
   const p = spawnSync(command, args, { cwd, encoding: 'utf8', timeout: maxMs,
     maxBuffer: 32 * 1024 * 1024, env: (() => {
-      const env = { ...process.env, npm_config_update_notifier: 'false' };
+      const env = { ...process.env, npm_config_update_notifier: 'false', ...extraEnv };
       delete env.NODE_TEST_CONTEXT; // prevent inherited parent node:test worker role
       return env;
     })() });
@@ -127,7 +127,24 @@ try {
     receipt.result = 'inventory-qualified-only';
   } else {
     receipt.stage = 'archive-dependencies';
-    run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false'], packed);
+    // Source npm configuration is NOT part of the emitted archive. Without
+    // carrying forward the effective source registry, npm resolves private
+    // house dependencies against an unrelated default provider in /tmp.
+    // Resolve through npm itself: this preserves overrides without copying
+    // tokens, auth configuration or .npmrc into the published package.
+    const sourceRegistry = run('npm', ['config', 'get', 'registry'], source, 120000).trim();
+    const registry = new URL(sourceRegistry);
+    assert(registry.protocol === 'https:' && !registry.username && !registry.password &&
+      !registry.search && !registry.hash,
+      'original npm source registry must be a credential-free HTTPS endpoint');
+    const registryEnv = {npm_config_registry: registry.href};
+    const receivedRegistry = run('npm', ['config', 'get', 'registry'], packed, 120000,
+      registryEnv).trim();
+    assert(new URL(receivedRegistry).href === registry.href,
+      'archive installation registry differs from original source registry');
+    receipt.installRegistryOrigin = registry.origin;
+    run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false'],
+      packed, 600000, registryEnv);
     receipt.dependencyInstall = 'passed';
     receipt.stage = 'archive-native-tests';
     const executed = [];
