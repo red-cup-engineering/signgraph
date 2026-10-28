@@ -343,5 +343,5 @@ test('Keratin graph rejects hostile indexed source arrays, hidden fields and bou
    assert.throws(()=>keratinGraphOfPredications(invalid),TypeError);
  assert.equal(calls,0);
  const legitimate=keratinGraphOfPredications(base);
- assert.equal(legitimate.kind,'signgraph.keratinGraph.v1');
+ assert.equal(legitimate.kind,'signgraph.keratinGraph.finiteFiberHoleReading.v1');
 });
