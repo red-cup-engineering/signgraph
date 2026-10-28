@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cell, claimCoordinate, sidesOf } from "@red-cup-engineering/signcell/cell";
+import { cell, claimCoordinate, semanticId, sidesOf } from "@red-cup-engineering/signcell/cell";
 import { SPECIALIZES, generalizations, tokenFrame } from "@red-cup-engineering/signcell/token-frame";
 import { possibilize, valuationOf } from "@red-cup-engineering/signchain/token-fiber";
 import { inherited, inheritedClaim, queryInheritedTellings, tellingsAt } from "../src/token-sheaf.mjs";
@@ -358,4 +358,49 @@ test("a null specialization predicate keeps its distinct snapshot and source rea
   assert.equal(selectedNull.total, 0);
   assert.notEqual(ordinary.snapshot, selectedNull.snapshot,
     "equal source cells under different specialization laws are different query cuts");
+});
+
+test("NI-addressed compact L-Space claims re-expand through the original source frame without aliasing id keys", () => {
+  const firstToken = "urn:owner:alpha/source.json#/id";
+  const secondToken = "urn:owner:beta/source.json#/id";
+  const predicate = "urn:typed-schema:observation-identity";
+  const frame = tokenFrame([
+    cell(firstToken, predicate, "same-key", {
+      for: [{ owner: "alpha", revision: "one" }],
+      against: [{ owner: "alpha", revision: "opposition" }],
+    }),
+    cell(secondToken, predicate, "same-key", {
+      for: [{ owner: "beta", revision: "one" }],
+    }),
+  ]);
+  const full = queryInheritedTellings(frame, { predicate, object: "same-key" });
+  assert.equal(full.total, 2);
+  const [alpha, beta] = full.entries;
+  assert.notEqual(semanticId(alpha.cell), semanticId(beta.cell));
+  for (const original of full.entries) {
+    const address = semanticId(original.cell);
+    const exact = queryInheritedTellings(frame, { cellNi: address }, { limit: 1 });
+    assert.equal(exact.total, 1);
+    assert.equal(exact.next, null);
+    assert.deepEqual(exact.entries[0], original,
+      "the compact NI resolves its full original side-specific witness and source coordinates");
+    assert.equal(semanticId(exact.entries[0].cell), address);
+    assert.notEqual(exact.selection.cellNi, undefined);
+  }
+  assert.deepEqual(sidesOf(queryInheritedTellings(frame, {
+    cellNi: semanticId(alpha.cell),
+  }).entries[0].cell), [true, true], "opposition is not compressed away");
+  assert.throws(() => queryInheritedTellings(frame, { cellNi: "id" }), /noncanonical/);
+  assert.throws(() => queryInheritedTellings(frame, { cellNi: "ni:///sha-256;invalid" }), /noncanonical/);
+  const altered = tokenFrame([
+    cell(firstToken, predicate, "same-key", { for: [{ owner: "alpha", revision: "two" }] }),
+    cell(secondToken, predicate, "same-key", { for: [{ owner: "beta", revision: "one" }] }),
+  ]);
+  const previous = queryInheritedTellings(frame, { cellNi: semanticId(alpha.cell) });
+  const invalidated = queryInheritedTellings(altered, { cellNi: semanticId(alpha.cell) });
+  assert.notEqual(previous.snapshot, invalidated.snapshot);
+  assert.equal(invalidated.total, 0, "an old source version's full Cell cannot be silently rebound");
+  const unchanged = queryInheritedTellings(altered, { cellNi: semanticId(beta.cell) });
+  assert.equal(unchanged.total, 1);
+  assert.equal(unchanged.entries[0].token, secondToken);
 });
