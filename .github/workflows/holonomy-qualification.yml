@@ -41,6 +41,14 @@ jobs:
           node --version
       - name: Install exact declared house-package dependencies
         run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Show installed source-owner dependency cohort
+        run: npm ls @red-cup-engineering/signcell @red-cup-engineering/signchain --all
+      - name: Receive original SignCell / SignChain / SignGraph foundations
+        run: |
+          node --check src/fiber.mjs
+          node --check test/fiber-source-context.test.mjs
+          node --check test/evidence-order-receiving.test.mjs
+          npm run test:foundations:interop
       - name: Check executable syntax
         run: npm run check:holonomy
       - name: Execute bounded pure operations receiving
