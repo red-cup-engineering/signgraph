@@ -63,3 +63,27 @@ test("finite generators require unique content-identified source entities", () =
   const entities = [{ a: 1, b: 2 }, { b: 2, a: 1 }];
   assert.throws(() => specialization(entities, []), /duplicate entity identity/);
 });
+
+test("finite source-site morphism admission matches the exact subset law in 256 cases", () => {
+  const domain = ["a", "b"];
+  const coordinates = domain.flatMap((subject) =>
+    domain.map((object) => [subject, object]));
+  const chosen = (mask) => coordinates.filter((_, at) => (mask & (1 << at)) !== 0);
+  let cases = 0;
+  for (let sourceMask = 0; sourceMask < 16; sourceMask += 1) {
+    for (let targetMask = 0; targetMask < 16; targetMask += 1) {
+      const source = chosen(sourceMask), target = chosen(targetMask);
+      const admits = (sourceMask & targetMask) === sourceMask;
+      if (admits) {
+        const gen = specialization(domain, source, target);
+        assert.deepEqual(gen.codomain, source);
+        assert.deepEqual(gen.domain, target);
+      } else {
+        assert.throws(() => specialization(domain, source, target),
+          /source image absent from target site/);
+      }
+      cases += 1;
+    }
+  }
+  assert.equal(cases, 256);
+});
