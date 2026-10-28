@@ -112,3 +112,48 @@ test("transportRules realizes both evidence directions across an actual multi-ho
   assert.equal(source.base.specialization.length, 2, "source category remains unmutated");
   assert.equal(new Set(rules.map(rule => rule.name)).size, 6, "no duplicate derivation rules");
 });
+
+test("direct closure refuses accessor-backed bases before running any source getter", () => {
+  let getterCalls = 0;
+  const getter = () => { getterCalls++; throw Error("source getter was executed"); };
+  const source = { specialization: [specializationMorphism("specific", "general")] };
+  const accessor = {};
+  Object.defineProperty(accessor, "specialization", {enumerable:true, get: getter});
+  const extra = {...source};
+  Object.defineProperty(extra, "metadata", {enumerable:true, get: getter});
+  const adorned = [...source.specialization];
+  Object.defineProperty(adorned, "0", {enumerable:true, get: getter});
+  for (const input of [accessor, extra, {specialization:adorned}])
+    assert.throws(() => closeSpecialization(input), /signgraph site:/);
+  assert.equal(getterCalls, 0);
+});
+
+test("direct closure refuses forged, partial, inherited and accessor-backed specialization arcs", () => {
+  let calls = 0;
+  const getter = () => { calls++; throw Error("executed foreign arc"); };
+  const suspicious = {kind:"signgraph.specialization",codomain:"child"};
+  Object.defineProperty(suspicious,"domain",{enumerable:true,get:getter});
+  for (const malformed of [
+    suspicious,
+    {kind:"signgraph.specialization",domain:"general"},
+    {kind:"foreign.arc",domain:"general",codomain:"child"},
+    {kind:"signgraph.specialization",domain:"general",codomain:"child",extra:true},
+    Object.assign(Object.create({kind:"signgraph.specialization"}), {domain:"general",codomain:"child"}),
+  ]) assert.throws(() => closeSpecialization({specialization:[malformed]}),
+    /signgraph site:/);
+  assert.equal(calls, 0);
+});
+
+test("direct closure maintains first original representative and exact graph after JSON readmission", () => {
+  const original = {id:["original"]};
+  const sameOriginal = {id:["original"]};
+  const middle = {id:["middle"]};
+  const last = {id:["last"]};
+  const source = [specializationMorphism(middle, original),
+    specializationMorphism(middle, sameOriginal), specializationMorphism(last, middle)];
+  const native = closeSpecialization({specialization:source});
+  const replayed = closeSpecialization({specialization:JSON.parse(JSON.stringify(source))});
+  assert.equal(native.specialization[0].domain, original);
+  assert.deepEqual(native.specialization, replayed.specialization);
+  assert.equal(native.specialization.length, 3);
+});
