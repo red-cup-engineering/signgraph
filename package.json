@@ -41,7 +41,8 @@
     "scripts/verify-packed-receiving.mjs",
     "test/packed-receiving-contract.test.mjs",
     "test/meridian-temporal-aliasing.test.mjs",
-    "scripts/qualify-packed-registry.mjs"
+    "scripts/qualify-packed-registry.mjs",
+    "test/fiber-source-context.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -143,6 +144,7 @@
     "test/meridian-partial-stock-observability.test.mjs",
     "test/meridian-flow-calibration.test.mjs",
     "test/packed-receiving-contract.test.mjs",
-    "test/meridian-temporal-aliasing.test.mjs"
+    "test/meridian-temporal-aliasing.test.mjs",
+    "test/fiber-source-context.test.mjs"
   ]
 }

@@ -783,9 +783,30 @@ the public diagram while its pullback continues to use older addresses.
 
 Caller-declared support and truth-comparison subsets are admitted through
 the same pair mechanism; no arbitrary iterable can secretly add or remove
-a cell. This does not convert these graph coordinate declarations into
-witnessed real-world observations. Numeric valuation and source authority
-still require their respective original producers.
+a cell. The complete original entity context is also part of each finite
+generator's contract, even if its declared support contains only one pair.
+`pullback`, `exists`, and `forall` require a genuine SignGraph fiber
+whose entity content identities equal that original context as a set; a
+permutation of the same identities is lawful, while a foreign, narrower or
+wider context refuses before Metrologic is invoked. A locally absent pair
+within the admitted context remains knowledge-bottom, **not** a new
+coordinate, observation or authority.
+
+`fiberLeqTruth(left, right, requestedPairs?)` compares the admitted shared
+predicate and entity carrier, optionally restricted to its *own* requested
+pairs. A foreign subject or object in that restriction is an obstruction,
+not a valid comparison of two implicit unknown readings. SignCraft,
+Fabrication, Circulation and Enterprise consumers must explicitly construct
+or re-admit the appropriate common site through the original source owner;
+they must not use coincident pair spellings, an empty report or a successful
+graph inequality as proof of a foreign provenance, Work right, performed
+effect or beneficiary acceptance. The source regression is
+`test/fiber-source-context.test.mjs`. No new serialization standard,
+cross-host source authentication, or external consumer receipt is claimed.
+
+This does not convert these graph coordinate declarations into witnessed
+real-world observations. Numeric valuation and source authority still
+require their respective original producers.
 
 ## Exact 2-complex cellular sheaves and Matrix Market exchange
 
