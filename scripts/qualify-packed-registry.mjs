@@ -1,5 +1,5 @@
 /**
- * Qualify the original npm default registry AND package-declared scoped
+ * Qualify the original npm default registry AND source-effective scoped
  * registries across the source -> emitted-package installation boundary.
  * Only credential-free effective HTTPS registry URLs cross that boundary.
  * Host authentication stays with its original npm configuration and rights.
@@ -35,6 +35,32 @@ export function declaredRegistryScopes(pkg) {
         }
       }
     }
+  }
+  return Object.freeze([...scopes].sort());
+}
+
+/**
+ * Discover every source-effective scoped registry key, including scopes used
+ * only by transitive dependencies. npm's project/user/environment settings
+ * are authoritative; a root dependency list cannot enumerate this set.
+ * Inspect keys only: auth tokens and other npm config values are NEVER moved
+ * to the extracted install or written into a receiving receipt.
+ */
+export function configuredRegistryScopes(config) {
+  if (!config || typeof config !== 'object' || Array.isArray(config))
+    throw new TypeError('effective npm configuration must be a mapping');
+  const keys = Object.keys(config);
+  if (keys.length > 4096)
+    throw new TypeError('effective npm configuration is too large');
+  const scopes = new Set();
+  for (const key of keys) {
+    if (!key.startsWith('@') || !key.endsWith(':registry')) continue;
+    const scope = key.slice(0, -':registry'.length);
+    if (!scopePattern.test(scope))
+      throw new TypeError('invalid effective npm scoped registry key');
+    scopes.add(scope);
+    if (scopes.size > 100)
+      throw new TypeError('too many effective npm scoped registries');
   }
   return Object.freeze([...scopes].sort());
 }
