@@ -98,3 +98,48 @@ test('failed native test is a refusal, not an archive acceptance',t=>{
   assert.equal(receipt.sourceToArchiveBytes,'matched');
   assert.match(receipt.obstruction,/failed/);
 });
+test('conditional import export missing from archive MUST refuse, even when unrelated tests pass',t=>{
+  const {status,receipt}=execution(t, f=>{
+    f.manifest.exports['./answer']={import:'./src/absent.mjs',default:'./src/answer.mjs'};
+  },'');
+  assert.equal(status,1);
+  assert.equal(receipt.stage,'archive-inventory');
+  assert.match(receipt.obstruction,/export absent from emitted archive/);
+});
+test('valid nested conditional exports and null-blocked subpaths receive all available targets',t=>{
+  const {status,receipt}=execution(t, f=>{
+    f.manifest.exports={
+      './answer': {node: {import:'./src/answer.mjs',default:'./src/answer.mjs'}},
+      './blocked': null,
+    };
+  },'');
+  assert.equal(status,0);
+  assert.equal(receipt.result,'packed-tests-passed-not-installed');
+  assert.equal(receipt.checkedExportTargets,1);
+  assert.equal(receipt.sourceToArchiveFiles,3);
+  assert.equal(receipt.nativeReceivingCases,1);
+});
+test('fallback export array cannot conceal an absent candidate behind a working candidate',t=>{
+  const {status,receipt}=execution(t, f=>{
+    f.manifest.exports['./answer']={import:['./src/answer.mjs','./src/absent.mjs']};
+  });
+  assert.equal(status,1);
+  assert.equal(receipt.stage,'archive-inventory');
+  assert.match(receipt.obstruction,/export absent from emitted archive/);
+});
+test('export patterns require separate coverage rather than silently qualifying unenumerated consumers',t=>{
+  const {status,receipt}=execution(t, f=>{
+    f.manifest.exports={'./*':'./src/*.mjs'};
+  });
+  assert.equal(status,1);
+  assert.equal(receipt.stage,'archive-inventory');
+  assert.match(receipt.obstruction,/unqualified package export pattern/);
+});
+test('unsafe path traversal in export is refused without treating it as a packed target',t=>{
+  const {status,receipt}=execution(t, f=>{
+    f.manifest.exports['./answer']='./src/../answer.mjs';
+  });
+  assert.equal(status,1);
+  assert.equal(receipt.stage,'archive-inventory');
+  assert.match(receipt.obstruction,/unsafe or unqualified package export target/);
+});
