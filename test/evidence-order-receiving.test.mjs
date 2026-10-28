@@ -77,6 +77,29 @@ test("native original SignCell predication identity crosses SignChain theory int
   const received = theoryOfBase(base);
   assert.equal(received.kind, "typedTheory.carrier");
   assert.equal(received.rules.length, 3, "only the three actual source-generated predication moves");
+  // Count and carrier kind alone are insufficient. A SignChain supplier that
+  // silently swaps subject/object projections would still satisfy both.
+  // Check each original source-generated morphism, trace and endpoint.
+  const originalNode = [source.subject, source.predicate, source.object];
+  const expectedRules = [
+    ["typedTheory.inferenceMorphism.converse", originalNode,
+      [source.object, source.predicate, source.subject]],
+    ["typedTheory.inferenceMorphism.subjectProjection", originalNode, source.subject],
+    ["typedTheory.inferenceMorphism.objectProjection", originalNode, source.object],
+  ];
+  assert.equal(typeof signCellPredication.baseObjectCoincides, "function",
+    "installed source owner must qualify original base endpoints");
+  for (const [index, [kind, domain, codomain]] of expectedRules.entries()) {
+    const rule = received.rules[index];
+    assert.equal(rule.kind, "typedTheory.inferenceRule");
+    assert.equal(rule.trace.kind, "typedTheory.inferenceTrace");
+    assert.equal(rule.trace.morphisms.length, 1, "one original generating move per rule");
+    assert.equal(rule.trace.morphisms[0].kind, kind, "source morphism kind must survive");
+    assert.equal(signCellPredication.baseObjectCoincides(rule.domain, domain), true,
+      "source-generated domain must survive");
+    assert.equal(signCellPredication.baseObjectCoincides(rule.codomain, codomain), true,
+      "source-generated codomain must survive");
+  }
 
   const entities = [source.subject, source.object], selected = [[source.subject, source.object]];
   const fiber = predicateFiber(source.predicate, entities,
