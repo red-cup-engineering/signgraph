@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { cell, semanticId } from "@red-cup-engineering/signcell/cell";
-import { isSpecializationMorphism, site, specializationMorphism } from "../src/site.mjs";
+import { isSpecializationMorphism, site, siteGeneratorsSchema, specializationMorphism } from "../src/site.mjs";
 
 const triple = (subject = "a", predicate = "is-related-to", object = "b") =>
   ({subject, predicate, object});
@@ -93,4 +93,14 @@ test("empty site and mixed-list generator forms retain their historical interpre
   const right = site([triple()], [edge]);
   assert.equal(semanticId(left), semanticId(right));
   assert.equal(left.specializations.length, 1);
+});
+
+test("published generator schema and original source admission agree on the finite budget", () => {
+  assert.equal(siteGeneratorsSchema.properties.cells.maxItems, 16384);
+  assert.equal(siteGeneratorsSchema.properties.specializations.maxItems, 16384);
+  const overBudget = Array.from({length: 16385}, () => triple());
+  assert.throws(() => site(overBudget), /bounded plain source array/);
+  assert.throws(() => site([], overBudget), /bounded plain source array/);
+  assert.equal(siteGeneratorsSchema.additionalProperties, false,
+    "generator documents cannot introduce undocumented runtime authority");
 });
