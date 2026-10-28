@@ -68,7 +68,7 @@ test("packed archive dependency registry follows original source config without 
   const original = join(root, "source"), unpacked = join(root, "unpacked");
   try {
     mkdirSync(original); mkdirSync(unpacked);
-    writeFileSync(join(original, ".npmrc"), "registry=https://registry.561.group/\\n");
+    writeFileSync(join(original, ".npmrc"), "registry=https://registry.561.group/\n");
     const env = {...process.env};
     delete env.npm_config_registry;
     delete env.NPM_CONFIG_REGISTRY;
