@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
-import { qualifyPackedRegistry, declaredRegistryScopes } from './qualify-packed-registry.mjs';
+import { qualifyPackedRegistry, declaredRegistryScopes, configuredRegistryScopes } from './qualify-packed-registry.mjs';
 
 const source = resolve(process.env.SIGNGRAPH_SOURCE_ROOT || process.cwd());
 const inventoryOnly = process.argv.slice(2).includes('--inventory-only');
@@ -131,11 +131,26 @@ try {
     // Source .npmrc is absent in the tarball. Original npm config selects
     // the registry, while the helper proves the extracted install uses it.
     // No credential or .npmrc is copied into the published artifact.
+    // A dependency may first appear below the root manifest. Preserve all
+    // effective source-configured npm scope selections, not just root names.
+    // npm's --json view can omit protected credentialed scoped registry keys;
+    // plain 'ls' includes their names, which are all we extract. Never retain
+    // or expose the configuration values in the receiving receipt.
+    let configuredScopes;
+    try {
+      configuredScopes = configuredRegistryScopes(
+        run('npm', ['config', 'ls'], source, 120000));
+    } catch {
+      throw new Error('source npm registry scope discovery failed');
+    }
+    const scopes = [...new Set([...declaredRegistryScopes(pkg), ...configuredScopes])].sort();
     const handoff = qualifyPackedRegistry(
       (cwd, environment = {}, key = 'registry') =>
         run('npm', ['config', 'get', key], cwd, 120000, environment).trim(),
-      {source, packed, scopes:declaredRegistryScopes(pkg)});
+      {source, packed, scopes});
     receipt.installRegistryOrigin = handoff.origin;
+    receipt.configuredRegistryScopeCount = configuredScopes.length;
+    receipt.qualifiedRegistryScopeCount = handoff.scopes.length;
     run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false'],
       packed, 600000, handoff.environment);
     receipt.dependencyInstall = 'passed';

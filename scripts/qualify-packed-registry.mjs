@@ -1,6 +1,6 @@
 /**
- * Qualify the original npm default registry AND package-declared scoped
- * registries across the source -> emitted-package installation boundary.
+ * Qualify the original npm default registry, package-declared scoped
+ * registries, and effective source-configured transitive scopes across the source -> emitted-package installation boundary.
  * Only credential-free effective HTTPS registry URLs cross that boundary.
  * Host authentication stays with its original npm configuration and rights.
  */
@@ -35,6 +35,28 @@ export function declaredRegistryScopes(pkg) {
         }
       }
     }
+  }
+  return Object.freeze([...scopes].sort());
+}
+
+// Root manifest scopes alone are not a dependency closure. A transitive-only
+// dependency may use a source-configured npm scope invisible to package.json.
+// Enumerate effective npm config keys, but never transmit config values or
+// authentication; only strictly validated registry names cross this API.
+export function configuredRegistryScopes(configuration) {
+  if (typeof configuration !== 'string' || configuration.length > 1048576)
+    throw new TypeError('bounded effective npm registry listing is required');
+  const scopes = new Set();
+  for (const line of configuration.split(/\r?\n/u)) {
+    // npm config ls --json can OMIT protected @scope:registry entries.
+    // Read only the key from npm's effective plain listing, never values.
+    const scope = /^(@[^=\s]+):registry\s*=/u.exec(line)?.[1];
+    if (!scope) continue;
+    if (!scopePattern.test(scope))
+      throw new TypeError('invalid source npm registry scope');
+    scopes.add(scope);
+    if (scopes.size > 100)
+      throw new TypeError('unbounded source npm registry scopes');
   }
   return Object.freeze([...scopes].sort());
 }
