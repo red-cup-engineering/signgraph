@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cell, valueOf } from "@red-cup-engineering/signcell/cell";
+import { cell, coincides, valueOf } from "@red-cup-engineering/signcell/cell";
+import * as signCellPredication from "@red-cup-engineering/signcell/predication";
+import * as signChainTheory from "@red-cup-engineering/signchain/typed-theory";
 import { SPECIALIZES, tokenFrame } from "@red-cup-engineering/signcell/token-frame";
 import { possibilize, valuationOf } from "@red-cup-engineering/signchain/token-fiber";
 import { inherited, inheritedClaim, queryInheritedTellings } from "../src/token-sheaf.mjs";
+import { predicateFiber, specialization } from "../src/fiber.mjs";
 
 const predicate = "requires";
 const object = "source-qualified-market-claim";
@@ -54,4 +57,37 @@ test("a positive written value does not overturn an explicit negative classifica
   assert.equal(result.query.total, 0);
   assert.equal(result.modal, "absurd");
   assert.deepEqual(frame.cells.find(at => at.predicate === SPECIALIZES).against, ["counterexample"]);
+});
+
+test("native original SignCell predication identity crosses SignChain theory into a typed SignGraph site", () => {
+  const { predicationSite, isAdmittedPredicationBase } = signCellPredication;
+  const { theoryOfBase } = signChainTheory;
+  // Fail closed rather than skip a source-admission requirement because an
+  // older dependency distribution happens not to expose the real producer.
+  assert.equal(typeof predicationSite, "function", "installed SignCell predication producer missing");
+  assert.equal(typeof isAdmittedPredicationBase, "function",
+    "installed SignCell lacks predication-base construction admission");
+  assert.equal(typeof theoryOfBase, "function", "installed SignChain typed-theory receiver missing");
+
+  const source = cell("source", "reports", "target", { for: ["original-witness"] });
+  const base = predicationSite([source]).base;
+  assert.equal(isAdmittedPredicationBase(base), true);
+  const received = theoryOfBase(base);
+  assert.equal(received.kind, "typedTheory.carrier");
+  assert.equal(received.rules.length, 3, "only the three actual source-generated predication moves");
+
+  const entities = [source.subject, source.object], selected = [[source.subject, source.object]];
+  const fiber = predicateFiber(source.predicate, entities,
+    (subject, object) =>
+      coincides(subject, source.subject) && coincides(object, source.object)
+        ? valueOf(source) : "absurd", selected);
+  const gen = specialization([source.object, source.subject], selected);
+  const local = gen.pullback(fiber);
+  assert.equal(local.at(source.subject, source.object), valueOf(source));
+  assert.equal(local.at(source.object, source.subject), "absurd",
+    "neither the graph nor a composed rule invents the converse testimony");
+
+  const replica = JSON.parse(JSON.stringify(base));
+  assert.equal(isAdmittedPredicationBase(replica), false);
+  assert.throws(() => theoryOfBase(replica), /originally constructed SignCell/u);
 });
