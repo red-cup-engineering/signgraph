@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { qualifyPackedRegistry, declaredRegistryScopes } from '../scripts/qualify-packed-registry.mjs';
+import { qualifyPackedRegistry, declaredRegistryScopes, configuredRegistryScopes } from '../scripts/qualify-packed-registry.mjs';
 
 // This is a consumer test of the ORIGINAL receiver executable using real npm
 // tarballs, not a mock inventory or substitute JS test runner. The fixture has
@@ -202,4 +202,55 @@ test('declared scoped registry remains source-qualified in the emitted receiver'
       cwd === source && name === '@red-cup-engineering:registry'
         ? 'https://user:password@scoped.invalid/' : read(cwd, extra, name),
     {source, packed, scopes:['@red-cup-engineering']}), TypeError);
+});
+
+
+test('effective source-configured transitive-only registry cannot be lost in packed npm receiving', t => {
+  const root = mkdtempSync(join(tmpdir(), 'signgraph-transitive-registry-'));
+  t.after(() => rmSync(root, {recursive:true, force:true}));
+  const source = join(root, 'source'), packed = join(root, 'packed');
+  mkdirSync(source); mkdirSync(packed);
+  const initial = 'registry=https://default.invalid/root/\n' +
+    '@red-cup-engineering:registry=https://scoped.invalid/house/\n' +
+    '@sg-transitive-only:registry=https://transitive.invalid/house/\n';
+  writeFileSync(join(source, '.npmrc'), initial);
+  const clean = {...process.env};
+  for (const key of Object.keys(clean))
+    if (key.toLowerCase().startsWith('npm_config_')) delete clean[key];
+  const npm = (cwd, args, extra={}) => {
+    const result = spawnSync('npm', args, {
+      cwd, encoding:'utf8', timeout:20000, env:{...clean, ...extra},
+    });
+    assert.equal(result.status, 0, String(result.stderr || result.error));
+    return result.stdout.trim();
+  };
+  const read = (cwd, extra={}, key='registry') => npm(cwd, ['config', 'get', key], extra);
+  const declared = declaredRegistryScopes({dependencies:{
+    '@red-cup-engineering/direct':'1.0.0',
+  }});
+  assert(!declared.includes('@sg-transitive-only'));
+  // npm config ls --json silently omits protected scoped registry keys.
+  // npm config ls exposes their names without forwarding any values.
+  const configured = configuredRegistryScopes(npm(source, ['config', 'ls']));
+  assert(configured.includes('@sg-transitive-only'));
+  const scopes = [...new Set([...declared, ...configured])].sort();
+  assert.equal(read(packed, {}, '@sg-transitive-only:registry'), 'undefined');
+  const handoff = qualifyPackedRegistry(read, {source, packed, scopes});
+  assert.equal(handoff.environment['npm_config_@sg-transitive-only:registry'],
+    'https://transitive.invalid/house/');
+  assert.equal(read(packed, handoff.environment, '@sg-transitive-only:registry'),
+    read(source, {}, '@sg-transitive-only:registry'));
+  assert.throws(() => qualifyPackedRegistry(
+    (cwd, extra={}, key='registry') => cwd === packed && key === '@sg-transitive-only:registry'
+      ? 'https://imposter.invalid/' : read(cwd, extra, key),
+    {source, packed, scopes}), /scope registry differs/);
+  writeFileSync(join(source, '.npmrc'), initial.replace('https://transitive.invalid/house/', 'http://transitive.invalid/house/'));
+  assert.throws(() => qualifyPackedRegistry(read, {source, packed, scopes}), /credential-free HTTPS/);
+  // A protected credentialed registry can be omitted by npm --json; a plain
+  // listing still names its scope, forcing fail-closed npm config get.
+  writeFileSync(join(source, '.npmrc'), initial.replace('https://transitive.invalid/house/', 'https://user:secret@transitive.invalid/house/'));
+  assert(configuredRegistryScopes(npm(source, ['config', 'ls'])).includes('@sg-transitive-only'));
+  assert.throws(() => qualifyPackedRegistry(read, {source, packed, scopes}));
+  assert.throws(() => configuredRegistryScopes('@invalid/scope:registry = "https://bad.invalid/"'),
+    TypeError);
 });
