@@ -7,16 +7,17 @@ import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
+import { qualifyPackedRegistry } from './qualify-packed-registry.mjs';
 
 const source = resolve(process.env.SIGNGRAPH_SOURCE_ROOT || process.cwd());
 const inventoryOnly = process.argv.slice(2).includes('--inventory-only');
 const receipt = { kind: 'signgraph.packed-receiving.v1', source, mode: inventoryOnly ? 'archive-only' : 'dependency-backed',
   stage: 'preflight', result: 'unverified' };
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-const run = (command, args, cwd, maxMs = 600000) => {
+const run = (command, args, cwd, maxMs = 600000, extraEnv = {}) => {
   const p = spawnSync(command, args, { cwd, encoding: 'utf8', timeout: maxMs,
     maxBuffer: 32 * 1024 * 1024, env: (() => {
-      const env = { ...process.env, npm_config_update_notifier: 'false' };
+      const env = { ...process.env, npm_config_update_notifier: 'false', ...extraEnv };
       delete env.NODE_TEST_CONTEXT; // prevent inherited parent node:test worker role
       return env;
     })() });
@@ -127,7 +128,16 @@ try {
     receipt.result = 'inventory-qualified-only';
   } else {
     receipt.stage = 'archive-dependencies';
-    run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false'], packed);
+    // Source .npmrc is absent in the tarball. Original npm config selects
+    // the registry, while the helper proves the extracted install uses it.
+    // No credential or .npmrc is copied into the published artifact.
+    const handoff = qualifyPackedRegistry(
+      (cwd, environment = {}) =>
+        run('npm', ['config', 'get', 'registry'], cwd, 120000, environment).trim(),
+      {source, packed});
+    receipt.installRegistryOrigin = handoff.origin;
+    run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false'],
+      packed, 600000, handoff.environment);
     receipt.dependencyInstall = 'passed';
     receipt.stage = 'archive-native-tests';
     const executed = [];

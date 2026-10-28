@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { qualifyPackedRegistry } from "../scripts/qualify-packed-registry.mjs";
 
 // Receive the explicit named test scripts through the SAME package artifact.
 // Source-tree "npm test" may intentionally include more tests than a packed
@@ -56,4 +60,51 @@ test("missing package file and duplicate receiving declarations fail closed", ()
   const duplicate = { ...manifest,
     receivingTests: [...manifest.receivingTests, manifest.receivingTests[0]] };
   assert.throws(() => receivingScriptPaths(duplicate), /unique declared file paths/);
+});
+
+test("packed archive dependency registry follows original source config without copying private npmrc", () => {
+  // Offline test: npm config get registry never downloads/install dependencies.
+  // The emitter runs under source/.npmrc but extraction changes its cwd.
+  const root = mkdtempSync(join(tmpdir(), "signgraph-registry-assay-"));
+  const original = join(root, "source"), unpacked = join(root, "unpacked");
+  try {
+    mkdirSync(original); mkdirSync(unpacked);
+    writeFileSync(join(original, ".npmrc"), "registry=https://registry.561.group/\n");
+    const env = {...process.env};
+    delete env.npm_config_registry;
+    delete env.NPM_CONFIG_REGISTRY;
+    const registry = (cwd, additional = {}) => {
+      const result = spawnSync("npm", ["config", "get", "registry"], {
+        cwd, encoding: "utf8", timeout: 20000,
+        env: {...env, ...additional},
+      });
+      assert.equal(result.status, 0, String(result.stderr || result.error));
+      return result.stdout.trim();
+    };
+    const sourceRegistry = registry(original);
+    assert.equal(sourceRegistry, "https://registry.561.group/");
+    assert.equal(existsSync(join(unpacked, ".npmrc")), false,
+      "the emitted package does not carry the source installation policy");
+    // The verifier must pass this exact resolved source registry into the
+    // unpacked install; its default may otherwise be a different provider.
+    const handoff = qualifyPackedRegistry(registry, {source:original, packed:unpacked});
+    assert.deepEqual(handoff.environment, {npm_config_registry:sourceRegistry});
+    assert.equal(handoff.origin, "https://registry.561.group");
+    assert.equal(registry(unpacked, handoff.environment), sourceRegistry);
+  } finally {
+    rmSync(root, {recursive:true, force:true});
+  }
+});
+
+test("source registry handoff fails closed on absent, mismatched or credentialed providers", () => {
+  const places = {source:"source",packed:"packed"};
+  for(const bad of ["", "not-a-url", "http://registry.invalid/",
+    "https://user:password@registry.invalid/",
+    "https://registry.invalid/?token=secret", "https://registry.invalid/#secret"]) {
+    assert.throws(() => qualifyPackedRegistry(() => bad, places), TypeError);
+  }
+  assert.throws(() => qualifyPackedRegistry(
+    (cwd, env) => cwd === "source" ? "https://registry.561.group/" : "https://other.invalid/",
+    places), /archive installation registry differs/);
+  assert.throws(() => qualifyPackedRegistry(null,places), TypeError);
 });
