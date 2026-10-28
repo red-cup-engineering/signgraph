@@ -59,6 +59,6 @@ test('scope discovery reads names only and rejects malformed or unbounded enumer
   assert.throws(()=>configuredRegistryScopes(null),TypeError);
   assert.throws(()=>configuredRegistryScopes({'@nested/path:registry':'https://invalid/'}),
     /invalid effective npm scoped registry key/);
-  const huge=Object.fromEntries(Array.from({length:101},(_,i)=>[['@s'+i+':registry'][0],'https://s.invalid/']));
+  const huge=Object.fromEntries(Array.from({length:101},(_,i)=>['@s'+i+':registry','https://s.invalid/']));
   assert.throws(()=>configuredRegistryScopes(huge),/too many effective npm scoped registries/);
 });
