@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { cell, coincides, valueOf } from "@red-cup-engineering/signcell/cell";
 import * as signCellPredication from "@red-cup-engineering/signcell/predication";
+import { createTypeSystem, defineType, getType, isSubtypeOf, specializeType, typeIdentity } from "@red-cup-engineering/signcell/type-system";
+import { admitTypeSystemDocument, typeSystemDocument } from "@red-cup-engineering/signcell/type-system/document";
 import * as signChainTheory from "@red-cup-engineering/signchain/typed-theory";
 import { SPECIALIZES, tokenFrame } from "@red-cup-engineering/signcell/token-frame";
 import { possibilize, valuationOf } from "@red-cup-engineering/signchain/token-fiber";
@@ -90,4 +92,50 @@ test("native original SignCell predication identity crosses SignChain theory int
   const replica = JSON.parse(JSON.stringify(base));
   assert.equal(isAdmittedPredicationBase(replica), false);
   assert.throws(() => theoryOfBase(replica), /originally constructed SignCell/u);
+});
+
+test("portable Thing→Resource specialization re-enters the original typed graph without inferred authority", () => {
+  const need = (result) => {
+    assert.equal(result.ok,true, result.ok ? "" : JSON.stringify(result.refusal));
+    return result.value;
+  };
+  const thing = need(defineType({id:"test-thing",name:"Thing",
+    description:"Distinguishable source Thing.",parents:[],schema:true}));
+  const resource = need(specializeType([thing],{id:"test-resource",name:"Resource",
+    description:"Declared operational Resource subtype.",schema:true}));
+  const ordinary = need(specializeType([thing],{id:"test-ordinary",name:"Ordinary Thing",
+    description:"Not an operational Resource.",schema:true}));
+  const catalog = need(createTypeSystem([thing,resource,ordinary]));
+  const sourceDocument = need(typeSystemDocument(catalog));
+  const wire = JSON.parse(JSON.stringify(sourceDocument));
+  const received = need(admitTypeSystemDocument(wire));
+  const source = getType(received,"test-resource"),
+    root = getType(received,"test-thing"),
+    unrelated = getType(received,"test-ordinary");
+  assert.equal(isSubtypeOf(source,root),true);
+  assert.equal(isSubtypeOf(unrelated,root),true);
+  assert.equal(isSubtypeOf(unrelated,source),false,
+    "the Resource label cannot silently specialize an unrelated Thing");
+  assert.equal(need(typeSystemDocument(received)).identity,sourceDocument.identity);
+
+  // Only a caller-presented, explicitly witnessed declaration becomes an
+  // observed Cell. Neither Type/Resource membership nor an NI ID grants
+  // execution, property, payment, or a physical exchange.
+  const sourceId = typeIdentity(source), rootId = typeIdentity(root),
+    otherId = typeIdentity(unrelated);
+  const reported = cell(sourceId,"declared-subtype",rootId,{for:["source-type-declaration"]});
+  const entities = [otherId,rootId,sourceId], selected = [[sourceId,rootId]];
+  const fiber = predicateFiber(reported.predicate,entities,(subject,object) =>
+    coincides(subject,reported.subject) && coincides(object,reported.object)
+      ? valueOf(reported) : "absurd", selected);
+  const local = specialization(entities,selected).pullback(fiber);
+  assert.equal(local.at(sourceId,rootId),valueOf(reported));
+  assert.equal(local.at(otherId,rootId),"absurd",
+    "unrelated Thing is not reported as a Resource by graph geometry");
+
+  wire.types[0].name="Forged Declaration";
+  assert.equal(admitTypeSystemDocument(wire).ok,false,
+    "changed metadata must not retain old NI source identity");
+  assert.equal(need(typeSystemDocument(received)).identity,sourceDocument.identity,
+    "external mutations cannot rewrite the already-admitted catalog");
 });
