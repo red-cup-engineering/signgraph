@@ -791,7 +791,7 @@ test("source patch gluing refuses executable cover, region and observation field
  };
  for(const make of Object.values(hostile))
    assert.throws(()=>glueCellularSheafPatches(source,make()),
-     /inert|source fields|array slots/u);
+     /inert|source fields|array slots|accessors or hidden data/u);
  assert.equal(getterCalls,0);
  assert.equal(glueCellularSheafPatches(source,[good]).status,"globally-glued");
 });
