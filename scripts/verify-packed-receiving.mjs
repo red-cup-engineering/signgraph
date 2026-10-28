@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
+import { qualifyPackedRegistry } from './qualify-packed-registry.mjs';
 
 const source = resolve(process.env.SIGNGRAPH_SOURCE_ROOT || process.cwd());
 const inventoryOnly = process.argv.slice(2).includes('--inventory-only');
@@ -127,24 +128,16 @@ try {
     receipt.result = 'inventory-qualified-only';
   } else {
     receipt.stage = 'archive-dependencies';
-    // Source npm configuration is NOT part of the emitted archive. Without
-    // carrying forward the effective source registry, npm resolves private
-    // house dependencies against an unrelated default provider in /tmp.
-    // Resolve through npm itself: this preserves overrides without copying
-    // tokens, auth configuration or .npmrc into the published package.
-    const sourceRegistry = run('npm', ['config', 'get', 'registry'], source, 120000).trim();
-    const registry = new URL(sourceRegistry);
-    assert(registry.protocol === 'https:' && !registry.username && !registry.password &&
-      !registry.search && !registry.hash,
-      'original npm source registry must be a credential-free HTTPS endpoint');
-    const registryEnv = {npm_config_registry: registry.href};
-    const receivedRegistry = run('npm', ['config', 'get', 'registry'], packed, 120000,
-      registryEnv).trim();
-    assert(new URL(receivedRegistry).href === registry.href,
-      'archive installation registry differs from original source registry');
-    receipt.installRegistryOrigin = registry.origin;
+    // Source .npmrc is absent in the tarball. Original npm config selects
+    // the registry, while the helper proves the extracted install uses it.
+    // No credential or .npmrc is copied into the published artifact.
+    const handoff = qualifyPackedRegistry(
+      (cwd, environment = {}) =>
+        run('npm', ['config', 'get', 'registry'], cwd, 120000, environment).trim(),
+      {source, packed});
+    receipt.installRegistryOrigin = handoff.origin;
     run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false'],
-      packed, 600000, registryEnv);
+      packed, 600000, handoff.environment);
     receipt.dependencyInstall = 'passed';
     receipt.stage = 'archive-native-tests';
     const executed = [];
