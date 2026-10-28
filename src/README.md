@@ -987,3 +987,29 @@ A declared Channel reference is still checked by the original SignGraph
 membership/typing owner; ordinary descriptor checking is not external
 authentication or a second canonical identity. Proxy traps require a
 separate host boundary.
+
+## Inert source-cut admission for exact sheaf patch gluing (2026-10-27)
+
+The original `glueCellularSheafPatches` previously read a caller-owned
+patch's `region` four times before obtaining a section, so a getter could
+manufacture its named cover and was still received as `globally-glued`.
+The same bypass affected source IDs, local stalk/coordinate declarations,
+array slots and exact rational measurements. The original
+`cellularSheaf` and `cochain` guards already refused such source input.
+
+The gluing reader now captures all finite cover, patch, reading and scalar
+coordinates in one **inert own-data cut before evaluating the first local
+exact section**. It reuses the original `sheafSourceArray`,
+`sheafSourceScalar`, SignCell canonical source identities, Exact Number
+rational admission and `extendCellularSheafSection` solver. Patches have
+an exact three-field source grammar; stalk readings have two fields;
+decorated, inherited, hidden and accessor-backed data refuse without
+executing getters. Absent cover or contradictory source evidence retain
+their existing incomplete/obstruction receipts. Proxy traps require host
+sandboxing, and a finite source cover is not automatically a Lean-certified
+sheaf descent theorem or a real-world measurement.
+
+The original `test/cellular-sheaf.test.mjs` includes the seven hostile
+getter positions, negative hidden/decorated source cases, and a retained
+positive global-section control. Published package/consumer qualification
+is independent from these source-only checks.

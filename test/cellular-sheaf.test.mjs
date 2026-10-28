@@ -763,3 +763,53 @@ test("canonical exact source scalar is inert and immutable",()=>{
  assert.deepEqual([admitted.num,admitted.den],["1","3"]);
  assert.equal(Object.isFrozen(admitted),true);
 });
+
+test("source patch gluing refuses executable cover, region and observation fields before evaluation",()=>{
+ let getterCalls=0;
+ const source=cellularSheaf({vertices:[{id:"a",dim:1}],edges:[]});
+ const good={region:"first",sourceRef:"source:a",
+   vertices:[{vertex:"a",values:["13"]}]};
+ const hostile={
+   cover:()=>{const cover=[good];Object.defineProperty(cover,"0",
+     {enumerable:true,get(){getterCalls++;return good;}});return cover;},
+   region:()=>{const patch={...good};Object.defineProperty(patch,"region",
+     {enumerable:true,get(){getterCalls++;return "first";}});return [patch];},
+   ref:()=>{const patch={...good};Object.defineProperty(patch,"sourceRef",
+     {enumerable:true,get(){getterCalls++;return "source:a";}});return [patch];},
+   vertex:()=>{const reading={values:["13"]};Object.defineProperty(reading,"vertex",
+     {enumerable:true,get(){getterCalls++;return "a";}});
+     return [{...good,vertices:[reading]}];},
+   values:()=>{const reading={vertex:"a"};Object.defineProperty(reading,"values",
+     {enumerable:true,get(){getterCalls++;return ["13"];}});
+     return [{...good,vertices:[reading]}];},
+   vector:()=>{const vector=["13"];Object.defineProperty(vector,"0",
+     {enumerable:true,get(){getterCalls++;return "13";}});
+     return [{...good,vertices:[{vertex:"a",values:vector}]}];},
+   rational:()=>{const value={kind:"exactNumber.rational",den:"1"};
+     Object.defineProperty(value,"num",{enumerable:true,get(){getterCalls++;return "13";}});
+     return [{...good,vertices:[{vertex:"a",values:[value]}]}];},
+ };
+ for(const make of Object.values(hostile))
+   assert.throws(()=>glueCellularSheafPatches(source,make()),
+     /inert|source fields|array slots/u);
+ assert.equal(getterCalls,0);
+ assert.equal(glueCellularSheafPatches(source,[good]).status,"globally-glued");
+});
+
+test("gluing rejects hidden, inherited or decorated source patches without inventing global sections",()=>{
+ const source=cellularSheaf({vertices:[{id:"a",dim:1}],edges:[]});
+ const good={region:"first",sourceRef:"source:a",
+   vertices:[{vertex:"a",values:["13"]}]};
+ const hidden={...good};Object.defineProperty(hidden,"authority",{value:"forged"});
+ const inherited=Object.assign(Object.create({region:"first"}),good);
+ const extra={...good,unwitnessed:"source"};
+ const decorated=[good];decorated.source="hidden";
+ const vector=[{vertex:"a",values:["13"]}];vector.extra="forged";
+ for(const patches of [[hidden],[inherited],[extra],decorated,
+   [{...good,vertices:vector}]])
+   assert.throws(()=>glueCellularSheafPatches(source,patches),
+     /source record|source fields|dense|decorated/u);
+ const actual=glueCellularSheafPatches(source,[good]);
+ assert.equal(actual.status,"globally-glued");
+ assert.deepEqual(actual.regions.map(x=>x.sourceRef),["source:a"]);
+});

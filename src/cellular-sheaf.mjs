@@ -530,67 +530,105 @@ export function extendCellularSheafSection(sheaf, observations = []) {
  * Source owners, CAIRN rights and NI custody qualify patches BEFORE this
  * mathematical operation is invoked. Only original stalks/edges are used.
  */
+/** Strict original-source cover record reader: no undeclared fields, hidden
+ * identity, inherited authority or executable getter. The source Chart and
+ * Exact Number solvers remain the ORIGINAL owners of mathematical meaning.
+ */
+const sourceCoverRecord=(source, fields, label) => {
+  if(!source||typeof source!=="object"||Array.isArray(source)||
+     ![Object.prototype,null].includes(Object.getPrototypeOf(source)))
+    throw new TypeError(label+": requires a plain original source record");
+  const descriptors=Object.getOwnPropertyDescriptors(source);
+  const keys=Reflect.ownKeys(descriptors);
+  if(keys.length!==fields.length||keys.some(key=>typeof key!=="string"||
+     !fields.includes(key)||!descriptors[key].enumerable||
+     !Object.hasOwn(descriptors[key],"value")))
+    throw new TypeError(label+": requires exact inert own source fields");
+  return Object.freeze(Object.fromEntries(
+    fields.map(key=>[key,descriptors[key].value])));
+};
+
+/** Evaluate an explicitly source-qualified finite local cover and construct
+ * (or refute) a GLOBAL exact section. No missing observation becomes a zero.
+ * All original chart and patch values are admitted BEFORE an exact solver is
+ * invoked, so one caller-owned getter cannot change its region or readings.
+ */
 export function glueCellularSheafPatches(sheaf, patches) {
-  if(sheaf?.kind!=="signgraph.cellularSheaf" || sheaf.exact!==true ||
-     !Array.isArray(sheaf.vertices) || !Array.isArray(sheaf.edges) ||
-     !Array.isArray(patches) || patches.length<1 || patches.length>16 ||
-     sheaf.c0>256 || sheaf.c1>256)
+  const chartKind=sheafSourceField(sheaf,"kind");
+  const exact=sheafSourceField(sheaf,"exact");
+  const stalks=sheafSourceArray(sheafSourceField(sheaf,"vertices"),"cover chart vertices");
+  const chartEdges=sheafSourceArray(sheafSourceField(sheaf,"edges"),"cover chart edges");
+  const c0=sheafSourceField(sheaf,"c0"),c1=sheafSourceField(sheaf,"c1");
+  const sourcePatches=sheafSourceArray(patches,"cover patches");
+  if(chartKind!=="signgraph.cellularSheaf"||exact!==true||
+     sourcePatches.length<1||sourcePatches.length>16||c0>256||c1>256)
     throw new TypeError("cellularSheaf patch gluing requires a bounded existing exact source chart and source cover");
 
-  const byVertex=new Map(sheaf.vertices.map(vertex=>[coincidenceKey(vertex.id),vertex]));
+  const byVertex=new Map(stalks.map(vertex=>[
+    coincidenceKey(sheafSourceField(vertex,"id")),vertex]));
+  // Qualify the COMPLETE transported cover before any local/global solving.
+  const admitted=sourcePatches.map(source=>{
+    const patch=sourceCoverRecord(source,["region","sourceRef","vertices"],
+      "cellularSheaf patch");
+    if(typeof patch.region!=="string"||
+       !/^[a-z][a-z0-9-]{0,95}$/u.test(patch.region)||
+       typeof patch.sourceRef!=="string"||
+       !patch.sourceRef.trim()||patch.sourceRef.length>1024)
+      throw new TypeError("cellularSheaf patch needs named source, bounded region and actual local stalks");
+    const supplied=sheafSourceArray(patch.vertices,"patch stalk readings");
+    if(supplied.length<1||supplied.length>stalks.length)
+      throw new TypeError("cellularSheaf patch needs named source, bounded region and actual local stalks");
+    const readings=supplied.map(sourceReading=>{
+      const reading=sourceCoverRecord(sourceReading,["vertex","values"],
+        "cellularSheaf patch stalk");
+      const values=sheafSourceArray(reading.values,"patch stalk values")
+        .map(sheafSourceScalar);
+      return Object.freeze({
+        vertex:canonicalCarrier(reading.vertex),
+        values:Object.freeze(values),
+      });
+    });
+    return Object.freeze({region:patch.region,sourceRef:patch.sourceRef,
+      vertices:Object.freeze(readings)});
+  });
   const ids=new Set(),coveredVertices=new Set(),coveredEdges=new Set();
   const observations=[],localRegions=[];
-  for(const [index,patch] of patches.entries()){
-    if(!patch || typeof patch!=="object" || Array.isArray(patch) ||
-       Object.keys(patch).some(key=>!["region","sourceRef","vertices"].includes(key)) ||
-       typeof patch.region!=="string" || !/^[a-z][a-z0-9-]{0,95}$/u.test(patch.region) ||
-       typeof patch.sourceRef!=="string" || !patch.sourceRef.trim() ||
-       patch.sourceRef.length>1024 || !Array.isArray(patch.vertices) ||
-       patch.vertices.length<1 || patch.vertices.length>sheaf.vertices.length)
-      throw new TypeError("cellularSheaf patch needs named source, bounded region and actual local stalks");
+  for(const [index,patch] of admitted.entries()){
     const id=JSON.stringify([patch.sourceRef,patch.region]);
     if(ids.has(id))throw new TypeError("cellularSheaf cover repeats one source region");
     ids.add(id);
     const selected=new Map(),localObservations=[];
     for(const reading of patch.vertices){
-      if(!reading || typeof reading!=="object" || Array.isArray(reading) ||
-         Object.keys(reading).some(k=>!["vertex","values"].includes(k)))
-        throw new TypeError("cellularSheaf patch stalk needs one original vertex and its complete value vector");
       const key=coincidenceKey(reading.vertex),vertex=byVertex.get(key);
-      if(!vertex || selected.has(key) || !Array.isArray(reading.values) ||
-         reading.values.length!==vertex.dim)
+      if(!vertex||selected.has(key)||reading.values.length!==sheafSourceField(vertex,"dim"))
         throw new TypeError("cellularSheaf patch repeats or omits an original stalk coordinate");
       selected.set(key,vertex);
       coveredVertices.add(key);
       for(const [coordinate,value] of reading.values.entries()){
-        // The existing Data rational admission is the sole scalar validator:
-        // a decimal floating approximation is not an exact source coordinate.
         const [numerator,denominator]=ratPairOfEntry(value);
         localObservations.push(Object.freeze({
-          vertex:vertex.id,coordinate,
+          vertex:sheafSourceField(vertex,"id"),coordinate,
           value:denominator===1n?numerator.toString():numerator+"/"+denominator,
           sourceRecord:patch.sourceRef,
         }));
       }
     }
-    const edges=sheaf.edges.filter(edge=>
-      selected.has(coincidenceKey(edge.from))&&selected.has(coincidenceKey(edge.to)));
-    for(const edge of edges)coveredEdges.add(coincidenceKey(edge.id));
-    const localSheaf=cellularSheaf({
-      vertices:[...selected.values()],edges,
-    });
+    const edges=chartEdges.filter(edge=>
+      selected.has(coincidenceKey(sheafSourceField(edge,"from"))) &&
+      selected.has(coincidenceKey(sheafSourceField(edge,"to"))));
+    for(const edge of edges)coveredEdges.add(coincidenceKey(sheafSourceField(edge,"id")));
+    const localSheaf=cellularSheaf({vertices:[...selected.values()],edges});
     if(localSheaf.c1+localObservations.length>256)
       throw new RangeError("cellularSheaf local patch exceeds exact source equation budget");
     const local=extendCellularSheafSection(localSheaf,localObservations);
     const region=Object.freeze({
       region:patch.region,sourceRef:patch.sourceRef,index,
-      sourceVertices:Object.freeze([...selected.values()].map(x=>x.id)),
-      sourceEdges:Object.freeze(edges.map(x=>x.id)),
+      sourceVertices:Object.freeze([...selected.values()].map(x=>sheafSourceField(x,"id"))),
+      sourceEdges:Object.freeze(edges.map(x=>sheafSourceField(x,"id"))),
       status:local.status,
-      obstruction:local.status==="mathematically-obstructed"
-        ?local.obstruction:null,
-      sourceRows:local.status==="mathematically-obstructed"
-        ?local.sourceRows:Object.freeze([]),
+      obstruction:local.status==="mathematically-obstructed"?local.obstruction:null,
+      sourceRows:local.status==="mathematically-obstructed"?
+        local.sourceRows:Object.freeze([]),
     });
     localRegions.push(region);
     observations.push(...localObservations);
@@ -602,12 +640,12 @@ export function glueCellularSheafPatches(sheaf, patches) {
       mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
     });
   }
-  const uncoveredVertices=sheaf.vertices
-    .filter(vertex=>!coveredVertices.has(coincidenceKey(vertex.id)))
-    .map(vertex=>vertex.id);
-  const uncoveredEdges=sheaf.edges
-    .filter(edge=>!coveredEdges.has(coincidenceKey(edge.id)))
-    .map(edge=>edge.id);
+  const uncoveredVertices=stalks
+    .filter(vertex=>!coveredVertices.has(coincidenceKey(sheafSourceField(vertex,"id"))))
+    .map(vertex=>sheafSourceField(vertex,"id"));
+  const uncoveredEdges=chartEdges
+    .filter(edge=>!coveredEdges.has(coincidenceKey(sheafSourceField(edge,"id"))))
+    .map(edge=>sheafSourceField(edge,"id"));
   if(uncoveredVertices.length||uncoveredEdges.length)return Object.freeze({
     kind:"signgraph.cellularSheaf.sourceCoverGluing.v1",
     status:"incomplete-cover",regions:Object.freeze(localRegions),
@@ -616,7 +654,7 @@ export function glueCellularSheafPatches(sheaf, patches) {
     exactGlobalSection:null,
     mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
   });
-  if(sheaf.c1+observations.length>256)
+  if(c1+observations.length>256)
     throw new RangeError("cellularSheaf global patch gluing exceeds exact equation budget");
   const global=extendCellularSheafSection(sheaf,observations);
   return Object.freeze({
@@ -628,8 +666,6 @@ export function glueCellularSheafPatches(sheaf, patches) {
     extensionDirections:global.extensionDirections,
     globalSourceRows:global.sourceRows,
     obstruction:global.obstruction,
-    // Original observation indices in the global obstruction retain patch
-    // source ref via sourceRecord; repeated observations are retained.
     mathematicalAssay:"induced 1-skeleton local sections and exact rational restrictions",
   });
 }
