@@ -104,3 +104,43 @@ test("independent exact integer observation rank matches the theorem on 224 mult
   }
   assert.equal(examined,224);
 });
+
+test("public temporal math rejects executable source getters before graph qualification",()=>{
+ let invoked=0;
+ const valid=edge("a","A","B");
+ const getterExchange={from:valid.from,to:valid.to};
+ Object.defineProperty(getterExchange,"exchange",{enumerable:true,get(){invoked++;return valid.exchange;}});
+ const getterEndpoint={exchange:valid.exchange,to:valid.to};
+ Object.defineProperty(getterEndpoint,"from",{enumerable:true,get(){invoked++;return valid.from;}});
+ const nested={};Object.defineProperty(nested,"id",{enumerable:true,get(){invoked++;return "A";}});
+ for(const transfer of [getterExchange,getterEndpoint,{exchange:valid.exchange,from:nested,to:valid.to}])
+   assert.throws(()=>query([transfer],2,[2]),TypeError);
+ const decorated=[valid];decorated.grant="forged";
+ assert.throws(()=>query(decorated,2,[2]),/sparse or decorated/u);
+ const indexed=[valid];
+ Object.defineProperty(indexed,"0",{enumerable:true,get(){invoked++;return valid;}});
+ assert.throws(()=>query(indexed,2,[2]),/inert array positions/u);
+ const windows=[2];Object.defineProperty(windows,"0",{enumerable:true,get(){invoked++;return 2;}});
+ assert.throws(()=>query([valid],2,windows),/inert array positions/u);
+ const options={windowLengths:[2]};
+ Object.defineProperty(options,"microintervalCount",{enumerable:true,get(){invoked++;return 2;}});
+ assert.throws(()=>conditionalTemporalFlowAliasing([valid],options),/inert own data/u);
+ assert.equal(invoked,0);
+});
+
+test("one captured temporal input keeps original exchange identity under caller edits",()=>{
+ const transfer=edge("ab","A","B"),windows=[2];
+ const got=query([transfer],2,windows);
+ const original={kind:got.kind,exchangeCount:got.exchangeCount,
+   endpoints:got.endpointCount,rank:got.originalCycleRank,
+   missing:got.unresolvedEdgeHistoryDimension,windows:[...got.proposedWindowLengths]};
+ transfer.exchange.id="new-exchange";
+ transfer.from.id="new-source";
+ windows[0]=1;
+ assert.deepEqual({
+   kind:got.kind,exchangeCount:got.exchangeCount,endpoints:got.endpointCount,
+   rank:got.originalCycleRank,missing:got.unresolvedEdgeHistoryDimension,
+   windows:got.proposedWindowLengths
+ },original);
+ assert.equal(Object.isFrozen(got.proposedWindowLengths),true);
+});
