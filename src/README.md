@@ -806,9 +806,12 @@ they must not use coincident pair spellings, an empty report or a successful
 graph inequality as proof of a foreign provenance, Work right, performed
 effect or beneficiary acceptance. The source regression is
 `test/fiber-source-context.test.mjs`. The strict, original
-`npm run test:foundations:interop` receiving gate also checks an
-installed SignCell-produced predication base directly through SignChain's
-typed-theory receiver and back into the original SignGraph FOUR site. It
+`npm run test:foundations:interop` receiving gate checks two separate
+original, published dependency interfaces: (1) a SignCell-produced
+predication base through SignChain's typed-theory receiver and into the
+original SignGraph FOUR site; (2) a portable SignCell Thing→Resource
+specialization through the existing NI-addressed type document reader,
+with an explicitly witnessed graph edge and tampered-document refusal. It
 must **fail**, not silently skip, when an old installed SignCell/SignChain
 package cannot honor source construction custody. A source-level test added
 to this Git tree does not prove the currently pinned registry versions pass
