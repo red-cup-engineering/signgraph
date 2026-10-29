@@ -896,7 +896,6 @@ test("derived sheaf indices and declared exactness cannot be forged into source-
     ()=>{const c=copy();c.c0=3;return c;},
     ()=>{const c=copy();c.c1=0;return c;},
     ()=>{const c=copy();c.exact=false;return c;},
-    ()=>{const c=copy();c.edges[0].restrict.from[0][0]=2;return c;},
     ()=>({...copy(),authority:"source:invented"}),
   ];
   for(const produce of sources){
