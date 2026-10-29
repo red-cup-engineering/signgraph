@@ -180,3 +180,43 @@ test("dense cohomology refuses an unbounded H0 basis rather than reporting false
   assert.equal(small.firstCohomology.rank,0);
   assert.deepEqual(small.incidence,[]);
 });
+
+test("plain graph cohomology preserves distinct directed pairs, loops and isolated source terms",()=>{
+  const a={node:"a",marks:[1]},b={node:"b",marks:[2]},orphan={node:"orphan"};
+  const nodes=[a,b,orphan];
+  const edges=[[a,b],[b,a],[a,a]];
+  const actual=cohomologyOfEdgeGraph(nodes,edges);
+  assert.deepEqual(actual.incidence,[[-1,1,0],[1,-1,0],[0,0,0]]);
+  assert.equal(actual.zeroCohomology.rank,2);
+  assert.equal(actual.firstCohomology.rank,2,
+    "a reverse pair and one original self-loop are two independent H1 generators");
+  const before=JSON.stringify(actual);
+  a.node="forged";b.marks[0]=20;orphan.node="not-original";
+  edges.reverse();nodes.length=0;
+  assert.equal(JSON.stringify(actual),before,
+    "caller mutation cannot rewrite the admitted source graph or its homology");
+});
+
+test("plain edge-graph wrapper refuses source accessors, sparse pairs and hidden roles",()=>{
+  let calls=0;
+  const getter=()=>{calls++;throw Error("unadmitted edge source executed");};
+  const pair=["a","b"];
+  Object.defineProperty(pair,"0",{enumerable:true,get:getter});
+  const outer=[["a","b"]];
+  Object.defineProperty(outer,"0",{enumerable:true,get:getter});
+  const nodes=["a","b"];
+  Object.defineProperty(nodes,"0",{enumerable:true,get:getter});
+  const adorned=[["a","b"]];
+  adorned.extra="authority";
+  const sparsePair=Array(2);sparsePair[0]="a";
+  for(const [names,edges] of [
+    [[],[pair]],[[],outer],[nodes,[]],
+    [[],adorned],[[],[sparsePair]],
+    [[],[["a","b","extra"]]],[[],[["a"]]],
+  ]) assert.throws(()=>cohomologyOfEdgeGraph(names,edges),
+    /signgraph site:/u);
+  const nested={kind:"node"};
+  Object.defineProperty(nested,"hidden",{enumerable:true,get:getter});
+  assert.throws(()=>cohomologyOfEdgeGraph([],[["a",nested]]),TypeError);
+  assert.equal(calls,0,"no foreign source code may execute before canonical term admission");
+});
