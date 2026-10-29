@@ -249,10 +249,18 @@ export function keratinGraphOfPredications(input = {}) {
  * a filled two-complex: 2-cell sheaf extension remains the existing open
  * SignGraph #17/Obsmetrologia receiving obligation, not a hidden inference.
  */
-export function keratinLinearSheaf(graph, {vertexStalks,relationStalks} = {}) {
+export function keratinLinearSheaf(graph, options = {}) {
   if(!admitted.has(graph))fail('linear sheaf requires original in-process graph');
+  // Read source options before destructuring. Getter-backed properties must not
+  // execute in order to propose a stalk or restriction matrix.
+  fields(options,['vertexStalks','relationStalks'],'linear sheaf options');
+  const {vertexStalks,relationStalks}=options;
   if(!Array.isArray(vertexStalks)||!Array.isArray(relationStalks))
     fail('linear sheaf requires vertexStalks and relationStalks');
+  // These are source assertions, not an invitation to iterate arbitrary
+  // Array subclasses, getters, decorated arrays, or unlimited dimensions.
+  sourceArray(vertexStalks,'linear vertex stalks',MAX_POSITIONS);
+  sourceArray(relationStalks,'linear relation stalks',MAX_RELATIONS);
   const vertices=new Map(graph.feather.positions.map(p=>[p.key,null]));
   for(const v of vertexStalks){
     fields(v,['position','dim'],'linear vertex stalk');
@@ -309,9 +317,11 @@ export function assessKeratinLinearObservations(reading, observations, options={
     fail('linear observation tolerance must be a finite nonnegative number');
   if(!Array.isArray(observations)||observations.length>MAX_POSITIONS*8)
     fail('linear observations must be a bounded list of source-named values');
+  sourceArray(observations,'linear observations',MAX_POSITIONS*8);
   const witnessLane=(values,side)=>{
     if(!Array.isArray(values)||values.length>64)
       fail('linear observation '+side+' testimony must be a bounded witness list');
+    sourceArray(values,'linear observation '+side+' testimony requires material source identities',64);
     const names=[];
     for(let i=0;i<values.length;i++){
       const slot=Object.getOwnPropertyDescriptor(values,String(i));
@@ -351,6 +361,10 @@ export function assessKeratinLinearObservations(reading, observations, options={
     if(rows===undefined||vertex===undefined)
       fail('linear observation names no original sheaf position');
     const value=own('value');
+    // A sparse million-slot source is refused BEFORE Array.from allocates or
+    // reads a source position. The original linear stalks are at most 16D.
+    if(Array.isArray(value))
+      sourceArray(value,'linear observation values require dense own data slots',16);
     const values=Array.isArray(value)
       ?Array.from({length:value.length},(_,i)=>{
         const slot=Object.getOwnPropertyDescriptor(value,String(i));
