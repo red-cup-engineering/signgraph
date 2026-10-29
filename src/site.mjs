@@ -67,12 +67,16 @@ const sourceList = (value, role) => {
   return Array.from({length: value.length}, (_, index) =>
     dataField(fields, String(index), role));
 };
-const sourceTriple = value => {
+/** The original source cell admission shared by both extensional topology
+ * and witness-bearing tower readers. A tower requires an actual SignCell;
+ * its evidence cannot be manufactured by interpreting a bare triple.
+ */
+const sourceCell = (value, requireEvidence = false) => {
   const fields = sourceRecord(value, "cell");
   const names = ["subject", "predicate", "object"];
   const hasEvidence = ["for", "against", "value"].some(name => Object.hasOwn(fields, name));
   if (!exactFields(fields, hasEvidence ? [...names, "for", "against"] : names,
-      hasEvidence ? ["value"] : []))
+      hasEvidence ? ["value"] : []) || (requireEvidence && !hasEvidence))
     throw new TypeError("signgraph site: a source cell must be an exact triple or evidence-bearing SignCell");
   const terms = Object.fromEntries(names.map(name => [name, dataField(fields, name, "cell")]));
   if (!hasEvidence) return triple(terms);
@@ -81,7 +85,11 @@ const sourceTriple = value => {
     against: sourceList(dataField(fields, "against", "cell"), "cell.against"),
     ...(Object.hasOwn(fields, "value") ? {value: dataField(fields, "value", "cell")} : {}),
   };
-  return triple(admitCell({...terms, ...evidence}));
+  return admitCell({...terms, ...evidence});
+};
+const sourceTriple = value => {
+  const admitted = sourceCell(value);
+  return Object.hasOwn(admitted, "for") ? triple(admitted) : admitted;
 };
 
 /**
@@ -94,6 +102,16 @@ const sourceTriple = value => {
  */
 export function sourceIncidenceTriples(values) {
   return Object.freeze(sourceList(values, "incidence cells").map(sourceTriple));
+}
+
+/** Exact source-ordered SignCell presentations for FOUR/Record tower readers.
+ * Unlike sourceIncidenceTriples, this retains original positive, opposing and
+ * written-value evidence; a bare triple is explicitly NOT a witnessed Cell.
+ * No deduplication, new observation, time, authority or source signature.
+ */
+export function sourceIncidenceCells(values) {
+  return Object.freeze(sourceList(values, "evidence cells")
+    .map(value => sourceCell(value, true)));
 }
 
 /** A specialization morphism: general predicate to specialized predicate.
