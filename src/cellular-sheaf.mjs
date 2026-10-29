@@ -19,13 +19,16 @@
  * Deterministic: only + − × ÷ and Math.sqrt (IEEE correctly rounded), in a fixed summation
  * order; no transcendental functions.
  */
-import { canonicalCarrier, coincidenceKey } from "@red-cup-engineering/signcell/cell";
+import { canonicalCarrier, coincidenceKey, coincides } from "@red-cup-engineering/signcell/cell";
 import { isExactEntry, ratPairOfEntry, ratRank, ratSolve } from "@red-cup-engineering/exact-number-data-service/rational-matrix";
 import { rationalToFiniteNumber } from "@red-cup-engineering/exact-number-data-service/exact-number-host";
 import { rationalOfBigInts } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { rankVanishing } from "./cohomology.mjs";
 
 const freezeMatrix = (matrix) => Object.freeze(matrix.map((row) => Object.freeze([...row])));
+// Locally constructed charts have already passed the original complete owner.
+// A transported JSON copy must instead reconstruct and match that same owner.
+const admittedCellularSheaves = new WeakSet();
 
 /**
  * Read a supplied sheaf record by own enumerable data descriptor ONLY.
@@ -178,13 +181,45 @@ export function cellularSheaf(source) {
     return Object.freeze({ id, from: fromId, to: toId, dim, restrict });
   });
   const exact = es.every((edge) => [edge.restrict.from, edge.restrict.to].every((matrix) => matrix.every((row) => row.every(isExactEntry))));
-  return Object.freeze({
+  const constructed = Object.freeze({
     kind: "signgraph.cellularSheaf",
     vertices: Object.freeze(vs), edges: Object.freeze(es),
     vertexOffsets: Object.freeze(vertexOffsets), edgeOffsets: Object.freeze(edgeOffsets),
     fromIndex: Object.freeze(from), toIndex: Object.freeze(to),
     c0, c1, exact,
   });
+  admittedCellularSheaves.add(constructed);
+  return constructed;
+}
+
+/**
+ * Readmit the same original mathematical cellular chart after transport.
+ * A copied "kind" or "exact" label is NOT a certificate of valid restriction
+ * matrices, offsets or incidences. Reconstruct through the original builder,
+ * then compare the COMPLETE canonical carrier, including derived coordinates.
+ *
+ * An issued in-process chart remains O(1) to read. Re-admission is structural
+ * and mathematical only; neither a copied carrier nor this builder proves an
+ * external source's identity, observational truth or effect authority.
+ */
+export function admitCellularSheaf(source) {
+  if (source && typeof source === "object" && admittedCellularSheaves.has(source))
+    return source;
+  const chart = sourceCoverRecord(source,
+    ["kind","vertices","edges","vertexOffsets","edgeOffsets","fromIndex",
+      "toIndex","c0","c1","exact"], "cellularSheaf chart");
+  if (chart.kind !== "signgraph.cellularSheaf")
+    throw new TypeError("cellularSheaf chart: unknown mathematical carrier");
+  const vertices = sheafSourceArray(chart.vertices, "chart vertices");
+  const edges = sheafSourceArray(chart.edges, "chart edges");
+  // Validate the derived arrays before any recursive canonical comparison.
+  for (const name of ["vertexOffsets","edgeOffsets","fromIndex","toIndex"])
+    sheafSourceArray(chart[name], "chart " + name);
+  const rebuilt = cellularSheaf({vertices, edges});
+  const supplied = canonicalCarrier(chart);
+  if (!coincides(supplied, rebuilt))
+    throw new TypeError("cellularSheaf chart: derived indices, dimensions, restrictions or exactness differ from original source reconstruction");
+  return rebuilt;
 }
 
 /** The constant sheaf ℝ^dim on a graph: identity restrictions. edges: [{ id, from, to }] or [from, to]. */
@@ -439,6 +474,7 @@ function exactCoboundary(sheaf) {
  * the cell identities and equation sources used in the calculation.
  */
 export function extendCellularSheafSection(sheaf, observations = []) {
+  sheaf = admitCellularSheaf(sheaf);
   // The direct extension entry point must obey the SAME inert-source law as
   // glueCellularSheafPatches, which delegates to it. Otherwise an accessor in
   // one standalone observation can run before the original exact solver sees
@@ -565,6 +601,7 @@ const sourceCoverRecord=(source, fields, label) => {
  * invoked, so one caller-owned getter cannot change its region or readings.
  */
 export function glueCellularSheafPatches(sheaf, patches) {
+  sheaf = admitCellularSheaf(sheaf);
   const chartKind=sheafSourceField(sheaf,"kind");
   const exact=sheafSourceField(sheaf,"exact");
   const stalks=sheafSourceArray(sheafSourceField(sheaf,"vertices"),"cover chart vertices");
