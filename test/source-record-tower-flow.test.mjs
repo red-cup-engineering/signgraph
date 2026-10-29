@@ -89,3 +89,62 @@ test("only a bounded list of actual source cells and an actual producer can be a
     /rejected foreign, stale or inconsistent/u);
   assert.throws(() => sourceRecordTowerFlowOfCells([{ not: "a cell" }], towerFixture));
 });
+
+test("tower source cells reject accessor-backed arrays and non-cells before producer execution",()=>{
+  const good=cell("A","rel","B",{for:["source-record"]});
+  let calls=0,producers=0;
+  const getter=()=>{calls++;throw Error("executed foreign getter");};
+  const array=[good];
+  Object.defineProperty(array,"0",{enumerable:true,get:getter});
+  const source={subject:"A",predicate:"rel",object:"B",for:["source-record"],against:[]};
+  Object.defineProperty(source,"subject",{enumerable:true,get:getter});
+  const extra={...good};
+  Object.defineProperty(extra,"role",{enumerable:true,get:getter});
+  const forged={subject:"A",predicate:"rel",object:"B"};
+  for(const input of [array,[source],[extra],[forged]]) {
+    assert.throws(()=>sourceRecordTowerFlowOfCells(input,at=>{
+      producers++;return towerFixture(at);
+    }),/signgraph site:/u);
+  }
+  assert.equal(calls,0,"source getters must not execute");
+  assert.equal(producers,0,"unadmitted source positions must never reach the native tower supplier");
+});
+
+test("tower result refuses forged authority, invisible or executable source attributes",()=>{
+  const good=cell("A","rel","B",{for:["source-record"]});
+  let calls=0;
+  const getter=()=>{calls++;throw Error("executed foreign tower getter");};
+  const original=towerFixture(good);
+  const hidden={...original};
+  Object.defineProperty(hidden,"authority",{value:"forged"});
+  const extra={...original,claim:"invented"};
+  const accessor={...original};
+  Object.defineProperty(accessor,"sourceAddress",{enumerable:true,get:getter});
+  const nested={...original,record:{...original.record}};
+  Object.defineProperty(nested.record,"pos",{enumerable:true,get:getter});
+  for(const forged of [hidden,extra,accessor,nested]) {
+    assert.throws(()=>sourceRecordTowerFlowOfCells([good],()=>forged),
+      /rejected foreign|accessors|inert|source/u);
+  }
+  assert.equal(calls,0,"no hidden producer field may execute as source evidence");
+});
+
+test("tower projection snapshots a mutable provider result without rewriting evidence or witness counts",()=>{
+  const source=cell("A","rel","B",{for:["source-a"],against:["source-b"]});
+  let offered;
+  const reading=sourceRecordTowerFlowOfCells([source],at=>{
+    const original=towerFixture(at);
+    offered={...original,record:{...original.record},
+      sourceCell:JSON.parse(JSON.stringify(original.sourceCell))};
+    return offered;
+  });
+  const before=JSON.stringify(reading);
+  offered.record.pos=999;
+  offered.sourceCell.for[0]="forged-after-admission";
+  offered.sourceAddress="ni:wrong";
+  assert.equal(JSON.stringify(reading),before,
+    "one issued tower cannot be retroactively rewritten by its producer");
+  assert.deepEqual(reading.entries[0].cell.for,["source-a"]);
+  assert.deepEqual(reading.entries[0].cell.against,["source-b"]);
+  assert.equal(reading.flow.edges.length,1);
+});

@@ -9,11 +9,11 @@
  */
 import {
   address, admitCell, cellSet, coincidenceKey, coincides, measured,
-  presence, recordOf, sameCell, valueOf
+  presence, recordOf, retainedCarrier, sameCell, valueOf
 } from "@red-cup-engineering/signcell/cell";
 import { natZero, natOne, natAdd, fromNatural } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { chuSpaceOfEntries } from "@red-cup-engineering/metrologic/chu";
-import { sourceIncidenceTriples } from "./site.mjs";
+import { sourceIncidenceCells, sourceIncidenceTriples } from "./site.mjs";
 
 /** The Chu space of a cell set under a list of named observations. */
 export function cellGraph(cells, observations, options = {}) {
@@ -150,6 +150,29 @@ export function flowNetwork(section) {
  * electromagnetic fields, or a physical metric. Source and original
  * for/against/posited-value distinctions remain in every entry.
  */
+// The original SignCell/FOUR supplier defines these exact source positions.
+// Presentation with added metadata cannot confer independent testimony.
+const TOWER_FIELDS = Object.freeze([
+  "kind", "sourceAddress", "sourceCell", "record", "observedCharge",
+  "valuedCharge", "measured", "minimumRecord", "retainedSurplus"
+]);
+const malformedTower = () => new TypeError(
+  "signgraph: rejected foreign, stale or inconsistent source tower readout");
+const receivedTower = source => {
+  if (!source || typeof source !== "object" || Array.isArray(source) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(source)))
+    throw malformedTower();
+  const slots = Object.getOwnPropertyDescriptors(source);
+  if (Reflect.ownKeys(slots).length !== TOWER_FIELDS.length ||
+      !TOWER_FIELDS.every(name => slots[name] && slots[name].enumerable &&
+        Object.hasOwn(slots[name], "value")))
+    throw malformedTower();
+  // The existing SignCell carrier owns nested identity, byte encoding and
+  // immutable original representations; never reinterpret JSON as an issuer.
+  return retainedCarrier(Object.fromEntries(
+    TOWER_FIELDS.map(name => [name, slots[name].value])));
+};
+
 export function sourceRecordTowerFlowOfCells(cells, towerOfCell) {
   if (!Array.isArray(cells) || cells.length === 0 || cells.length > 1024) {
     throw new TypeError("signgraph: source tower flow requires 1..1024 source cells");
@@ -157,9 +180,11 @@ export function sourceRecordTowerFlowOfCells(cells, towerOfCell) {
   if (typeof towerOfCell !== "function") {
     throw new TypeError("signgraph: a source-owned SignCell tower reader is required");
   }
-  const entries = cells.map((original, sourceIndex) => {
-    const admitted = admitCell(original);
-    const tower = towerOfCell(admitted);
+  // A raw array and its elements are untrusted even when the callback is an
+  // admitted producer. Read exactly one original, inert, source-ordered copy.
+  const admittedCells = sourceIncidenceCells(cells);
+  const entries = admittedCells.map((admitted, sourceIndex) => {
+    const tower = receivedTower(towerOfCell(admitted));
     const actualRecord = recordOf(admitted);
     if (!tower || tower.kind !== "signcell.charge-record-tower.v1"
         || tower.sourceAddress !== address(admitted)
