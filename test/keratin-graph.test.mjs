@@ -284,6 +284,58 @@ test('foreign, accessor-backed, nonfinite or surplus numeric assertions refuse b
   assert.equal(calls,0,'malicious getters were not invoked to obtain the numerical source');
 });
 
+test('Keratin linear sheaf and observation arrays refuse executable, decorated and oversized sources',()=>{
+  const graph=specimen();
+  const vertexStalks=graph.feather.positions.map(p=>({position:p.key,dim:1}));
+  const relationStalks=graph.feather.predications.map(e=>({
+    occurrence:e.occurrence,dim:1,restrict:{from:[[1]],to:[[1]]},
+  }));
+  assert.equal(keratinLinearSheaf(graph,{vertexStalks,relationStalks}).cohomology.h0,1,
+    'ordinary original linear sheaf inputs remain admitted');
+  let calls=0;
+  const getterOptions={relationStalks};
+  Object.defineProperty(getterOptions,'vertexStalks',{
+    enumerable:true,get(){calls++;return vertexStalks;},
+  });
+  assert.throws(()=>keratinLinearSheaf(graph,getterOptions),/linear sheaf options.*inert/);
+  const decoratedVertices=[...vertexStalks];
+  Object.defineProperty(decoratedVertices,'authority',{value:'unearned'});
+  assert.throws(()=>keratinLinearSheaf(graph,{vertexStalks:decoratedVertices,relationStalks}),
+    /linear vertex stalks.*dense, undecorated/);
+  const accessorRelations=[...relationStalks];
+  Object.defineProperty(accessorRelations,'0',{
+    enumerable:true,get(){calls++;return relationStalks[0];},
+  });
+  assert.throws(()=>keratinLinearSheaf(graph,{vertexStalks,relationStalks:accessorRelations}),
+    /linear relation stalks.*inert data/);
+  const oversizedRelations=Array(257).fill(relationStalks[0]);
+  assert.throws(()=>keratinLinearSheaf(graph,{vertexStalks,relationStalks:oversizedRelations}),
+    /linear relation stalks.*work limit 256/);
+
+  const linear=linearSpec(graph);
+  const accessorObservations=[reading('a',0,'meter')];
+  Object.defineProperty(accessorObservations,'0',{
+    enumerable:true,get(){calls++;return reading('a',0,'meter');},
+  });
+  assert.throws(()=>assessKeratinLinearObservations(linear,accessorObservations),
+    /linear observations.*inert data/);
+  const enormousNumeric=reading('a',[0],'meter');
+  enormousNumeric.value.length=1000000;
+  assert.throws(()=>assessKeratinLinearObservations(linear,[enormousNumeric]),
+    /linear observation values.*work limit 16/);
+  const decoratedNumeric=reading('a',[0],'meter');
+  Object.defineProperty(decoratedNumeric.value,'surplus',{value:1});
+  assert.throws(()=>assessKeratinLinearObservations(linear,[decoratedNumeric]),
+    /linear observation values require dense own data slots/);
+  const decoratedWitness=reading('a',0,'meter');
+  Object.defineProperty(decoratedWitness.evidence.for,Symbol('secret'),{
+    get(){calls++;return 'forged';},
+  });
+  assert.throws(()=>assessKeratinLinearObservations(linear,[decoratedWitness]),
+    /linear observation for testimony requires material source identities/);
+  assert.equal(calls,0,'hostile source getters never ran during bounded admission');
+});
+
 test('two duplicate candidate hole cycles can each be nontrivial while their aggregate boundary span has rank one',()=>{
   const g=specimen({holes:[
     {id:'candidate1',sourceRecord:'s:1',boundary},
