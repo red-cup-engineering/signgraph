@@ -813,3 +813,53 @@ test("gluing rejects hidden, inherited or decorated source patches without inven
  assert.equal(actual.status,"globally-glued");
  assert.deepEqual(actual.regions.map(x=>x.sourceRef),["source:a"]);
 });
+
+test("standalone exact section extension refuses executable source observations before solving",()=>{
+  const source=constantSheaf(["science","engineering"],
+    [{id:"dependency",from:"science",to:"engineering"}],1);
+  const good={vertex:"science",coordinate:0,value:"7/3",sourceRecord:"science:one"};
+  const original=extendCellularSheafSection(source,[good]);
+  const replay=extendCellularSheafSection(source,JSON.parse(JSON.stringify([good])));
+  assert.equal(original.status,"mathematically-liftable");
+  assert.deepEqual(original.exactSection,replay.exactSection);
+  assert.deepEqual(original.sourceRows,replay.sourceRows);
+  let getterCalls=0;
+  const getter=()=>{getterCalls++;throw Error("source accessor executed");};
+  for(const key of ["vertex","coordinate","value","sourceRecord"]){
+    const malicious={...good};
+    Object.defineProperty(malicious,key,{enumerable:true,get:getter});
+    assert.throws(()=>extendCellularSheafSection(source,[malicious]),
+      /inert own source fields/u);
+  }
+  const sourceArray=[good];
+  Object.defineProperty(sourceArray,"0",{enumerable:true,get:getter});
+  assert.throws(()=>extendCellularSheafSection(source,sourceArray),
+    /array slots must be inert/u);
+  const hostileRational={kind:"exactNumber.rational",den:"3"};
+  Object.defineProperty(hostileRational,"num",{enumerable:true,get:getter});
+  assert.throws(()=>extendCellularSheafSection(source,[{...good,value:hostileRational}]),
+    /accessors or hidden data/u);
+  assert.equal(getterCalls,0,"never run caller accessors at the mathematical boundary");
+});
+
+test("standalone extension rejects extra or inherited readings and retains separate source disagreement",()=>{
+  const source=constantSheaf(["a","b"],[{id:"link",from:"a",to:"b"}],1);
+  const good={vertex:"a",coordinate:0,value:"2",sourceRecord:"site:a"};
+  const extra={...good,authority:"forged"};
+  const hidden={...good};
+  Object.defineProperty(hidden,"hidden", {value:"not a source claim"});
+  const inherited=Object.assign(Object.create({sourceRecord:"site:a"}),good);
+  const decorated=[good];decorated.extra="hidden";
+  const sparse=Array(2);sparse[0]=good;
+  for(const sourceRows of [[extra],[hidden],[inherited],decorated,sparse])
+    assert.throws(()=>extendCellularSheafSection(source,sourceRows),
+      /source fields|source array|decorated|plain original source record|inert own/u);
+  assert.throws(()=>extendCellularSheafSection(source,Array(258).fill(good)),
+    /exact 256-coordinate\/equation envelope/u);
+  const opposition=extendCellularSheafSection(source,[good,
+    {vertex:"b",coordinate:0,value:"3",sourceRecord:"site:b"}]);
+  assert.equal(opposition.status,"mathematically-obstructed",
+    "two admitted incompatible readings cannot be flattened into a compatible section");
+  assert.deepEqual(opposition.sourceRows.slice(-2).map(x=>x.sourceRecord),
+    ["site:a","site:b"],"both original sources remain in the exact obstruction");
+});
