@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { cell, coincides } from "@red-cup-engineering/signcell/cell";
-import { cohomologyOfCells, cohomologyOfEdgeGraph, componentsOf } from "../src/cohomology.mjs";
+import { cohomologyOfCells, cohomologyOfEdgeGraph, componentsOf, MAX_COHOMOLOGY_DENSE_SLOTS } from "../src/cohomology.mjs";
 import { flowNetworkOfCells } from "../src/cell-graph.mjs";
 
 // Independent deliberately slower coincidence reference. No second source
@@ -166,4 +166,17 @@ test("all 512 three-vertex directed graphs satisfy exact incidence and Euler H0/
     checked++;
   }
   assert.equal(checked,512);
+});
+
+test("dense cohomology refuses an unbounded H0 basis rather than reporting false vanishing",()=>{
+  assert.equal(MAX_COHOMOLOGY_DENSE_SLOTS,4_194_304);
+  // Even an edge-free graph has one H0 indicator row per isolated vertex;
+  // its basis alone is quadratic in the number of original terms.
+  const isolated=Array.from({length:2049},(_,index)=>"isolated-"+index);
+  assert.throws(()=>cohomologyOfCells([],isolated),
+    /dense incidence\/basis budget exceeded; H0\/H1 not evaluated/u);
+  const small=cohomologyOfCells([],["a","b","c"]);
+  assert.equal(small.zeroCohomology.rank,3);
+  assert.equal(small.firstCohomology.rank,0);
+  assert.deepEqual(small.incidence,[]);
 });
