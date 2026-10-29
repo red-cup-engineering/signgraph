@@ -144,3 +144,36 @@ test("one captured temporal input keeps original exchange identity under caller 
  },original);
  assert.equal(Object.isFrozen(got.proposedWindowLengths),true);
 });
+
+
+test("same conditional graph result does not reflect original performed source order or identity",()=>{
+  // Science #215, §7.59: distinct actual Holofoam intervention histories can
+  // share final numeric projections. These are deliberately *synthetic typed
+  // exchanges*, not a fabricated mapping of interventions into Actor ports.
+  const first=[edge("eA","A","B"),edge("eB","B","C"),edge("eC","C","A")];
+  const reordered=[first[2],first[1],first[0]];
+  const replaced=first.map((e,i)=>edge("replacement-"+i,e.from.id,e.to.id));
+  const a=query(first,2,[2]),b=query(reordered,2,[2]),c=query(replaced,2,[2]);
+  assert.notDeepEqual(first,reordered);
+  assert.notDeepEqual(first,replaced);
+  assert.deepEqual(a,b);
+  assert.deepEqual(a,c);
+  assert.equal(a.unresolvedEdgeHistoryDimension,1);
+  for(const observed of [a,b,c]){
+    assert.equal(observed.sourceCompleteness,"not-attested");
+    assert.equal(observed.actualFlowReadings,"not-supplied");
+    assert.equal(observed.realizedRhythm,"not-established");
+    assert.equal(observed.derivedClock,"not-established");
+  }
+});
+
+test("parameter intervention shape is refused as an original graph transfer, not converted into a meridian",()=>{
+  // These admitted-looking v5 parameter fields alone include no exchange,
+  // source/target endpoints, measured port debit or performed return event.
+  const parameterEvents=[
+    {kind:"metabolism",parameter:"uptake",value:.03},
+    {kind:"metabolism",parameter:"diffusion",value:.24},
+    {kind:"metabolism",parameter:"replenish",value:.05},
+  ];
+  assert.throws(()=>query(parameterEvents,2,[2]),/missing exchange/u);
+});
