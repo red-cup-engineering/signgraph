@@ -41,6 +41,19 @@ test("explicit named native test scripts have the same packed receiving sources"
   assert.ok(named.includes("test/cellular-2complex.test.mjs"));
   assert.ok(manifest.receivingTests.includes("test/meridian-flow-observability.test.mjs"));
   assert.ok(named.includes("test/hierarchical-circuit.test.mjs"));
+  for(const suite of [
+    "test/evidence-order-receiving.test.mjs",
+    "test/fiber-source-context.test.mjs",
+    "test/site-source-admission.test.mjs",
+    "test/site-specialization-closure.test.mjs",
+    "test/cell-graph.test.mjs",
+    "test/source-record-tower-flow.test.mjs",
+    "test/cohomology-canonical-incidence.test.mjs",
+  ]) {
+    assert.ok(named.includes(suite), "the foundations interoperability gate must execute " + suite);
+    assert.ok(manifest.files.includes(suite), "foundations source absent from the issued artifact");
+    assert.ok(manifest.receivingTests.includes(suite), "packed receiving omits foundations source");
+  }
 });
 
 test("missing receiver enrollment refuses before a published artifact is accepted", () => {
@@ -107,4 +120,17 @@ test("source registry handoff fails closed on absent, mismatched or credentialed
     (cwd, env) => cwd === "source" ? "https://registry.561.group/" : "https://other.invalid/",
     places), /archive installation registry differs/);
   assert.throws(() => qualifyPackedRegistry(null,places), TypeError);
+});
+
+test("source-qualified graph cohomology cannot be silently dropped from packed foundations receiving",()=>{
+  const missing={...manifest,
+    receivingTests:manifest.receivingTests.filter(x=>
+      x!=="test/cohomology-canonical-incidence.test.mjs")};
+  assert.throws(()=>receivingScriptPaths(missing),
+    /named test script not received/u);
+  const unpacked={...manifest,
+    files:manifest.files.filter(x=>
+      x!=="test/site-specialization-closure.test.mjs")};
+  assert.throws(()=>receivingScriptPaths(unpacked),
+    /receiving suite does not have a packaged source/u);
 });
