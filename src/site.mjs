@@ -123,6 +123,20 @@ export function sourceIsolatedEntities(values) {
     .map(value => retainedCarrier(value)));
 }
 
+/** A user-supplied plain graph edge is exactly one ordered source pair.
+ * Admit all array slots and detach terms through SignCell BEFORE a consumer
+ * constructs the ordinary "edge" predication. No pair is evidence that an
+ * exchange, message, or source claim was observed or authorized.
+ */
+export function sourceIncidencePairs(values) {
+  return Object.freeze(sourceList(values, "edge incidences").map(source => {
+    const pair = sourceList(source, "edge endpoints");
+    if (pair.length !== 2)
+      throw new TypeError("signgraph site: one edge must have exactly two source endpoints");
+    return Object.freeze(pair.map(term => retainedCarrier(term)));
+  }));
+}
+
 /** A specialization morphism: general predicate to specialized predicate.
  * Preserve the original presentation at the constructor (including the first
  * source representative); site() performs detached admission at its boundary.
