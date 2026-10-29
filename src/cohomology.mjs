@@ -30,6 +30,7 @@ const integerRank = (matrix) => (matrix.length === 0 ? 0 : toCount(rank(fromInts
 /** The characteristic polynomial det(xI − A) of a host-integer matrix, highest degree first, exactly. */
 const characteristicPolynomial = (matrix) => (matrix.length === 0 ? Object.freeze([1]) : Object.freeze(charPoly(fromInts(matrix)).map(toInt).reverse()));
 import { coincides, coincidenceKey } from "@red-cup-engineering/signcell/cell";
+import { sourceIncidenceTriples, sourceIsolatedEntities } from "./site.mjs";
 import { sixfoldMotion, sixfoldIdentity, sixfoldCompose, sixfoldInverse } from "./paths.mjs";
 import { readingOfRecord, record, sidesOfReading, topMass } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 import { coverNerve, h1Rank } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/coordination-cohomology";
@@ -50,25 +51,14 @@ export const rankComparison = (left, right) => Object.freeze({ kind: `signgraph.
 /** The cohomology of a list of cells (any SignCells or triples) as a graph on their entities,
  *  with any further isolated entities. */
 export function cohomologyOfCells(cells, extraEntities = []) {
-  // This is a pure reading over original SignCell predication coordinates,
-  // not a replacement content codec, authenticated source, or event log.
-  // Once admitted, each own source position is inspected exactly once.
-  const data = (value, role, required = true) => {
-    if (!value || typeof value !== "object" || Array.isArray(value))
-      throw new TypeError("signgraph cohomology requires original source triples");
-    const descriptor = Object.getOwnPropertyDescriptor(value, role);
-    if (!descriptor) {
-      if (!required) return undefined;
-      throw new TypeError("signgraph cohomology is missing source " + role);
-    }
-    if (!descriptor.enumerable || !Object.hasOwn(descriptor, "value"))
-      throw new TypeError("signgraph cohomology source " + role + " must be inert data");
-    return descriptor.value;
-  };
+  // The ORIGINAL site source owner also supplies the relation graph and
+  // oriented flow. Read the *same* ordered, detached, undeduplicated source
+  // incidence snapshot here; cohomology must not apply a weaker second
+  // parser that sees a different vertex or invented edge.
+  const incidences = sourceIncidenceTriples(cells);
+  const isolated = sourceIsolatedEntities(extraEntities);
   const entities = [], positions = new Map();
   const include = (term) => {
-    // Exactly the same SignCell/SCA coincidence used by the typed Cell,
-    // SignChain telling log and the original SignGraph oriented flow.
     const key = coincidenceKey(term);
     const found = positions.get(key);
     if (found !== undefined) return found;
@@ -76,16 +66,11 @@ export function cohomologyOfCells(cells, extraEntities = []) {
     entities.push(term); positions.set(key, index);
     return index;
   };
-  const originals = cells.map(value => {
-    const subject = data(value, "subject");
-    const predicate = data(value, "predicate", false);
-    const object = data(value, "object");
-    return Object.freeze({
-      subject, predicate, object,
-      sourceIndex: include(subject), targetIndex: include(object),
-    });
-  });
-  for (const entity of extraEntities) include(entity);
+  const originals = incidences.map(value => Object.freeze({
+    subject: value.subject, predicate: value.predicate, object: value.object,
+    sourceIndex: include(value.subject), targetIndex: include(value.object),
+  }));
+  for (const entity of isolated) include(entity);
   Object.freeze(entities);
   const incidence = Object.freeze(originals.map(value => {
     const row = entities.map(() => 0);
