@@ -80,6 +80,44 @@ test("foreign, stale and corrupted tower projections refuse rather than enter a 
   }
 });
 
+test("equal-count, same-address foreign testimony refuses while canonical witness order is equivalent", () => {
+  const source = cell("A", "rel", "B", {
+    for: ["source:a", "source:b"], against: ["opposition:a"]
+  });
+  const sameAddressDifferentTestimony = [
+    cell("A", "rel", "B", {
+      for: ["source:a", "foreign:b"], against: ["opposition:a"]
+    }),
+    cell("A", "rel", "B", {
+      for: ["source:a", "source:b"], against: ["foreign:opposition"]
+    }),
+  ];
+  for (const foreign of sameAddressDifferentTestimony) {
+    // Triple identity and the entire FOUR/Record readout remain unchanged;
+    // only canonical source evidence identity distinguishes these claims.
+    assert.equal(address(foreign), address(source));
+    assert.deepEqual(recordOf(foreign), recordOf(source));
+    assert.equal(presence(foreign), presence(source));
+    assert.equal(valueOf(foreign), valueOf(source));
+    assert.throws(
+      () => sourceRecordTowerFlowOfCells([source], cell => ({
+        ...towerFixture(cell), sourceCell: foreign
+      })),
+      /rejected foreign, stale or inconsistent source tower/u
+    );
+  }
+  // Source equality is canonical content equality, not object reference or
+  // the caller's order of witnesses: equivalent evidence remains admissible.
+  const equivalent = cell("A", "rel", "B", {
+    for: ["source:b", "source:a"], against: ["opposition:a"]
+  });
+  const accepted = sourceRecordTowerFlowOfCells([source], cell => ({
+    ...towerFixture(cell), sourceCell: equivalent
+  }));
+  assert.equal(accepted.entries.length, 1);
+  assert.deepEqual(accepted.entries[0].tower.sourceCell.for, source.for);
+});
+
 test("only a bounded list of actual source cells and an actual producer can be admitted", () => {
   const good = cell("A", "rel", "B", { for: ["w1"] });
   assert.throws(() => sourceRecordTowerFlowOfCells([], towerFixture), /1..1024/u);
