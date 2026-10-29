@@ -144,3 +144,26 @@ test("cohomology retains canonical source terms and isolated entities after call
   assert.equal(topology.firstCohomology.rank,0);
   assert.equal(topology.zeroCohomology.rank,2);
 });
+
+test("all 512 three-vertex directed graphs satisfy exact incidence and Euler H0/H1 laws",()=>{
+  const terms=["a","b","c"];
+  let checked=0;
+  for(let mask=0;mask<512;mask++){
+    const source=terms.flatMap((from,i)=>terms.flatMap((to,j)=>
+      mask & (1 << (i*3+j)) ? [cell(from,"source-directed",to)] : []));
+    const expected=reference(source,terms);
+    const actual=cohomologyOfCells(source,terms);
+    assert.deepEqual(actual.incidence,expected.incidence,
+      "a source-directed edge has exactly one -1 and one +1, with loops cancelling");
+    assert.deepEqual(actual.zeroCohomology.cocycleBasis,expected.zero);
+    assert.equal(actual.zeroCohomology.rank,expected.h0);
+    assert.equal(actual.firstCohomology.rank,expected.h1);
+    assert.equal(actual.zeroCohomology.rank-actual.firstCohomology.rank,
+      actual.entities.length-actual.cells.length,
+      "Euler identity for a finite directed graph with distinct source occurrences");
+    assert.ok(actual.incidence.every(row=>row.reduce((sum,value)=>sum+value,0)===0),
+      "oriented incidence always has zero total boundary charge");
+    checked++;
+  }
+  assert.equal(checked,512);
+});
