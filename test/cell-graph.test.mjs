@@ -186,3 +186,76 @@ test("canonical vertex index matches independent coincidence scans on varied fin
     assert.deepEqual(actual.graph.weights.map(row=>row.map(toInt)),adjacency);
   }
 });
+
+test("ordered graph projection admits original bare triples and SignCells without erasing repeated occurrences",()=>{
+  const bare={subject:"speaker",predicate:"reports",object:"listener"};
+  const supported=cell("speaker","reports","listener",{for:["record:a"]});
+  const opposed=cell("speaker","reports","listener",{against:["record:b"]});
+  const source=[bare,supported,opposed];
+  const directed=flowNetworkOfCells(source);
+  const undirected=relationGraphOfCells(source);
+  assert.equal(directed.edges.length,3,"three source positions remain three incidences");
+  assert.deepEqual(directed.edges.map(x=>[x.from,x.to]),
+    [["speaker","listener"],["speaker","listener"],["speaker","listener"]]);
+  assert.equal(toInt(undirected.weights[0][1]),3);
+  assert.deepEqual(directed.graph,undirected,
+    "symmetric and directed readers share the original source ordering");
+  assert.deepEqual(supported.for,["record:a"]);
+  assert.deepEqual(opposed.against,["record:b"]);
+  assert.deepEqual(bare,{subject:"speaker",predicate:"reports",object:"listener"});
+});
+
+test("oriented graph and its symmetric counterpart never evaluate source accessors",()=>{
+  let calls=0;
+  const poisoned=()=>{calls++;throw Error("unexpected source getter");};
+  const good=cell("a","p","b");
+  const sourceGet={predicate:"p",object:"b"};
+  Object.defineProperty(sourceGet,"subject",{enumerable:true,get:poisoned});
+  const extra={subject:"a",predicate:"p",object:"b"};
+  Object.defineProperty(extra,"authority",{enumerable:true,get:poisoned});
+  const evidenceGetter={...good};
+  Object.defineProperty(evidenceGetter,"for",{enumerable:true,get:poisoned});
+  const hidden={...good};
+  Object.defineProperty(hidden,Symbol("unwitnessed"),{value:"forged"});
+  const sparse=[good, ,good];
+  const arrayGetter=[good];
+  Object.defineProperty(arrayGetter,"0",{enumerable:true,get:poisoned});
+  for(const input of [
+    [sourceGet],[extra],[evidenceGetter],[hidden],sparse,arrayGetter,
+    [{subject:"a",predicate:"p",object:"b",for:["w"]}],
+    [Object.assign(Object.create({subject:"a"}),{predicate:"p",object:"b"})],
+  ])for(const read of [relationGraphOfCells,flowNetworkOfCells])
+    assert.throws(()=>read(input),/signgraph site:/u);
+  assert.equal(calls,0,"no getter ran during graph source qualification");
+});
+
+test("graph terms and orientations are a single immutable source snapshot",()=>{
+  const origin={name:"a",nested:{revision:[1]}};
+  const destination={name:"b",nested:{revision:[2]}};
+  const first={subject:origin,predicate:"rel",object:destination};
+  const second={subject:destination,predicate:"rel",object:origin};
+  const source=[first,second];
+  const graph=flowNetworkOfCells(source);
+  const before=JSON.stringify(graph);
+  origin.name="corrupt";
+  origin.nested.revision[0]=99;
+  destination.nested.revision.push(999);
+  first.subject=destination;
+  second.object=destination;
+  source.reverse();
+  assert.equal(JSON.stringify(graph),before,
+    "later changes to source records cannot rewrite canonical graph geometry");
+  assert.deepEqual(graph.edges.map(e=>[e.fromIndex,e.toIndex]),[[0,1],[1,0]]);
+  assert.ok(graph.edges.every(e=>graph.terms[e.fromIndex]===e.from &&
+      graph.terms[e.toIndex]===e.to),
+    "every directed endpoint is an actual admitted vertex from the same snapshot");
+});
+
+test("graph admission refuses over-budget source positions before inspecting them",()=>{
+  const source=Array.from({length:16385},()=>cell("a","p","b"));
+  let touched=0;
+  Object.defineProperty(source,"0",{enumerable:true,get(){touched++;throw Error("executed");}});
+  assert.throws(()=>relationGraphOfCells(source),/bounded plain source array/u);
+  assert.throws(()=>flowNetworkOfCells(source),/bounded plain source array/u);
+  assert.equal(touched,0);
+});
