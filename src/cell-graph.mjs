@@ -13,6 +13,7 @@ import {
 } from "@red-cup-engineering/signcell/cell";
 import { natZero, natOne, natAdd, fromNatural } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { chuSpaceOfEntries } from "@red-cup-engineering/metrologic/chu";
+import { sourceIncidenceTriples } from "./site.mjs";
 
 /** The Chu space of a cell set under a list of named observations. */
 export function cellGraph(cells, observations, options = {}) {
@@ -27,13 +28,10 @@ export function cellGraph(cells, observations, options = {}) {
   });
 }
 
-/** The relation graph of a bare list of predication CELLS — distinct subject/object terms as
- *  vertices, weighted by how many cells relate each pair. This is the part `relationGraph` actually
- *  needs: it reads only `cell.subject`/`cell.object`, never the reading or the fixed-point reading's
- *  order/bound. Exposing it lets ANY holder of cells (a faculty's held section, a membrane) read the
- *  graph (and metrologic's Laplacian over it) without first materializing a full `SectionCarrier`. */
-export function relationGraphOfCells(cells) {
-    if (cells.length === 0)
+/** Build the existing symmetric projection from ONE detached, source-admitted
+ * incidence presentation, without another input read or cell-set collapse. */
+function relationGraphOfAdmittedIncidences(incidences) {
+    if (incidences.length === 0)
         throw new TypeError("an empty section presents no relation graph");
     // SignCell's canonical coincidence bytes, not host object identity or
     // JSON.stringify. Every original term is retained in first-seen order.
@@ -50,9 +48,9 @@ export function relationGraphOfCells(cells) {
         return position;
     };
     const pairs = [];
-    for (const cell of cells) {
-        const subject = indexOf(cell.subject);
-        const object = indexOf(cell.object);
+    for (const at of incidences) {
+        const subject = indexOf(at.subject);
+        const object = indexOf(at.object);
         if (subject !== object)
             pairs.push([subject, object]);
     }
@@ -72,6 +70,14 @@ export function relationGraphOfCells(cells) {
         terms: Object.freeze(terms),
         weights: Object.freeze(weights.map((row) => Object.freeze(row))),
     });
+}
+/** The source-admitted, symmetric relation graph of predication Cells/triples.
+ * Both bare source triples and full SignCells use the ORIGINAL site's source
+ * boundary; a new Graph reader may neither evaluate a getter nor invent a
+ * different input on a second pass. Parallel source occurrences remain edges.
+ */
+export function relationGraphOfCells(cells) {
+    return relationGraphOfAdmittedIncidences(sourceIncidenceTriples(cells));
 }
 /** The relation graph of a section (its entries' cells). Delegates to {@link relationGraphOfCells}. */
 export function relationGraph(section) {
@@ -95,13 +101,17 @@ export function relationGraph(section) {
  * as they already do in flowNetwork(section).
  */
 export function flowNetworkOfCells(cells) {
-    const graph = relationGraphOfCells(cells);
+    // Use precisely the same detached source positions for both the
+    // symmetric weights and oriented boundary. The old second read of
+    // caller-owned cells could disagree with the first graph index.
+    const incidences = sourceIncidenceTriples(cells);
+    const graph = relationGraphOfAdmittedIncidences(incidences);
     // The weighted and directed readers must use the SAME upstream canonical
     // coincidence classes. Avoid linear vertex rescans per oriented edge.
     const positions = new Map(graph.terms.map((term, index) => [coincidenceKey(term), index]));
     const indexOf = (term) => positions.get(coincidenceKey(term));
     const edges = [];
-    for (const value of cells) {
+    for (const value of incidences) {
         const fromIndex = indexOf(value.subject);
         const toIndex = indexOf(value.object);
         if (fromIndex === toIndex) continue;
