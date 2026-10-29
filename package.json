@@ -44,7 +44,8 @@
     "scripts/qualify-packed-registry.mjs",
     "test/fiber-source-context.test.mjs",
     "test/transitive-registry.test.mjs",
-    "test/site-source-admission.test.mjs"
+    "test/site-source-admission.test.mjs",
+    "test/site-specialization-closure.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -107,7 +108,7 @@
     "test:keratin": "node --test test/cellular-sheaf.test.mjs test/keratin-graph.test.mjs",
     "demo:keratin": "node examples/keratin-hole-workbench.mjs",
     "test:packed-receiving": "node scripts/verify-packed-receiving.mjs",
-    "test:foundations:interop": "node --test test/evidence-order-receiving.test.mjs test/fiber-source-context.test.mjs"
+    "test:foundations:interop": "node --test test/evidence-order-receiving.test.mjs test/fiber-source-context.test.mjs test/site-source-admission.test.mjs test/site-specialization-closure.test.mjs test/cell-graph.test.mjs test/source-record-tower-flow.test.mjs test/cohomology-canonical-incidence.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -150,6 +151,7 @@
     "test/meridian-temporal-aliasing.test.mjs",
     "test/fiber-source-context.test.mjs",
     "test/transitive-registry.test.mjs",
-    "test/site-source-admission.test.mjs"
+    "test/site-source-admission.test.mjs",
+    "test/site-specialization-closure.test.mjs"
   ]
 }
