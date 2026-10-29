@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cell } from "@red-cup-engineering/signcell/cell";
 import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
-  apply, applyLaplacian, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf, sheafSourceScalar,
+  apply, applyLaplacian, admitCellularSheaf, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf, sheafSourceScalar,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
   weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection, tensorCellularSheaves, pullbackCellularSheaf, glueCellularSheafPatches,
 } from "../src/cellular-sheaf.mjs";
@@ -862,4 +862,62 @@ test("standalone extension rejects extra or inherited readings and retains separ
     "two admitted incompatible readings cannot be flattened into a compatible section");
   assert.deepEqual(opposition.sourceRows.slice(-2).map(x=>x.sourceRecord),
     ["site:a","site:b"],"both original sources remain in the exact obstruction");
+});
+
+test("source-admitted exact sheaf chart survives JSON transport without changing gluing or extension",()=>{
+  const original=constantSheaf(["science","engineering"],
+    [{id:"original-dependency",from:"science",to:"engineering"}],1);
+  assert.equal(admitCellularSheaf(original),original,
+    "an in-process original chart is already admitted");
+  const copied=JSON.parse(JSON.stringify(original));
+  const recovered=admitCellularSheaf(copied);
+  assert.notEqual(recovered,copied,"a transported copy receives a new original-source construction");
+  assert.deepEqual(recovered,original,
+    "derived incidence indices and restriction arrays retain exact semantic content");
+  const observations=[{vertex:"science",coordinate:0,value:"7/3",sourceRecord:"source:original"}];
+  const a=extendCellularSheafSection(original,observations);
+  const b=extendCellularSheafSection(copied,observations);
+  assert.deepEqual(a,b,"source-local exact lift and source equation indices survive transport");
+  const patches=[{region:"both",sourceRef:"source:science",
+    vertices:[{vertex:"science",values:["7/3"]},{vertex:"engineering",values:["7/3"]}]}];
+  assert.deepEqual(glueCellularSheafPatches(copied,patches),
+    glueCellularSheafPatches(original,patches),
+    "source-local gluing cannot depend on in-process identity of the same valid original chart");
+});
+
+test("derived sheaf indices and declared exactness cannot be forged into source-valid mathematical claims",()=>{
+  const source=constantSheaf(["a","b"],[{id:"e",from:"a",to:"b"}],1);
+  const copy=()=>JSON.parse(JSON.stringify(source));
+  const sources=[
+    ()=>{const c=copy();c.vertexOffsets[1]=19;return c;},
+    ()=>{const c=copy();c.edgeOffsets[0]=7;return c;},
+    ()=>{const c=copy();c.fromIndex[0]=1;return c;},
+    ()=>{const c=copy();c.toIndex[0]=0;return c;},
+    ()=>{const c=copy();c.c0=3;return c;},
+    ()=>{const c=copy();c.c1=0;return c;},
+    ()=>{const c=copy();c.exact=false;return c;},
+    ()=>({...copy(),authority:"source:invented"}),
+  ];
+  for(const produce of sources){
+    const forged=produce();
+    assert.throws(()=>admitCellularSheaf(forged),
+      /cellularSheaf chart:/u);
+    assert.throws(()=>extendCellularSheafSection(forged,[]),
+      /cellularSheaf chart:/u);
+    assert.throws(()=>glueCellularSheafPatches(forged,[]),
+      /cellularSheaf chart:/u);
+  }
+  let getterCalls=0;
+  const get=()=>{getterCalls++;throw Error("executed forged sheaf source");};
+  const direct=copy();
+  Object.defineProperty(direct,"c0",{enumerable:true,get});
+  const offset=copy();
+  Object.defineProperty(offset.vertexOffsets,"0",{enumerable:true,get});
+  const matrix=copy();
+  Object.defineProperty(matrix.edges[0].restrict.from[0],"0",{enumerable:true,get});
+  for(const forged of [direct,offset,matrix])
+    assert.throws(()=>admitCellularSheaf(forged),
+      /cellularSheaf chart:|array slots|inert|accessors/u);
+  assert.equal(getterCalls,0,
+    "source getters cannot participate in mathematical reconstruction");
 });
