@@ -84,6 +84,18 @@ const sourceTriple = value => {
   return triple(admitCell({...terms, ...evidence}));
 };
 
+/**
+ * Read the ORIGINAL ordered incidences shared by sites, relation graphs and
+ * oriented flow networks. This uses the site's existing exact source Triple /
+ * SignCell admission, but deliberately does NOT deduplicate triples: repeated
+ * source positions remain separate graph edges even when their semantic
+ * cell addresses coincide. The resulting detached triples have NO evidential
+ * force; source occurrence histories live with their original owner.
+ */
+export function sourceIncidenceTriples(values) {
+  return Object.freeze(sourceList(values, "incidence cells").map(sourceTriple));
+}
+
 /** A specialization morphism: general predicate to specialized predicate.
  * Preserve the original presentation at the constructor (including the first
  * source representative); site() performs detached admission at its boundary.
