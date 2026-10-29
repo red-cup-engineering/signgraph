@@ -439,33 +439,44 @@ function exactCoboundary(sheaf) {
  * the cell identities and equation sources used in the calculation.
  */
 export function extendCellularSheafSection(sheaf, observations = []) {
-  if (sheaf?.kind !== "signgraph.cellularSheaf" ||
-      !Array.isArray(sheaf.vertices) || !Array.isArray(sheaf.edges) ||
-      sheaf.exact !== true)
+  // The direct extension entry point must obey the SAME inert-source law as
+  // glueCellularSheafPatches, which delegates to it. Otherwise an accessor in
+  // one standalone observation can run before the original exact solver sees
+  // the claimed section. A source witness locator is data, not authentication.
+  if (sheafSourceField(sheaf, "kind") !== "signgraph.cellularSheaf" ||
+      sheafSourceField(sheaf, "exact") !== true ||
+      !Array.isArray(sheafSourceField(sheaf, "vertices")) ||
+      !Array.isArray(sheafSourceField(sheaf, "edges")))
     throw new TypeError("cellularSheaf extension needs an original exact rational sheaf");
-  if (!Array.isArray(observations) || sheaf.c0 > 256 ||
-      sheaf.c1 + observations.length > 256)
+  const c0 = sheafSourceField(sheaf, "c0");
+  const c1 = sheafSourceField(sheaf, "c1");
+  if (!Number.isSafeInteger(c0) || c0 < 0 ||
+      !Number.isSafeInteger(c1) || c1 < 0 ||
+      !Array.isArray(observations) || c0 > 256 || c1 > 256 ||
+      observations.length > 256 - c1)
     throw new RangeError("cellularSheaf extension exceeds the exact 256-coordinate/equation envelope");
+  const sourceObservations = sheafSourceArray(observations, "source-local observations");
   const sites = new Map(sheaf.vertices.map((v,i) => [coincidenceKey(v.id), {
     vertex:v,index:i,offset:sheaf.vertexOffsets[i]
   }]));
-  const measured = observations.map((row,i) => {
-    if (!row || typeof row !== "object" || Array.isArray(row) ||
-        Object.keys(row).some(key => !["vertex","coordinate","value","sourceRecord"].includes(key)))
-      throw new TypeError("source-local section needs a typed source observation");
-    const at=sites.get(coincidenceKey(row.vertex));
+  const measured = sourceObservations.map((source,i) => {
+    const row = sourceCoverRecord(source,
+      ["vertex","coordinate","value","sourceRecord"],
+      "cellularSheaf source-local observation");
+    const originalVertex = canonicalCarrier(row.vertex);
+    const at=sites.get(coincidenceKey(originalVertex));
     if (!at || !Number.isSafeInteger(row.coordinate) ||
         row.coordinate < 0 || row.coordinate >= at.vertex.dim ||
         typeof row.sourceRecord !== "string" || !row.sourceRecord.trim() ||
         row.sourceRecord.length > 1024)
       throw new TypeError("source-local section needs one actual stalk coordinate and witness locator");
-    const [numerator,denominator]=ratPairOfEntry(row.value);
+    const [numerator,denominator]=ratPairOfEntry(sheafSourceScalar(row.value));
     const column=at.offset+row.coordinate;
     return Object.freeze({
       vertex:at.vertex.id,coordinate:row.coordinate,
       value:denominator===1n?String(numerator):numerator+"/"+denominator,
       column,sourceRecord:row.sourceRecord,
-      equationIndex:sheaf.c1+i,
+      equationIndex:c1+i,
     });
   });
   const differential=exactCoboundary(sheaf);
