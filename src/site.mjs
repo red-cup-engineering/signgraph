@@ -114,6 +114,15 @@ export function sourceIncidenceCells(values) {
     .map(value => sourceCell(value, true)));
 }
 
+/** Separately declared isolated vertices are ORIGINAL opaque SignCell terms,
+ * never a basis for inventing edges or observational testimony. Qualify the
+ * finite input and detach terms once, exactly as incidence sources do.
+ */
+export function sourceIsolatedEntities(values) {
+  return Object.freeze(sourceList(values, "isolated entities")
+    .map(retainedCarrier));
+}
+
 /** A specialization morphism: general predicate to specialized predicate.
  * Preserve the original presentation at the constructor (including the first
  * source representative); site() performs detached admission at its boundary.
