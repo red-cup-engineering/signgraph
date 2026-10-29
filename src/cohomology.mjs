@@ -30,7 +30,7 @@ const integerRank = (matrix) => (matrix.length === 0 ? 0 : toCount(rank(fromInts
 /** The characteristic polynomial det(xI − A) of a host-integer matrix, highest degree first, exactly. */
 const characteristicPolynomial = (matrix) => (matrix.length === 0 ? Object.freeze([1]) : Object.freeze(charPoly(fromInts(matrix)).map(toInt).reverse()));
 import { coincides, coincidenceKey } from "@red-cup-engineering/signcell/cell";
-import { sourceIncidenceTriples, sourceIsolatedEntities } from "./site.mjs";
+import { sourceIncidencePairs, sourceIncidenceTriples, sourceIsolatedEntities } from "./site.mjs";
 import { sixfoldMotion, sixfoldIdentity, sixfoldCompose, sixfoldInverse } from "./paths.mjs";
 import { readingOfRecord, record, sidesOfReading, topMass } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 import { coverNerve, h1Rank } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/coordination-cohomology";
@@ -118,8 +118,18 @@ export const cohomologyOfValuation = (valuation, extraEntities = []) => cohomolo
 /** The connected components of a cohomology reading: the entities of each H⁰ basis vector. */
 export const componentsOf = (cohomology) => Object.freeze(cohomology.zeroCohomology.cocycleBasis.map((row) => Object.freeze(cohomology.entities.filter((_, index) => row[index] === 1))));
 
-/** The cohomology of a plain graph given as nodes and [from, to] edges. */
-export const cohomologyOfEdgeGraph = (nodes, edges) => cohomologyOfCells(edges.map(([from, to]) => ({ subject: from, predicate: "edge", object: to })), nodes);
+/** The cohomology of a plain graph given as nodes and [from, to] edges.
+ * Plain pair inputs receive the SAME bounded inert site admission as typed
+ * SignCells. No endpoint getter or unadmitted iterable may generate a source
+ * predication before the canonical Cell/cohomology reader sees it.
+ */
+export function cohomologyOfEdgeGraph(nodes, edges) {
+  const isolated = sourceIsolatedEntities(nodes);
+  const pairs = sourceIncidencePairs(edges);
+  return cohomologyOfCells(
+    pairs.map(([from, to]) => ({ subject: from, predicate: "edge", object: to })),
+    isolated);
+}
 
 /** The first Betti number of a list of cells. */
 export const firstCohomologyRankOfCells = (cells, extraEntities = []) => cohomologyOfCells(cells, extraEntities).firstCohomology.rank;
