@@ -41,6 +41,10 @@ const uniqueBy = (values, same) => {
   return Object.freeze(out);
 };
 
+/** Maximum aggregate dense incidence plus worst-case H0 basis positions.
+ * This bounds materialization cost, never the mathematics or source witnesses. */
+export const MAX_COHOMOLOGY_DENSE_SLOTS = 4_194_304;
+
 /** Whether two ranks are equal (a witness) or not (an obstruction). */
 export const rankIdentity = (left, right) => Object.freeze({ kind: left === right ? "signgraph.rankIdentity:witness" : "signgraph.rankIdentity-obstruction", left, right });
 /** Whether a rank vanishes. */
@@ -71,6 +75,14 @@ export function cohomologyOfCells(cells, extraEntities = []) {
     sourceIndex: include(value.subject), targetIndex: include(value.object),
   }));
   for (const entity of isolated) include(entity);
+  // The public return value materializes BOTH E×V incidence and up to V×V
+  // component-indicator rows. Source count alone does not bound those dense
+  // allocations: 16k distinct names could otherwise allocate gigabytes
+  // before returning a mathematical answer. This is an ENGINEERING limit,
+  // not a claim about the existence or vanishing of H0/H1.
+  const denseSlots = entities.length * (originals.length + entities.length);
+  if (denseSlots > MAX_COHOMOLOGY_DENSE_SLOTS)
+    throw new RangeError("signgraph cohomology: dense incidence/basis budget exceeded; H0/H1 not evaluated");
   Object.freeze(entities);
   const incidence = Object.freeze(originals.map(value => {
     const row = entities.map(() => 0);
