@@ -120,7 +120,7 @@ export function sourceIncidenceCells(values) {
  */
 export function sourceIsolatedEntities(values) {
   return Object.freeze(sourceList(values, "isolated entities")
-    .map(retainedCarrier));
+    .map(value => retainedCarrier(value)));
 }
 
 /** A specialization morphism: general predicate to specialized predicate.
