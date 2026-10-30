@@ -13,7 +13,7 @@
  * existing SignGraph cohomology engine. A declared candidate boundary is
  * NEVER inserted as a face in the actual complex.
  */
-import { featherGraphOfPredications } from './feather-graph.mjs';
+import { featherGraphOfPredications, featherSourceFields, featherSourceArray } from './feather-graph.mjs';
 import { cellular2Complex } from './cohomology.mjs';
 import { apply, coboundary, cochain, cellularSheaf, cellularSheafCohomology } from './cellular-sheaf.mjs';
 import { readingOfSides } from '@red-cup-engineering/computer-data-engineering-services-section/four';
@@ -32,44 +32,12 @@ const MAX_STATES = 16, MAX_ALLOWED_PAIRS = 256;
 const DEFAULT_ASSIGNMENT_BUDGET = 250000;
 
 const fail = message => { throw new TypeError(`keratin graph: ${message}`); };
-function fields(record, keys, context) {
-  if (!isRecord(record) ||
-      ![Object.prototype,null].includes(Object.getPrototypeOf(record)))
-    fail(`${context}: undeclared fields or invalid object; requires plain source record`);
-  const descriptors=Object.getOwnPropertyDescriptors(record);
-  const names=Reflect.ownKeys(descriptors);
-  if(names.some(key => typeof key !== "string" ||
-      !keys.includes(key) || !descriptors[key].enumerable ||
-      !Object.hasOwn(descriptors[key],"value")))
-    fail(`${context}: undeclared fields or invalid object; requires inert own data`);
-  // Return a fixed own-data coordinate record, with NO inherited prototype.
-  // A checked input can omit optional fields; reading the original input's
-  // prototype for their defaults would fabricate faces, locks, observations,
-  // tolerances or budgets after the descriptor guard has already passed.
-  const selected=Object.create(null);
-  for(const name of names)
-    Object.defineProperty(selected,name,{value:descriptors[name].value,enumerable:true});
-  return Object.freeze(selected);
-}
-/** Reject accessor-backed, sparse, symbol-decorated or executable arrays
- * BEFORE the original finite source loop can read their values.
- * This does not authenticate external source witnesses; it is not a new
- * canonical Cell codec. Host Proxy traps still require process isolation.
- */
-function sourceArray(values, context, maximum = 256) {
-  if (!Array.isArray(values) || Object.getPrototypeOf(values)!==Array.prototype ||
-      values.length>maximum)
-    fail(`${context}: list exceeds work limit ${maximum}`);
-  const descriptors=Object.getOwnPropertyDescriptors(values);
-  if(Reflect.ownKeys(descriptors).length!==values.length+1)
-    fail(`${context}: array must be dense, undecorated inert data`);
-  for(let i=0;i<values.length;i++){
-    const field=descriptors[String(i)];
-    if(!field || !field.enumerable || !Object.hasOwn(field,"value"))
-      fail(`${context}: array slots must be inert data`);
-  }
-  return values;
-}
+// Feather is the earliest lawful source-position reader. Reuse that SAME
+// inert-record and dense-array admission in its downstream Keratin workbench
+// while preserving existing Keratin-specific error reports and resource caps.
+const fields = (record, keys, context) => featherSourceFields(record, keys, context, fail);
+const sourceArray = (values, context, maximum = 256) =>
+  featherSourceArray(values, context, maximum, fail);
 function unique(xs, context) {
   const set = new Set(xs);
   if (set.size !== xs.length) fail(`${context}: duplicate identity`);
