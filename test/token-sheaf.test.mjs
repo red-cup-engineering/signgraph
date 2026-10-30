@@ -250,6 +250,50 @@ test("one source-told sheaf supports cross-token typed queries and stable local 
   assert.throws(() => queryInheritedTellings(frame, accessor), /plain data fields/u);
 });
 
+test("one SignCell-owned frame cut serves SignGraph sheaf/claim readers without executing foreign accessors", () => {
+  const wire = {
+    kind: "signcell.token-frame", predicate: SPECIALIZES,
+    cells: [told("child", "parent"), cell("parent", "can", "read", { for: ["source:first"] })],
+  };
+  const selection = { token: "child", predicate: "can", object: "read" };
+  const first = queryInheritedTellings(wire, selection);
+  assert.equal(first.total, 1);
+  assert.deepEqual(first.entries[0].cell.for, ["source:first"]);
+  assert.equal(inheritedClaim(wire, "child", "can", "read").cells.length, 1);
+  assert.equal(inherited(wire, "child").cells.length, 1);
+  assert.equal(tellingsAt(wire, "parent").length, 1);
+  wire.cells[1] = cell("parent", "can", "read", { against: ["source:later"] });
+  assert.deepEqual(first.entries[0].cell.for, ["source:first"],
+    "the original result is a source-owned immutable cut");
+  const next = queryInheritedTellings(wire, selection);
+  assert.notEqual(first.snapshot, next.snapshot);
+  assert.deepEqual(next.entries[0].cell.against, ["source:later"]);
+
+  let invoked = 0;
+  const getter = { ...wire };
+  Object.defineProperty(getter, "cells", {
+    enumerable: true, get() { invoked++; return wire.cells; },
+  });
+  for (const read of [
+    () => queryInheritedTellings(getter, selection),
+    () => inherited(getter, "child"),
+    () => inheritedClaim(getter, "child", "can", "read"),
+    () => tellingsAt(getter, "parent"),
+  ]) assert.throws(read, /must be source data, not a getter/);
+  const inheritedSelection = Object.create(Object.defineProperty({}, "predicate", {
+    enumerable: true, get() { invoked++; return "can"; },
+  }));
+  assert.throws(() => queryInheritedTellings(wire, inheritedSelection),
+    /only declared plain data fields/);
+  const accessorPage = { limit: 1 };
+  Object.defineProperty(accessorPage, "offset", {
+    enumerable: true, get() { invoked++; return 0; },
+  });
+  assert.throws(() => queryInheritedTellings(wire, selection, accessorPage),
+    /only declared plain data fields/);
+  assert.equal(invoked, 0, "no foreign getter supplied a Cell, filter or pagination cursor");
+});
+
 test("paged source claims retain immutable original testimony across wire edits", () => {
   const object = { text: "before" };
   const frame = Object.freeze({
