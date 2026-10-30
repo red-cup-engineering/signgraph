@@ -25,6 +25,7 @@
     "test/fiber.test.mjs",
     "test/fiber-adjoints.test.mjs",
     "test/cellular-sheaf-complex.test.mjs",
+    "test/feather-graph.test.mjs",
     "test/keratin-graph.test.mjs",
     "examples/keratin-hole-workbench.mjs",
     "test/source-record-tower-flow.test.mjs",
@@ -104,11 +105,11 @@
     "test": "node --test \"test/**/*.test.mjs\"",
     "check:holonomy": "node --check src/embedding.mjs && node --check src/cohomology.mjs && node --check src/paths.mjs && node --check src/cellular-sheaf.mjs && node --check src/hierarchical-circuit.mjs && node --check src/j26-surface.mjs && node --check src/operations.mjs && node --check src/mark-gluing.mjs && node --check test/performed-head-observation.test.mjs",
     "test:holonomy": "node --test test/cellular-2complex.test.mjs test/sixfold-holonomy.test.mjs test/holonomy-operations.test.mjs test/geometric-receiving.test.mjs test/cellular-sheaf.test.mjs test/hierarchical-circuit.test.mjs test/performed-head-observation.test.mjs test/j26-source-generated-patch.test.mjs",
-    "check:keratin": "node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs && node --check examples/keratin-hole-workbench.mjs",
-    "test:keratin": "node --test test/cellular-sheaf.test.mjs test/keratin-graph.test.mjs",
+    "check:keratin": "node --check src/feather-graph.mjs && node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs && node --check examples/keratin-hole-workbench.mjs",
+    "test:keratin": "node --test test/feather-graph.test.mjs test/cellular-sheaf.test.mjs test/keratin-graph.test.mjs",
     "demo:keratin": "node examples/keratin-hole-workbench.mjs",
     "test:packed-receiving": "node scripts/verify-packed-receiving.mjs",
-    "test:foundations:interop": "node --test test/evidence-order-receiving.test.mjs test/fiber-source-context.test.mjs test/site-source-admission.test.mjs test/site-specialization-closure.test.mjs test/cell-graph.test.mjs test/source-record-tower-flow.test.mjs test/cohomology-canonical-incidence.test.mjs test/token-sheaf.test.mjs"
+    "test:foundations:interop": "node --test test/evidence-order-receiving.test.mjs test/fiber-source-context.test.mjs test/site-source-admission.test.mjs test/site-specialization-closure.test.mjs test/cell-graph.test.mjs test/source-record-tower-flow.test.mjs test/cohomology-canonical-incidence.test.mjs test/token-sheaf.test.mjs test/feather-graph.test.mjs test/keratin-graph.test.mjs test/cellular-sheaf.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -135,6 +136,7 @@
     "test/fiber.test.mjs",
     "test/fiber-adjoints.test.mjs",
     "test/cellular-sheaf-complex.test.mjs",
+    "test/feather-graph.test.mjs",
     "test/keratin-graph.test.mjs",
     "test/source-record-tower-flow.test.mjs",
     "test/cell-graph.test.mjs",
