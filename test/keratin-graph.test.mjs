@@ -397,6 +397,52 @@ test('omitted Keratin source options cannot borrow executable or fabricated Obje
   });
 });
 
+test('nested Keratin fields must be material records, not ambient inherited source facts',()=>{
+  // The original fields() guard now returns a data-only snapshot. Every
+  // nested consumer must actually USE it; checking descriptors and then
+  // reading the original would silently pick up absent source coordinates
+  // from host Object.prototype data.
+  const base={source,selectors,stalks,contacts:contacts(true),faces:[],holes:[],locks:[],observers:[]};
+  const graph=specimen();
+  const vertexStalks=graph.feather.positions.map(p=>({position:p.key,dim:1}));
+  const relationStalks=graph.feather.predications.map(e=>({
+    occurrence:e.occurrence,dim:1,restrict:{from:[[1]],to:[[1]]},
+  }));
+  const cannotInherit=(key,value,invoke,reason)=>{
+    const saved=Object.getOwnPropertyDescriptor(Object.prototype,key);
+    Object.defineProperty(Object.prototype,key,{value,configurable:true});
+    try { assert.throws(invoke,reason); }
+    finally {
+      if(saved)Object.defineProperty(Object.prototype,key,saved);
+      else delete Object.prototype[key];
+    }
+  };
+  cannotInherit('states',['0','1'],
+    ()=>keratinGraphOfPredications({...base,stalks:[{position:id('a')},...stalks.slice(1)]}),
+    /stalk states.*invalid named list/);
+  cannotInherit('allowed',parity(0),
+    ()=>keratinGraphOfPredications({...base,contacts:[{occurrence:'a>b'},...base.contacts.slice(1)]}),
+    /contact admissibility must be a bounded array/);
+  cannotInherit('excludes',['0'],
+    ()=>keratinGraphOfPredications({...base,locks:[{id:'lock',position:id('a'),sourceRecord:'s:lock'}]}),
+    /invalid named list/);
+  cannotInherit('direction',1,
+    ()=>keratinGraphOfPredications({...base,holes:[{id:'gap',sourceRecord:'s:gap',boundary:[
+      {occurrence:'a>b'},...boundary.slice(1),
+    ]}]}),
+    /each oriented step must reference an original occurrence/);
+  cannotInherit('visibleOccurrences',[],
+    ()=>keratinGraphOfPredications({...base,observers:[{id:'scope',visiblePositions:[id('a')]}]}),
+    /invalid named list/);
+  const missingRestrict=[{occurrence:relationStalks[0].occurrence,dim:1},...relationStalks.slice(1)];
+  cannotInherit('restrict',{from:[[1]],to:[[1]]},
+    ()=>keratinLinearSheaf(graph,{vertexStalks,relationStalks:missingRestrict}),
+    /linear restriction matrices.*plain source record/);
+  assert.equal(keratinGraphOfPredications(base).kind,
+    'signgraph.keratinGraph.finiteFiberHoleReading.v1',
+    'legitimate material source declarations remain accepted');
+});
+
 test('Keratin graph source admission rejects executable top-level and nested source records',()=>{
  let calls=0;
  const base={source,selectors,stalks,contacts:contacts(false),faces:[],holes:[],locks:[],observers:[]};
