@@ -333,6 +333,82 @@ test("finite gluing of every two-source FOUR testimony pair equals the SignChain
   assert.equal(checked,16,"all 4×4 local source testimony pairs are checked");
 });
 
+test("all three-token FOUR gluing configurations preserve original witnesses across four specialization topologies", () => {
+  // A finite independent expected-cover calculation, not an alternative
+  // FOUR implementation, cell codec, source graph or general sheaf theorem.
+  // This extends the original two-source 16-case receiving assay to cycles,
+  // forks, chains and disconnected source contexts without external testimony.
+  const networks = [
+    {name: "chain", edges: [["a", "b"], ["b", "c"]]},
+    {name: "fork", edges: [["a", "c"], ["b", "c"]]},
+    {name: "cycle", edges: [["a", "b"], ["b", "a"], ["b", "c"]]},
+    {name: "disconnected", edges: []},
+  ];
+  const tokens = ["a", "b", "c"];
+  const evidence = [
+    {for: [], against: []},
+    {for: ["support"], against: []},
+    {for: [], against: ["oppose"]},
+    {for: ["support"], against: ["oppose"]},
+  ];
+  const reading = { "false,false": "absurd", "true,false": "potential",
+    "false,true": "active", "true,true": "stable" };
+  let compared = 0;
+  for (const network of networks) for (let packed = 0; packed < 64; packed++) {
+    let remaining = packed;
+    const source = new Map(tokens.map(token => {
+      const sides = evidence[remaining % 4];
+      remaining = Math.floor(remaining / 4);
+      return [token, {for: sides.for.map(w => token + ":" + w),
+        against: sides.against.map(w => token + ":" + w)}];
+    }));
+    const wire = {kind: "signcell.token-frame", predicate: SPECIALIZES,
+      cells: [
+        ...network.edges.map(([specific, general], index) =>
+          cell(specific, SPECIALIZES, general, {for: ["hierarchy:" + index]})),
+        ...tokens.map(token => cell(token, "declares", "claim", source.get(token))),
+      ],
+    };
+    const possible = possibilize(wire, valuationOf(wire, "declares", "claim"));
+    for (const token of tokens) {
+      // Expected source cover is the reflexive-transitive closure of ORIGINAL
+      // positive specialization edges, not a display field on a wire frame.
+      const cover = new Set([token]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const [specific, general] of network.edges) {
+          if (cover.has(specific) && !cover.has(general)) {
+            cover.add(general);
+            changed = true;
+          }
+        }
+      }
+      const expectedFor = [...cover].flatMap(t => source.get(t).for).sort();
+      const expectedAgainst = [...cover].flatMap(t => source.get(t).against).sort();
+      const section = inheritedClaim(wire, token, "declares", "claim");
+      assert.equal(section.cells.length, 1,
+        "one original claim is read at every source-admitted token");
+      const glued = section.cells[0];
+      const expectedReading = reading[String(expectedFor.length > 0) + "," +
+        String(expectedAgainst.length > 0)];
+      assert.equal(possible.find(entry => entry.token === token).reading,
+        expectedReading, "SignChain agrees with independent source cover");
+      assert.equal(valueOf(glued), expectedReading,
+        "SignGraph gluing does not erase unknown or opposed FOUR evidence");
+      assert.deepEqual([...glued.for].sort(), expectedFor,
+        "every positive original source witness survives source gluing");
+      assert.deepEqual([...glued.against].sort(), expectedAgainst,
+        "every opposing original source witness survives source gluing");
+      assert.deepEqual(sidesOf(glued),
+        [expectedFor.length > 0, expectedAgainst.length > 0]);
+      compared++;
+    }
+  }
+  assert.equal(compared, 4 * 64 * 3,
+    "256 three-token source configurations, 768 independent claim comparisons");
+});
+
 test("original FOUR fiber possibilization agrees with SignGraph sheaf gluing over one transported source", () => {
   const wire = { kind: "signcell.token-frame", predicate: SPECIALIZES, cells: [
     told("child", "parent"),
