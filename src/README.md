@@ -750,7 +750,22 @@ result retains the source rows, patch identities, cover and local residuals.
 `tensorCellularSheaves(factors)` aligns the original vertex and oriented edge
 identities of two to four factors and forms exact Kronecker restriction
 matrices. Differently ordered presentations of the same cells align by their
-actual identities. The dimension bound is checked before allocation.
+actual identities. The dimension bound is checked before allocation. The
+source factor array and each `{sourceRef,sheaf}` entry must first pass the
+original inert-source guards; an inherited factor, accessor-backed witness,
+hidden extra field or executable iterator cannot become source geometry.
+Each factor's chart is readmitted by the ORIGINAL `admitCellularSheaf`
+contract, not a tensor-specific stand-in solver.
+
+The exact tensor producer now registers its frozen augmented result as an
+**issued in-process cellular chart**. Therefore the SAME original
+`extendCellularSheafSection` and `glueCellularSheafPatches` accept that
+result: a tensor is not a dead-end display object. The input source references
+remain ordered in its tensor metadata. Copying or serializing this augmented
+object does NOT transfer in-process admission or authenticate those references;
+a separately specified, verified tensor transport would be required. Native
+packaged and independent consumer receiving remain distinct from source
+construction and registered tests.
 
 `pullbackCellularSheaf(original, {base, map})` forms the inverse image along
 an explicit oriented cellular map. Every base vertex and edge selects an
