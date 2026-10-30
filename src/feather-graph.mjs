@@ -25,16 +25,53 @@ const MAX_FORK_PAIRS = 8192;
 const generatedReadouts = new WeakSet();
 
 function fail(message) { throw new TypeError(`feather graph: ${message}`); }
+/** Original source-position/claim admission shared with the downstream
+ * Keratin workbench. The elected owner is Feather, the earliest reader of
+ * performed directed predications; consumers supply their own error prefix.
+ * A fixed null-prototype snapshot prevents the post-admission read of
+ * inherited source fields, even when an optional coordinate is absent.
+ */
+export function featherSourceFields(record, keys, context, refuse = fail) {
+  if (!isRecord(record) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(record)))
+    refuse(`${context}: undeclared fields or invalid object; requires plain source record`);
+  const descriptors = Object.getOwnPropertyDescriptors(record);
+  const names = Reflect.ownKeys(descriptors);
+  if (names.some(key => typeof key !== 'string' || !keys.includes(key) ||
+      !descriptors[key].enumerable || !Object.hasOwn(descriptors[key], 'value')))
+    refuse(`${context}: undeclared fields or invalid object; requires inert own data`);
+  const source = Object.create(null);
+  for (const name of names)
+    Object.defineProperty(source, name, {value: descriptors[name].value, enumerable: true});
+  return Object.freeze(source);
+}
+/** Bounded, ordinary dense original source lists: refuse accessor entries,
+ * source-specific iterators, invisible annotations, subclasses and sparsity
+ * before any first-party graph algorithm traverses their entries.
+ */
+export function featherSourceArray(values, context, maximum = 256, refuse = fail) {
+  if (!Array.isArray(values) || Object.getPrototypeOf(values) !== Array.prototype ||
+      values.length > maximum)
+    refuse(`${context}: list exceeds work limit ${maximum}`);
+  const descriptors = Object.getOwnPropertyDescriptors(values);
+  if (Reflect.ownKeys(descriptors).length !== values.length + 1)
+    refuse(`${context}: array must be dense, undecorated inert data`);
+  for (let i = 0; i < values.length; i++) {
+    const slot = descriptors[String(i)];
+    if (!slot || !slot.enumerable || !Object.hasOwn(slot, 'value'))
+      refuse(`${context}: array slots must be inert data`);
+  }
+  return values;
+}
 function positionOf(value) {
-  if (!isRecord(value) || !named(value.performed) || !['token', 'claim'].includes(value.side))
+  const position = featherSourceFields(value, ['performed', 'side', 'display'], 'source-position role');
+  if (!named(position.performed) || !['token', 'claim'].includes(position.side))
     fail('each endpoint must be a source-position role {performed,side}');
-  if (Object.hasOwn(value, 'display') && typeof value.display !== 'string')
+  if (Object.hasOwn(position, 'display') && typeof position.display !== 'string')
     fail('a Mark display must be an opaque text readout, not an identity');
-  if (Object.keys(value).some(key => !['performed', 'side', 'display'].includes(key)))
-    fail('source-position roles accept only performed, side, and optional display');
-  const key = JSON.stringify([value.performed, value.side]);
-  return freeze({ key, performed: value.performed, side: value.side,
-    ...(Object.hasOwn(value, 'display') ? {display: value.display} : {}) });
+  const key = JSON.stringify([position.performed, position.side]);
+  return freeze({ key, performed: position.performed, side: position.side,
+    ...(Object.hasOwn(position, 'display') ? {display: position.display} : {}) });
 }
 
 /**
@@ -46,9 +83,15 @@ function positionOf(value) {
  * in the supplied axial relation. A transverse contact is recorded ONLY if a
  * separate source predication actually supplies it. Route equality is unknown.
  */
-export function featherGraphOfPredications(source, { axialPredicate, transversePredicate } = {}) {
+export function featherGraphOfPredications(source, options = {}) {
   if (!Array.isArray(source) || source.length === 0 || source.length > MAX_PREDICATIONS)
     fail(`requires 1-${MAX_PREDICATIONS} original predication occurrences`);
+  // Protect source occurrence iteration AND selectors before the original
+  // graph can read any purported performed source position or relation.
+  featherSourceArray(source, 'original predications', MAX_PREDICATIONS);
+  const selectors = featherSourceFields(options,
+    ['axialPredicate', 'transversePredicate'], 'predicate selectors');
+  const {axialPredicate, transversePredicate} = selectors;
   if (!named(axialPredicate) || !named(transversePredicate) || axialPredicate === transversePredicate)
     fail('distinct axialPredicate and transversePredicate selectors are required');
   const ids = new Set(), positions = new Map(), predications = [];
@@ -60,19 +103,22 @@ export function featherGraphOfPredications(source, { axialPredicate, transverseP
       positions.set(role.key, role);
     return role.key;
   };
-  for (const original of source) {
-    if (!isRecord(original) || Object.keys(original).some(key => !['occurrence', 'sourceRecord', 'cell'].includes(key)))
-      fail('each source occurrence requires only occurrence, sourceRecord, and cell');
-    if (!named(original.occurrence) || !named(original.sourceRecord) || !isRecord(original.cell) ||
-        !named(original.cell.predicate)) fail('each occurrence needs identity, source record, and predicate');
+  for (const rawOccurrence of source) {
+    const original = featherSourceFields(rawOccurrence,
+      ['occurrence', 'sourceRecord', 'cell'], 'source occurrence');
+    const predication = featherSourceFields(original.cell,
+      ['subject', 'predicate', 'object'], 'source predication cell');
+    if (!named(original.occurrence) || !named(original.sourceRecord) ||
+        !named(predication.predicate))
+      fail('each occurrence needs identity, source record, and predicate');
     if (ids.has(original.occurrence)) fail('duplicate original occurrence identity');
     ids.add(original.occurrence);
-    const subject = positionOf(original.cell.subject), object = positionOf(original.cell.object);
+    const subject = positionOf(predication.subject), object = positionOf(predication.object);
     remember(subject); remember(object);
     predications.push(freeze({
       occurrence: original.occurrence,
       sourceRecord: original.sourceRecord,
-      subject: subject.key, predicate: original.cell.predicate, object: object.key,
+      subject: subject.key, predicate: predication.predicate, object: object.key,
     }));
   }
   predications.sort((a, b) => compare(a.occurrence, b.occurrence));
