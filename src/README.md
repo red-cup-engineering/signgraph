@@ -57,7 +57,7 @@ reads. One admitted source cut determines both token specialization and
 source cell testimony, so a mutable foreign frame cannot produce a page
 from different source revisions or execute an accessor during reconstruction.
 The original source API and publication obligations are in
-[SignCell's token-frame contract](https://github.com/red-cup-engineering/signcell/blob/main/src/README.md#portable-token-frame-source-boundary).
+[SignCell's token-frame contract](https://github.com/red-cup-engineering/signcell/blob/8b5d9ce5c28d5ac9d000633c11780814f44319fd/src/README.md#portable-token-frame-source-boundary).
 Neither graph projection nor a query's content address grants source rights,
 causal witnessing or external Work acceptance. This is a proposed consumer
 migration; package pins and receiving tests must select an immutable
