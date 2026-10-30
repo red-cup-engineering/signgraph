@@ -114,7 +114,11 @@ A getter could fabricate a position, contact restriction or observer field
 after the check. It also enumerated sparse/decorated and getter-backed arrays
 as apparently declared stalk/edge witnesses.
 
-The existing `fields`, `nameList`, `limit`, `boundaryWalk` and
+The original Feather source reader now owns the shared `featherSourceFields`
+and `featherSourceArray` guards. Keratin consumes these exact functions,
+retaining its own budgets and refusal diagnostics: it does not implement
+a second selector, occurrence, boundary or evidence-admission algorithm.
+The existing `fields` adapter, `nameList`, `limit`, `boundaryWalk` and
 directed contact table paths now refuse ordinary executable getters,
 hidden or symbol-decorated data and sparse arrays before interpreting them.
 The `fields` guard now also returns one frozen, null-prototype **own-data
