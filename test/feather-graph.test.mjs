@@ -82,6 +82,95 @@ test('posit graph charges same feather graph, preserving contrary independent wi
   assert.ok(Object.isFrozen(p.testimony));
 });
 
+test('source-origin Feather admissions refuse executable selector, occurrence, Cell and position fields',()=>{
+  let invoked=0;
+  const bad=fn=>assert.throws(fn,/feather graph:/);
+  const decorated=[...fork];
+  Object.defineProperty(decorated,Symbol.iterator,{
+    get(){invoked++;return Array.prototype[Symbol.iterator];},
+  });
+  bad(()=>featherGraphOfPredications(decorated,selectors));
+  const hostileSelectors={...selectors};
+  Object.defineProperty(hostileSelectors,'axialPredicate',{
+    enumerable:true,get(){invoked++;return 'continued-by';},
+  });
+  bad(()=>featherGraphOfPredications(fork,hostileSelectors));
+
+  const occurrence={...fork[0]};
+  Object.defineProperty(occurrence,'sourceRecord',{
+    enumerable:true,get(){invoked++;return 'forged:source';},
+  });
+  bad(()=>featherGraphOfPredications([occurrence],selectors));
+  const nested={...fork[0],cell:{...fork[0].cell}};
+  Object.defineProperty(nested.cell,'predicate',{
+    enumerable:true,get(){invoked++;return 'continued-by';},
+  });
+  bad(()=>featherGraphOfPredications([nested],selectors));
+  const endpoint={...fork[0],cell:{...fork[0].cell,subject:{...fork[0].cell.subject}}};
+  Object.defineProperty(endpoint.cell.subject,'performed',{
+    enumerable:true,get(){invoked++;return 'false:performed';},
+  });
+  bad(()=>featherGraphOfPredications([endpoint],selectors));
+  const concealed={...fork[0],cell:{...fork[0].cell}};
+  Object.defineProperty(concealed.cell,'authority',{value:'invalid',enumerable:false});
+  bad(()=>featherGraphOfPredications([concealed],selectors));
+  assert.equal(invoked,0,'no user getter or iterator may construct a source-position graph');
+  assert.equal(featherGraphOfPredications(fork,selectors).forks.length,1,
+    'the original valid performed fork and its independent contact remain unchanged');
+});
+
+test('original Feather posit testimony is bounded inert source data, never a caller iterator',()=>{
+  const feather=featherGraphOfPredications(fork,selectors);
+  const one={occurrence:'b>c',sourceRecord:'performed:1',for:['report:1'],against:[]};
+  let invoked=0;
+  const bad=fn=>assert.throws(fn,/feather graph:/);
+  const posit={...one};
+  Object.defineProperty(posit,'for',{
+    enumerable:true,get(){invoked++;return ['invented'];},
+  });
+  bad(()=>positGraphOfFeather(feather,[posit]));
+  const evidence=[...one.for];
+  Object.defineProperty(evidence,Symbol.iterator,{
+    value(){invoked++;return ['invented'][Symbol.iterator]();},
+  });
+  bad(()=>positGraphOfFeather(feather,[{...one,for:evidence}]));
+  const decorated=[one];
+  Object.defineProperty(decorated,Symbol.iterator,{
+    get(){invoked++;return Array.prototype[Symbol.iterator];},
+  });
+  bad(()=>positGraphOfFeather(feather,decorated));
+  const hidden={...one};
+  Object.defineProperty(hidden,'office',{value:'unearned',enumerable:false});
+  bad(()=>positGraphOfFeather(feather,[hidden]));
+  bad(()=>positGraphOfFeather(feather,Array(8193).fill(one)),
+    'source rows beyond the existing finite candidate budget refuse before iteration');
+  bad(()=>positGraphOfFeather(feather,[{...one,for:Array(8193).fill('repeat')}]));
+  assert.equal(invoked,0,'no source testimony getter or iterator executes');
+  const original=positGraphOfFeather(feather,[one]);
+  assert.deepEqual(original.testimony[0].for,['report:1']);
+  assert.deepEqual(original.testimony[0].against,[]);
+  assert.equal(original.feather,feather);
+});
+
+test('source-owned Feather snapshots preserve legitimate null-prototype data declarations',()=>{
+  const nullRecord=entries=>Object.assign(Object.create(null),entries);
+  const input=fork.map(occurrence=>nullRecord({
+    occurrence:occurrence.occurrence,
+    sourceRecord:occurrence.sourceRecord,
+    cell:nullRecord({
+      subject:nullRecord(occurrence.cell.subject),
+      predicate:occurrence.cell.predicate,
+      object:nullRecord(occurrence.cell.object),
+    }),
+  }));
+  const option=nullRecord(selectors);
+  const original=featherGraphOfPredications(fork,selectors);
+  const received=featherGraphOfPredications(input,option);
+  assert.deepEqual(received.positions,original.positions);
+  assert.deepEqual(received.predications,original.predications);
+  assert.deepEqual(received.forks,original.forks);
+});
+
 test('refuse forged additions, invalid provenance, cycles, collisions and copied authority',()=>{
   const bad=fn=>assert.throws(fn, /feather graph:/);
   bad(()=>featherGraphOfPredications([edge('x','a','continued-by','a')],selectors));
