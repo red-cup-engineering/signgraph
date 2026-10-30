@@ -357,6 +357,46 @@ test('graph workbench refuses undeclared parameters and oversized computational 
   assert.throws(()=>analyzeKeratinGraph(specimen(),{surprise:true}),/undeclared fields/);
 });
 
+test('omitted Keratin source options cannot borrow executable or fabricated Object.prototype data',()=>{
+  // A missing optional value means absent source evidence, not permission to
+  // consult a host's prototype. Keep global test poisoning synchronous and
+  // restore every original descriptor even if an assertion fails.
+  const poison=(key,act)=>{
+    const original=Object.getOwnPropertyDescriptor(Object.prototype,key);
+    let called=0;
+    Object.defineProperty(Object.prototype,key,{
+      configurable:true,
+      get(){called++;throw new Error('foreign inherited '+key+' is not source data');},
+    });
+    try{act();}
+    finally{
+      if(original)Object.defineProperty(Object.prototype,key,original);
+      else delete Object.prototype[key];
+    }
+    assert.equal(called,0,'omitted '+key+' cannot invoke inherited source getter');
+  };
+  poison('faces',()=>{
+    const graph=specimen();
+    assert.equal(graph.filledFaces.length,0,'missing faces remain an empty optional family');
+    assert.equal(graph.topology.betti.h1,1);
+  });
+  const graph=specimen();
+  const linear=linearSpec(graph);
+  poison('maxAssignments',()=>{
+    const analysis=analyzeKeratinGraph(graph);
+    assert.equal(analysis.sectionStatus,'exact');
+  });
+  poison('tolerance',()=>{
+    const result=assessKeratinLinearObservations(linear,[]);
+    assert.equal(result.status,'unassayed-incomplete-or-unqualified-source');
+    assert.equal(result.vector,null);
+  });
+  poison('vertexStalks',()=>{
+    assert.throws(()=>keratinLinearSheaf(graph,{}),
+      /linear sheaf requires vertexStalks and relationStalks/);
+  });
+});
+
 test('Keratin graph source admission rejects executable top-level and nested source records',()=>{
  let calls=0;
  const base={source,selectors,stalks,contacts:contacts(false),faces:[],holes:[],locks:[],observers:[]};
