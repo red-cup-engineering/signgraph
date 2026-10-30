@@ -116,8 +116,17 @@ as apparently declared stalk/edge witnesses.
 
 The existing `fields`, `nameList`, `limit`, `boundaryWalk` and
 directed contact table paths now refuse ordinary executable getters,
-inherited source fields, hidden or symbol-decorated data and sparse arrays
-before interpreting them. Existing original feather occurrences, source
+hidden or symbol-decorated data and sparse arrays before interpreting them.
+The `fields` guard now also returns one frozen, null-prototype **own-data
+snapshot**. The original graph constructor, linear-sheaf constructor,
+numeric-observation reader and finite-analysis options read this snapshot,
+not a raw record's inherited optional `faces`, `holes`, `locks`,
+`observers`, `tolerance`, `maxAssignments`, or stalk arrays. Omitted
+coordinates stay omitted; no ambient Object.prototype supplies evidence,
+geometric faces or a new work budget. A registered native regression
+temporarily installs hostile inherited getters and restores every descriptor
+before leaving the test. The exact guard source passed 8 source-only V8 checks;
+the native dependency-installed tests and beneficiary receiving are still owed. Existing original feather occurrences, source
 record names, Contact FOUR constraints, exact two-cell homology, observer
 scope and Graphviz semantics remain unchanged. SignCell retains identity;
 SignGraph retains geometric interpretation. This is NOT proof of genuine
