@@ -215,23 +215,28 @@ export function featherGraphOfPredications(source, options = {}) {
  * two opposed witnesses are not absence, and no claimed Charge is inferred.
  */
 export function positGraphOfFeather(feather, posits) {
-  if (!isRecord(feather) || !generatedReadouts.has(feather) || !Array.isArray(posits))
+  if (!isRecord(feather) || !generatedReadouts.has(feather))
     fail('posit reading requires an existing feather graph and posit testimony list');
+  // Keep source testimony finite before inspection. The original graph's
+  // existing 8192 candidate budget also bounds caller-reported posit rows
+  // and individual testimony lanes; no new independent witness is inferred.
+  featherSourceArray(posits, 'posit testimony', MAX_FORK_PAIRS);
   const originals = new Set(feather.predications.map(item => item.occurrence));
   const told = new Set(), chargeOccurrences = [];
-  for (const posit of posits) {
-    if (!isRecord(posit) || Object.keys(posit).some(key => !['occurrence', 'sourceRecord', 'for', 'against'].includes(key)))
-      fail('posit testimony must contain only occurrence, sourceRecord, for, against');
+  for (const sourcePosit of posits) {
+    const posit = featherSourceFields(sourcePosit,
+      ['occurrence', 'sourceRecord', 'for', 'against'], 'posit testimony');
+    const forSide = featherSourceArray(posit.for, 'posit for witnesses', MAX_FORK_PAIRS);
+    const againstSide = featherSourceArray(posit.against, 'posit against witnesses', MAX_FORK_PAIRS);
     if (!originals.has(posit.occurrence) || !named(posit.sourceRecord) ||
-        !Array.isArray(posit.for) || !Array.isArray(posit.against) ||
-        ![...posit.for, ...posit.against].every(named))
+        !forSide.every(named) || !againstSide.every(named))
       fail('each posit must charge an original predication with explicit for/against witnesses');
     const id = JSON.stringify([posit.occurrence, posit.sourceRecord]);
     if (told.has(id)) fail('duplicate original posit testimony');
     told.add(id);
     chargeOccurrences.push(freeze({
       occurrence: posit.occurrence, sourceRecord: posit.sourceRecord,
-      for: freeze([...posit.for]), against: freeze([...posit.against]),
+      for: freeze(forSide), against: freeze(againstSide),
     }));
   }
   chargeOccurrences.sort((a, b) => compare(a.occurrence, b.occurrence) || compare(a.sourceRecord, b.sourceRecord));
