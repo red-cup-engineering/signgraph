@@ -735,9 +735,12 @@ export function tensorCellularSheaves(factors) {
   // factors.some(factor => factor?.sheaf?.kind) path could execute an
   // untrusted getter before interpreting original stalk geometry. Retain the
   // one existing original sheaf/Exact Number/SignCell custody boundary.
-  const sourceFactors=sheafSourceArray(factors,"tensor factors");
-  if(sourceFactors.length<2||sourceFactors.length>4)
+  // Bound the outer list BEFORE sheafSourceArray snapshots its descriptors.
+  // A very large dense input must not allocate millions of index records
+  // only to be refused for exceeding the existing four-factor limit.
+  if(!Array.isArray(factors) || factors.length<2 || factors.length>4)
     throw new TypeError("cellularSheaf tensor requires 2..4 exact source-attributed factors");
+  const sourceFactors=sheafSourceArray(factors,"tensor factors");
   const admittedFactors=sourceFactors.map(input=>{
     const factor=sourceCoverRecord(input,["sourceRef","sheaf"],"cellularSheaf tensor factor");
     if(typeof factor.sourceRef!=="string" || !factor.sourceRef.trim() ||
