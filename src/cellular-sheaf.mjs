@@ -731,17 +731,29 @@ export function glueCellularSheafPatches(sheaf, patches) {
  * chart composes with exact section extension, cover gluing and pullback.
  */
 export function tensorCellularSheaves(factors) {
-  if (!Array.isArray(factors) || factors.length < 2 || factors.length > 4 ||
-      factors.some(factor => factor?.sheaf?.kind !== "signgraph.cellularSheaf" ||
-        factor.sheaf.exact !== true || typeof factor.sourceRef !== "string" ||
-        !factor.sourceRef.trim()))
+  // Source qualification precedes ALL factor property access. The old
+  // factors.some(factor => factor?.sheaf?.kind) path could execute an
+  // untrusted getter before interpreting original stalk geometry. Retain the
+  // one existing original sheaf/Exact Number/SignCell custody boundary.
+  const sourceFactors=sheafSourceArray(factors,"tensor factors");
+  if(sourceFactors.length<2||sourceFactors.length>4)
     throw new TypeError("cellularSheaf tensor requires 2..4 exact source-attributed factors");
-  const source=factors[0].sheaf;
+  const admittedFactors=sourceFactors.map(input=>{
+    const factor=sourceCoverRecord(input,["sourceRef","sheaf"],"cellularSheaf tensor factor");
+    if(typeof factor.sourceRef!=="string" || !factor.sourceRef.trim() ||
+       factor.sourceRef.length>1024)
+      throw new TypeError("cellularSheaf tensor requires a bounded original source reference");
+    const sheaf=admitCellularSheaf(factor.sheaf);
+    if(sheaf.exact!==true)
+      throw new TypeError("cellularSheaf tensor requires 2..4 exact source-attributed factors");
+    return Object.freeze({sourceRef:factor.sourceRef,sheaf});
+  });
+  const source=admittedFactors[0].sheaf;
   // A sheaf's source identity is its witnessed vertex/edge incidence, not
   // its input-array enumeration. Multiple custodians may supply the same
   // lawful base chart in a different order. Align exact SignCell
   // coincidence keys rather than treating that order as physical geometry.
-  const aligned=factors.map(factor=>{
+  const aligned=admittedFactors.map(factor=>{
     const other=factor.sheaf;
     if(other.vertices.length!==source.vertices.length ||
        other.edges.length!==source.edges.length)
@@ -801,14 +813,20 @@ export function tensorCellularSheaves(factors) {
     });
     product=cellularSheaf({vertices,edges});
   }
-  return Object.freeze({...product,
+  const result=Object.freeze({...product,
     tensor:Object.freeze({
       kind:"signgraph.cellularSheaf.stalkwiseTensor.v1",
-      factors:Object.freeze(factors.map(f=>f.sourceRef)),
+      factors:Object.freeze(admittedFactors.map(f=>f.sourceRef)),
       base:"identical source-indexed oriented 1-skeleton",
       algebra:"exact rational stalk tensor with Kronecker restriction",
     })
   });
+  // This original package has JUST constructed and verified the base chart.
+  // The public augmented tensor is another issued in-process chart and must
+  // be eligible for the same exact extension/gluing consumers. A foreign JSON
+  // copy has no such custody: admitCellularSheaf must reconstruct/verify it.
+  admittedCellularSheaves.add(result);
+  return result;
 }
 
 // — the heat flow —
