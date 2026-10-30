@@ -37,10 +37,19 @@ function fields(record, keys, context) {
       ![Object.prototype,null].includes(Object.getPrototypeOf(record)))
     fail(`${context}: undeclared fields or invalid object; requires plain source record`);
   const descriptors=Object.getOwnPropertyDescriptors(record);
-  if(Reflect.ownKeys(descriptors).some(key => typeof key !== "string" ||
+  const names=Reflect.ownKeys(descriptors);
+  if(names.some(key => typeof key !== "string" ||
       !keys.includes(key) || !descriptors[key].enumerable ||
       !Object.hasOwn(descriptors[key],"value")))
     fail(`${context}: undeclared fields or invalid object; requires inert own data`);
+  // Return a fixed own-data coordinate record, with NO inherited prototype.
+  // A checked input can omit optional fields; reading the original input's
+  // prototype for their defaults would fabricate faces, locks, observations,
+  // tolerances or budgets after the descriptor guard has already passed.
+  const selected=Object.create(null);
+  for(const name of names)
+    Object.defineProperty(selected,name,{value:descriptors[name].value,enumerable:true});
+  return Object.freeze(selected);
 }
 /** Reject accessor-backed, sparse, symbol-decorated or executable arrays
  * BEFORE the original finite source loop can read their values.
@@ -108,8 +117,8 @@ function limit(value, maximum, label) {
  * Every source relation must receive an explicit ordered allowed-pairs table.
  */
 export function keratinGraphOfPredications(input = {}) {
-  fields(input,['source','selectors','stalks','contacts','faces','holes','locks','observers'],'graph input');
-  const {source, selectors, stalks, contacts, faces = [], holes = [], locks = [], observers = []}=input;
+  const given=fields(input,['source','selectors','stalks','contacts','faces','holes','locks','observers'],'graph input');
+  const {source, selectors, stalks, contacts, faces = [], holes = [], locks = [], observers = []}=given;
   const feather = featherGraphOfPredications(source, selectors);
   if (feather.positions.length > MAX_POSITIONS || feather.predications.length > MAX_RELATIONS)
     fail('source positions/relations exceed keratin graph resource budget');
@@ -253,8 +262,8 @@ export function keratinLinearSheaf(graph, options = {}) {
   if(!admitted.has(graph))fail('linear sheaf requires original in-process graph');
   // Read source options before destructuring. Getter-backed properties must not
   // execute in order to propose a stalk or restriction matrix.
-  fields(options,['vertexStalks','relationStalks'],'linear sheaf options');
-  const {vertexStalks,relationStalks}=options;
+  const qualified=fields(options,['vertexStalks','relationStalks'],'linear sheaf options');
+  const {vertexStalks,relationStalks}=qualified;
   if(!Array.isArray(vertexStalks)||!Array.isArray(relationStalks))
     fail('linear sheaf requires vertexStalks and relationStalks');
   // These are source assertions, not an invitation to iterate arbitrary
@@ -311,8 +320,8 @@ export function keratinLinearSheaf(graph, options = {}) {
 export function assessKeratinLinearObservations(reading, observations, options={}) {
   if(!linearOwners.has(reading))
     fail('linear observations require the original in-process Keratin linear reading');
-  fields(options,['tolerance'],'linear observation options');
-  const {tolerance=0}=options;
+  const qualified=fields(options,['tolerance'],'linear observation options');
+  const {tolerance=0}=qualified;
   if(typeof tolerance!=='number'||!Number.isFinite(tolerance)||tolerance<0)
     fail('linear observation tolerance must be a finite nonnegative number');
   if(!Array.isArray(observations)||observations.length>MAX_POSITIONS*8)
@@ -475,8 +484,8 @@ function solveSectionScopes(domains, constraints, {limit=DEFAULT_ASSIGNMENT_BUDG
  * explicit and cannot silently acquire a causal-cone interpretation.
  */
 export function analyzeKeratinGraph(graph, options={}) {
-  fields(options,['maxAssignments'],'analysis options');
-  const {maxAssignments=DEFAULT_ASSIGNMENT_BUDGET}=options;
+  const qualified=fields(options,['maxAssignments'],'analysis options');
+  const {maxAssignments=DEFAULT_ASSIGNMENT_BUDGET}=qualified;
   if(!admitted.has(graph))fail('analysis requires the original in-process generated reading');
   if(!Number.isSafeInteger(maxAssignments)||maxAssignments<1||maxAssignments>2000000)
     fail('analysis maxAssignments must be a positive safe number <= 2000000');
