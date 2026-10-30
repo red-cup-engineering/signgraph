@@ -31,7 +31,13 @@ function fail(message) { throw new TypeError(`feather graph: ${message}`); }
  * A fixed null-prototype snapshot prevents the post-admission read of
  * inherited source fields, even when an optional coordinate is absent.
  */
-export function featherSourceFields(record, keys, context, refuse = fail) {
+export function featherSourceFields(record, keys, context, scope = 'feather graph') {
+  // The public admission boundary must ALWAYS throw on refusal. A supplied
+  // callback could return without throwing and thereby allow the caller's
+  // executable fields to become source positions. Scope is diagnostic only.
+  const refuse = message => {
+    throw new TypeError(`${scope === 'keratin graph' ? 'keratin graph' : 'feather graph'}: ${message}`);
+  };
   if (!isRecord(record) ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(record)))
     refuse(`${context}: undeclared fields or invalid object; requires plain source record`);
@@ -49,7 +55,10 @@ export function featherSourceFields(record, keys, context, refuse = fail) {
  * source-specific iterators, invisible annotations, subclasses and sparsity
  * before any first-party graph algorithm traverses their entries.
  */
-export function featherSourceArray(values, context, maximum = 256, refuse = fail) {
+export function featherSourceArray(values, context, maximum = 256, scope = 'feather graph') {
+  const refuse = message => {
+    throw new TypeError(`${scope === 'keratin graph' ? 'keratin graph' : 'feather graph'}: ${message}`);
+  };
   if (!Array.isArray(values) || Object.getPrototypeOf(values) !== Array.prototype ||
       values.length > maximum)
     refuse(`${context}: list exceeds work limit ${maximum}`);
