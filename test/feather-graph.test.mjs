@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { featherGraphOfPredications, positGraphOfFeather } from '../src/feather-graph.mjs';
+import { featherGraphOfPredications, positGraphOfFeather, featherSourceFields, featherSourceArray } from '../src/feather-graph.mjs';
 
 const pos = (performed, display = 'same', side = 'token') => ({performed, side, display});
 const edge = (id, from, predicate, to, fromMark = 'same', toMark = 'same') => ({
@@ -80,6 +80,28 @@ test('posit graph charges same feather graph, preserving contrary independent wi
   assert.deepEqual(p.testimony.map(x=>[x.for,x.against]),[[[],['observer:west']],[['observer:east'],[]]]);
   assert.match(p.judgment,/not-settled/);
   assert.ok(Object.isFrozen(p.testimony));
+});
+
+test('shared Feather/Keratin source admission cannot be bypassed with a caller refusal callback',()=>{
+  let invoked=0;
+  const input={performed:'source:performed'};
+  Object.defineProperty(input,'side',{
+    enumerable:true,get(){invoked++;return 'token';},
+  });
+  const nonThrowing=()=>{};
+  assert.throws(()=>featherSourceFields(input,['performed','side'],'role',nonThrowing),
+    /feather graph: role:.*inert own data/,
+    'a callback is not a source-admission authority');
+  const list=['source:one'];
+  Object.defineProperty(list,Symbol.iterator,{
+    value(){invoked++;return ['forged'][Symbol.iterator]();},
+  });
+  assert.throws(()=>featherSourceArray(list,'witnesses',16,nonThrowing),
+    /feather graph: witnesses: array must be dense/);
+  assert.throws(()=>featherSourceFields(null,['id'],'role','keratin graph'),
+    /keratin graph: role:.*plain source record/,
+    'Keratin supplies only a diagnostic namespace, not a second admission implementation');
+  assert.equal(invoked,0);
 });
 
 test('source-origin Feather admissions refuse executable selector, occurrence, Cell and position fields',()=>{
