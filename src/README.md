@@ -232,9 +232,23 @@ receiving establishes parity and then a measured improvement.
   specialization, and `inherited(frame, token)` glues the sections of the
   token's generalizations by knowledge join, holding a disagreement as a
   contested cell with each side's generalizations (the gluing obstruction).
-  Claim by claim it is SignChain's possibilizing of the told fiber. Heyting
-  algebra (SignCell), fiber algebra (SignChain), sheaf (here): the
-  dependencies run that way only.
+  Claim by claim its FOUR value is SignChain's possibilizing of the
+  source valuation. Heyting algebra (SignCell), fiber algebra (SignChain),
+  sheaf (here): the dependencies run that way only.
+
+  The original SignCell Valued carrier distinguishes an explicitly written
+  FOUR value from the source's actually told positive and negative witness
+  lanes. Inherited Cells retain both, but `contested` and the `for` /
+  `against` source-token lists are computed from SignCell's own `told`
+  operation (witness presence), never its `sidesOf` value projection.
+  Consequently a presumed `stable` value without witnesses has no claimed
+  source opposition, and an explicitly `absurd` value with opposing original
+  witnesses retains its witnessed conflict. `reading` selection continues
+  to use the independently legitimate FOUR value. The source conflict
+  report is not an authenticated Activity, Agent or derivation under W3C
+  PROV-O, nor an authorization or a proof of physical sheaf gluing.
+  Existing `test/token-sheaf.test.mjs` exhaustively tests the 4×4 finite
+  presence/value grid and the original paged claim consumer.
   `inheritedClaim(frame, token, predicate, object)` selects one exact claim
   through SignCell's shared `claimCoordinate`, retaining the same cells,
   both witness sides, source tokens and obstruction as the full section.
