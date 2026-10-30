@@ -15,7 +15,7 @@
  * claim at a time, the inherited section is the fiber SignChain's possibilizing gives: gluing over ↑t
  * is ◇. The object position is reached through the converse generator.
  */
-import { address, cell, cellSetAddress, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, retainedCarrier, semanticId, sidesOf } from "@red-cup-engineering/signcell/cell";
+import { address, cell, cellSetAddress, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, retainedCarrier, semanticId, told as evidenceTold } from "@red-cup-engineering/signcell/cell";
 import { admitTokenFrame, cacheableTokenFrame, extent, generalizations, top } from "@red-cup-engineering/signcell/token-frame";
 
 const INHERITED = "signgraph.inherited-tellings";
@@ -111,9 +111,15 @@ function glueInherited(frame, token, selectedClaim) {
   const sources = frozen(slots.map((slot) => frozen(from.get(slot))));
   const contested = [];
   slots.forEach((slot, index) => {
-    const [toldFor, toldAgainst] = sidesOf(cells[index]);
+    // SignCell's Valued.value is NOT its witness presence when a Cell has
+    // been presumed, met or otherwise valued. An explicit stable value with
+    // no source tellings is not a source contradiction; an explicit absurd
+    // value cannot erase actually told opposite witnesses. Use SignCell's
+    // original source-evidence reader, never the FOUR-value side reader.
+    const [toldFor, toldAgainst] = evidenceTold(cells[index]);
     if (!(toldFor && toldAgainst)) return;
-    const side = (which) => frozen(sources[index].filter((source) => sidesOf(source.cell)[which]).map((source) => source.token));
+    const side = (which) => frozen(sources[index].filter(
+      (source) => evidenceTold(source.cell)[which]).map((source) => source.token));
     contested.push(Object.freeze({ cell: cells[index], for: side(0), against: side(1) }));
   });
   return Object.freeze({ kind: INHERITED, token, cells, sources, contested: frozen(contested) });
