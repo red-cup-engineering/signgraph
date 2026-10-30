@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cell, claimCoordinate, semanticId, sidesOf } from "@red-cup-engineering/signcell/cell";
+import { cell, claimCoordinate, semanticId, sidesOf, valueOf } from "@red-cup-engineering/signcell/cell";
 import { SPECIALIZES, generalizations, tokenFrame } from "@red-cup-engineering/signcell/token-frame";
 import { possibilize, valuationOf } from "@red-cup-engineering/signchain/token-fiber";
 import { inherited, inheritedClaim, queryInheritedTellings, tellingsAt } from "../src/token-sheaf.mjs";
@@ -292,6 +292,45 @@ test("one SignCell-owned frame cut serves SignGraph sheaf/claim readers without 
   assert.throws(() => queryInheritedTellings(wire, selection, accessorPage),
     /only declared plain data fields/);
   assert.equal(invoked, 0, "no foreign getter supplied a Cell, filter or pagination cursor");
+});
+
+test("finite gluing of every two-source FOUR testimony pair equals the SignChain knowledge fiber", () => {
+  const evidence = (mask,where) => ({
+    for: mask & 1 ? [where+":supports"] : [],
+    against: mask & 2 ? [where+":opposes"] : [],
+  });
+  let checked = 0;
+  for(let general=0; general<4; general++){
+    for(let specific=0; specific<4; specific++){
+      const wire = { kind:"signcell.token-frame", predicate:SPECIALIZES, cells: [
+        told("specific","general"),
+        cell("general","declares","claim",evidence(general,"general")),
+        cell("specific","declares","claim",evidence(specific,"specific")),
+      ] };
+      const valuation = valuationOf(wire,"declares","claim");
+      const read = possibilize(wire,valuation);
+      const inheritedCell = inheritedClaim(wire,"specific","declares","claim").cells[0];
+      const globalReading = read.find(entry=>entry.token==="specific").reading;
+      assert.equal(globalReading,valueOf(inheritedCell),
+        "SignGraph source gluing and SignChain source possibilization agree");
+      const expectedFor=[
+        ...evidence(general,"general").for,
+        ...evidence(specific,"specific").for
+      ].sort();
+      const expectedAgainst=[
+        ...evidence(general,"general").against,
+        ...evidence(specific,"specific").against
+      ].sort();
+      assert.deepEqual([...inheritedCell.for].sort(),expectedFor,
+        "source gluing retains every material positive witness");
+      assert.deepEqual([...inheritedCell.against].sort(),expectedAgainst,
+        "source gluing retains every material negative witness");
+      assert.deepEqual(sidesOf(inheritedCell),[expectedFor.length>0,expectedAgainst.length>0],
+        "unknown and contradiction remain distinct FOUR evidence states");
+      checked++;
+    }
+  }
+  assert.equal(checked,16,"all 4×4 local source testimony pairs are checked");
 });
 
 test("original FOUR fiber possibilization agrees with SignGraph sheaf gluing over one transported source", () => {
