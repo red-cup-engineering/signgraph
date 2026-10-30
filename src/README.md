@@ -49,6 +49,20 @@ not in a second benchmark registry. A green graph test proves one native
 graph behavior; it does not prove LangGraph parity or a running customer
 service.
 
+## SignCell-owned frames into graph sheaf readers
+
+`./token-sheaf` now consumes the existing SignCell-owned
+`admitTokenFrame` boundary for direct, inherited, selected-claim and paged
+reads. One admitted source cut determines both token specialization and
+source cell testimony, so a mutable foreign frame cannot produce a page
+from different source revisions or execute an accessor during reconstruction.
+The original source API and publication obligations are in
+[SignCell's token-frame contract](https://github.com/red-cup-engineering/signcell/blob/main/src/README.md#portable-token-frame-source-boundary).
+Neither graph projection nor a query's content address grants source rights,
+causal witnessing or external Work acceptance. This is a proposed consumer
+migration; package pins and receiving tests must select an immutable
+edition of the new SignCell API before a release/settlement claim.
+
 ## Feather graphs: posit graphs as charged feather readings
 
 The original [Obsmetrologia feather-graph assay](https://github.com/lenticule-science/obsmetrologia/blob/main/docs/research/2026-10-16-relationlessness-spiral-pisot-prior-work-assay.md#relation-only-feather-graphs-candidate-derived-forks-and-first-negative-controls)
