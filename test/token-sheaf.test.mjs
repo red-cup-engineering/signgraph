@@ -294,6 +294,35 @@ test("one SignCell-owned frame cut serves SignGraph sheaf/claim readers without 
   assert.equal(invoked, 0, "no foreign getter supplied a Cell, filter or pagination cursor");
 });
 
+test("original FOUR fiber possibilization agrees with SignGraph sheaf gluing over one transported source", () => {
+  const wire = { kind: "signcell.token-frame", predicate: SPECIALIZES, cells: [
+    told("child", "parent"),
+    cell("parent", "qualifies", "source", { for: ["maker"] }),
+    cell("child", "qualifies", "source", { against: ["challenger"] }),
+  ] };
+  const read = () => {
+    const valuation = valuationOf(wire, "qualifies", "source");
+    const possible = possibilize(wire, valuation);
+    const inheritedCell = inheritedClaim(wire, "child", "qualifies", "source").cells[0];
+    return {
+      modal: possible.find(entry => entry.token === "child").reading,
+      sides: sidesOf(inheritedCell), positive: [...inheritedCell.for], negative: [...inheritedCell.against],
+    };
+  };
+  const before = read();
+  assert.equal(before.modal, "stable");
+  assert.deepEqual(before.sides, [true, true], "opposing witnesses must not cancel during gluing");
+  assert.deepEqual(before.positive, ["maker"]);
+  assert.deepEqual(before.negative, ["challenger"]);
+  wire.cells[1] = cell("parent", "qualifies", "source", { against: ["maker-correction"] });
+  const after = read();
+  assert.equal(after.modal, "active");
+  assert.deepEqual(after.sides, [false, true]);
+  assert.deepEqual(after.positive, []);
+  assert.deepEqual([...after.negative].sort(), ["challenger", "maker-correction"]);
+  assert.deepEqual(before.positive, ["maker"], "a previous read retains its original source witnesses");
+});
+
 test("paged source claims retain immutable original testimony across wire edits", () => {
   const object = { text: "before" };
   const frame = Object.freeze({
