@@ -16,7 +16,7 @@
  * is ◇. The object position is reached through the converse generator.
  */
 import { address, cell, cellSetAddress, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, retainedCarrier, semanticId, sidesOf } from "@red-cup-engineering/signcell/cell";
-import { cacheableTokenFrame, extent, generalizations, tokenFrame, top } from "@red-cup-engineering/signcell/token-frame";
+import { admitTokenFrame, cacheableTokenFrame, extent, generalizations, top } from "@red-cup-engineering/signcell/token-frame";
 
 const INHERITED = "signgraph.inherited-tellings";
 const frozen = (values) => Object.freeze([...values]);
@@ -78,8 +78,9 @@ const directClaim = (frame, token, claim) =>
   claimSectionsOf(frame).byToken.get(coincidenceKey(token))?.get(claim) ?? [];
 /** The section at a token: what is told of it directly. */
 export const tellingsAt = (frame, token) => {
-  generalizations(frame, token); // the frame owns the membership law
-  return directTellings(frame, token);
+  const source = admitTokenFrame(frame);
+  generalizations(source, token); // the frame owns the membership law
+  return directTellings(source, token);
 };
 
 /**
@@ -120,7 +121,7 @@ function glueInherited(frame, token, selectedClaim) {
 
 /** The whole inherited section, over the original token frame's actual cover. */
 export function inherited(frame, token) {
-  return glueInherited(frame, token);
+  return glueInherited(admitTokenFrame(frame), token);
 }
 
 /**
@@ -135,9 +136,10 @@ export function inherited(frame, token) {
  * responsibility of the owner supplying this frame, not this pure function.
  */
 export function inheritedClaim(frame, token, predicate, object) {
+  const source = admitTokenFrame(frame);
   // Check actual token membership before even interpreting a claim coordinate.
-  generalizations(frame, token);
-  return glueInherited(frame, token, claimCoordinate(predicate, object));
+  generalizations(source, token);
+  return glueInherited(source, token, claimCoordinate(predicate, object));
 }
 
 /**
@@ -180,8 +182,7 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   // Materialize one immutable, owned cut of any mutable wire presentation.
   // The original frame maker owns clone/merge/admission; this query never
   // re-interprets an in-flight mutation as one coherent historical source.
-  const source = cacheableTokenFrame(frame) && frame.predicate !== undefined
-    ? frame : tokenFrame(frame.cells, { predicate: frame.predicate });
+  const source = admitTokenFrame(frame);
   const admittedTokens = top(source);
   const scopedTokens = Object.hasOwn(selection, "token")
     ? admittedTokens.filter((known) => coincides(known, token)) : admittedTokens;
