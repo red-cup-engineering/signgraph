@@ -604,6 +604,61 @@ test("covered source-local sheaf sections actually glue; contradictory and missi
 });
 
 
+test("native source-qualified tensor charts are received by original exact extension and gluing",()=>{
+  const a=constantSheaf(["a","b"],[["a","b"]]);
+  const b=constantSheaf(["a","b"],[["a","b"]]);
+  const tensor=tensorCellularSheaves([
+    {sourceRef:"original:stalk-a",sheaf:a},
+    {sourceRef:"original:stalk-b",sheaf:b},
+  ]);
+  assert.equal(admitCellularSheaf(tensor),tensor,
+    "the original tensor producer must issue a chart accepted by its own sheaf receiver");
+  assert.deepEqual(tensor.tensor.factors,["original:stalk-a","original:stalk-b"]);
+  const extended=extendCellularSheafSection(tensor,[{
+    vertex:"a",coordinate:0,value:"4",sourceRecord:"witness:local-a",
+  }]);
+  assert.equal(extended.status,"mathematically-liftable");
+  assert.deepEqual(extended.exactSection.map(x=>x.num+"/"+x.den),["4/1","4/1"]);
+  const glued=glueCellularSheafPatches(tensor,[{
+    region:"common-ground",sourceRef:"witness:local-b",
+    vertices:[{vertex:"a",values:["4"]},{vertex:"b",values:["4"]}],
+  }]);
+  assert.equal(glued.status,"globally-glued");
+  assert.deepEqual(glued.exactGlobalSection.map(x=>x.num+"/"+x.den),["4/1","4/1"]);
+  // Native custody is not transferable by merely copying a JSON carrier
+  // with an extra tensor label. A genuine issued package/transport receiver is
+  // a separate original release/contract gate.
+  assert.throws(()=>admitCellularSheaf(structuredClone(tensor)),
+    /exact inert own source fields/);
+});
+
+test("cellular tensor input rejects executable, hidden and decorated source factors",()=>{
+  const first=constantSheaf(["a","b"],[["a","b"]]);
+  const second=constantSheaf(["a","b"],[["a","b"]]);
+  const good={sourceRef:"source:first",sheaf:first};
+  let called=0;
+  const malicious={sourceRef:"source:second"};
+  Object.defineProperty(malicious,"sheaf",{
+    enumerable:true,get(){called++;return second;},
+  });
+  assert.throws(()=>tensorCellularSheaves([good,malicious]),
+    /exact inert own source fields/);
+  const hidden={sourceRef:"source:second",sheaf:second};
+  Object.defineProperty(hidden,"authority",{value:"unearned"});
+  assert.throws(()=>tensorCellularSheaves([good,hidden]),
+    /exact inert own source fields/);
+  const array=[good,{sourceRef:"source:second",sheaf:second}];
+  Object.defineProperty(array,Symbol.iterator,{
+    get(){called++;return Array.prototype[Symbol.iterator];},
+  });
+  assert.throws(()=>tensorCellularSheaves(array),
+    /cannot be sparse or decorated/);
+  assert.equal(called,0,"tensor source admission never executes getters or custom iterators");
+  assert.deepEqual(tensorCellularSheaves([good,{sourceRef:"source:second",sheaf:second}])
+    .tensor.factors,["source:first","source:second"],
+    "legitimate native tensor factor references retain original order");
+});
+
 test("different original enterprise/cloud stalks pull back to one witnessed base and tensor before exact gluing",()=>{
   const O=cellularSheaf({
     vertices:[{id:"odoo:company",dim:1},{id:"odoo:invoice",dim:1}],
