@@ -153,5 +153,8 @@
     "test/transitive-registry.test.mjs",
     "test/site-source-admission.test.mjs",
     "test/site-specialization-closure.test.mjs"
-  ]
+  ],
+  "engines": {
+    "node": ">=24.2.0"
+  }
 }
