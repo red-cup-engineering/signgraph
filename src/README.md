@@ -956,7 +956,17 @@ a foreign changed tally, missing address or invented evidence refuses.
 
 The `test/source-record-tower-flow.test.mjs`, `test/cell-graph.test.mjs`
 and `test/cohomology-canonical-incidence.test.mjs` are enrolled in
-package receiving. An independent receiving run must use a pinned
+package receiving. The original source-record tower test now includes a
+**strict non-skipping installed-supplier assay** importing the actual
+`@red-cup-engineering/signcell/charge-spin#chargeRecordTowerOfCell`
+rather than its historical local `towerFixture`. It checks original
+parallel source presentations, opposing witnesses, Record surplus,
+two distinct FOUR readouts and absence of invented physical charge/spin.
+An old pinned SignCell lacking this export must FAIL the strict assay;
+the fixture's earlier successful cases alone are not supplier receiving.
+This is one of original SignCell [CS-6](https://github.com/red-cup-engineering/signcell/issues/14)
+Work `smSUHKCw`'s outstanding independent acceptance gates, not a
+replacement Work identity. An independent receiving run must use a pinned
 published SignCell producer, the native Metrologic/Exact Number packages,
 and an actual authorized downstream consumer before publication. Raw
 Record counts are not a universal invertible FOUR regime tower,
