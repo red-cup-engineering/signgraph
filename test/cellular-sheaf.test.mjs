@@ -647,6 +647,9 @@ test("cellular tensor input rejects executable, hidden and decorated source fact
   Object.defineProperty(hidden,"authority",{value:"unearned"});
   assert.throws(()=>tensorCellularSheaves([good,hidden]),
     /exact inert own source fields/);
+  assert.throws(()=>tensorCellularSheaves(Array(5).fill(good)),
+    /requires 2\.\.4 exact source-attributed factors/,
+    "factor count refuses before allocating any source-descriptor map");
   const array=[good,{sourceRef:"source:second",sheaf:second}];
   Object.defineProperty(array,Symbol.iterator,{
     get(){called++;return Array.prototype[Symbol.iterator];},
