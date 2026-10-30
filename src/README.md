@@ -95,6 +95,21 @@ carrier. The original SignChain FOUR adjudication and original authority to
 admit that testimony remain with their existing owners. Even a JSON copy of
 the readout cannot acquire in-process derivation authority.
 
+**Source-admission boundary:** Feather is the earliest executable owner of
+the performed source-position reader. Its original `featherSourceFields`
+and `featherSourceArray` reject accessor-backed selectors, hidden or
+decorated occurrence/Cell/position records, executable list iterators,
+sparse arrays and over-budget source/posit testimony **before** creating
+a fork, edge or charge. These functions return frozen data snapshots and
+preserve the independently supplied source occurrence IDs. The downstream
+Keratin workbench consumes these **same** guards with its own finite
+resource limits, rather than maintaining another admission algorithm.
+Original `test/feather-graph.test.mjs` is now selected by the package's
+packed receiving inventory, Keratin test route and foundations
+interoperability route. Fourteen focused checks executed the exact
+source-only Feather module under V8; the actual Node 24.2+ frozen-registry
+and independently installed consumer tests remain unreceived.
+
 **Scientific frontier:** the original Articulating `Beneath` relation is a
 proposition about performances, not yet a proved object-language
 `SourceDirectedCell`. Source-record IDs and caller-declared predicate
