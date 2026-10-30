@@ -35,9 +35,10 @@ const fail = message => { throw new TypeError(`keratin graph: ${message}`); };
 // Feather is the earliest lawful source-position reader. Reuse that SAME
 // inert-record and dense-array admission in its downstream Keratin workbench
 // while preserving existing Keratin-specific error reports and resource caps.
-const fields = (record, keys, context) => featherSourceFields(record, keys, context, fail);
+const fields = (record, keys, context) =>
+  featherSourceFields(record, keys, context, 'keratin graph');
 const sourceArray = (values, context, maximum = 256) =>
-  featherSourceArray(values, context, maximum, fail);
+  featherSourceArray(values, context, maximum, 'keratin graph');
 function unique(xs, context) {
   const set = new Set(xs);
   if (set.size !== xs.length) fail(`${context}: duplicate identity`);
