@@ -1005,8 +1005,10 @@ export function gershgorinBound(laplacian) {
   return bound;
 }
 
-/** Heat flow x ← x − αLx from x₀, with optional pinned vertex values (boundary conditions, admitted
- *  evidence: `fixed` is [{ vertex, value }], held constant). α defaults to 1 / Gershgorin bound, which is
+/** Heat flow x ← x − αLx from x₀, with optional caller-supplied pinned
+ *  boundary conditions (`fixed`: [{vertex,value}]). Source admission checks
+ *  their inert data, NOT that anyone actually observed the values.
+ *  α defaults to 1 / Gershgorin bound, which is
  *  conservative and energy-stable. Explicit steps must satisfy α·Gershgorin(L) < 2. Stops when the free gradient
  *  ‖L x‖ falls to `tolerance`, or after `maxSteps`. Returns
  *  { section, residual: ‖δx‖, gradient, steps, converged, firings, crossings }: `firings` are the steps at which
