@@ -159,7 +159,8 @@ try {
     for (const id of tests) {
       // Every exact receiving file must actually execute. A zero-case green
       // exit, including inherited NODE_TEST_CONTEXT, is not qualification.
-      const tap = run(process.execPath, ['--test', '--test-reporter=tap', id], packed);
+      const tap = run(process.execPath, ['--test', '--test-isolation=none',
+        '--test-concurrency=1', '--test-reporter=tap', id], packed);
       // Node may synthesize a green file-level subtest even if this module
       // registered *zero* tests. TAP '# tests 1' alone is therefore not
       // evidence that any receiving assertion or test body actually ran.
