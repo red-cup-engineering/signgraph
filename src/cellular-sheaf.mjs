@@ -432,9 +432,10 @@ export const applyLaplacian = (sheaf, x) => apply(sheafLaplacian(sheaf), x);
 // — exact cohomology over ℚ —
 
 /** The native exact rank implementation materializes a dense C¹ × C⁰
- * rational differential. This is a bounded COMPUTATION, not an algebraic
- * dimension axiom; 65,536 coefficient slots also bounds cubic elimination
- * near the square case. The original Exact Number package owns ratRank. */
+ * rational differential. This is a finite coefficient-SLOT admission bound,
+ * NOT an algebraic dimension axiom, a bound on rational coefficient bit size,
+ * or a verified CPU-time guarantee. The original Exact Number owner alone
+ * implements and qualifies ratRank. */
 export const MAX_EXACT_COHOMOLOGY_RANK_SLOTS = 65_536;
 
 /** Preflight the actual source-owned mathematical chart. Returning false
