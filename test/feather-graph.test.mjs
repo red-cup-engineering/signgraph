@@ -82,6 +82,17 @@ test('posit graph charges same feather graph, preserving contrary independent wi
   assert.ok(Object.isFrozen(p.testimony));
 });
 
+test('source-array admission returns a frozen, detached data cut instead of caller-owned list',()=>{
+  const original=['performed:one','performed:two'];
+  const cut=featherSourceArray(original,'source list',4);
+  assert.equal(cut===original,false,'source admission must not return the mutable caller list');
+  assert.equal(Object.isFrozen(cut),true);
+  original[0]='post-admission mutation';
+  original.push('new source position');
+  assert.deepEqual(cut,['performed:one','performed:two'],
+    'the already admitted source snapshot cannot change after read');
+});
+
 test('shared Feather/Keratin source admission cannot be bypassed with a caller refusal callback',()=>{
   let invoked=0;
   const input={performed:'source:performed'};
