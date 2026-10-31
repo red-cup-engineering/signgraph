@@ -232,11 +232,19 @@ export function positGraphOfFeather(feather, posits) {
   featherSourceArray(posits, 'posit testimony', MAX_FORK_PAIRS);
   const originals = new Set(feather.predications.map(item => item.occurrence));
   const told = new Set(), chargeOccurrences = [];
+  // A bound on each row and lane alone is multiplicative: 8192 rows with
+  // 8192 witnesses EACH can demand tens of millions of copied entries.
+  // Share the established finite candidate budget across both testimony
+  // sides and ALL source records, before retaining any new row.
+  let witnessSlots = 0;
   for (const sourcePosit of posits) {
     const posit = featherSourceFields(sourcePosit,
       ['occurrence', 'sourceRecord', 'for', 'against'], 'posit testimony');
     const forSide = featherSourceArray(posit.for, 'posit for witnesses', MAX_FORK_PAIRS);
     const againstSide = featherSourceArray(posit.against, 'posit against witnesses', MAX_FORK_PAIRS);
+    if (forSide.length + againstSide.length > MAX_FORK_PAIRS - witnessSlots)
+      fail(`posit testimony aggregate witness budget exceeds ${MAX_FORK_PAIRS} source entries`);
+    witnessSlots += forSide.length + againstSide.length;
     if (!originals.has(posit.occurrence) || !named(posit.sourceRecord) ||
         !forSide.every(named) || !againstSide.every(named))
       fail('each posit must charge an original predication with explicit for/against witnesses');
