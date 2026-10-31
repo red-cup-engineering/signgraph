@@ -475,11 +475,28 @@ export function weightedSheafLaplacian(sheaf, metrics) {
  * energies, not probabilities. SPD weights preserve ker L = ker δ = H⁰. */
 export function weightedSheafDirichlet(sheaf, metrics, x) {
   sheaf = admitCellularSheaf(sheaf);
-  if (!Array.isArray(x) || x.length !== sheaf.c0)
-    throw new RangeError("weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required");
-  // Do not call the source's iterator or re-read caller-owned numeric slots
-  // after qualification: the energy must use the very cochain admitted.
-  const vector = sheafSourceArray(x, "weighted source cochain");
+  // Ordinary arrays use native descriptor-only source cuts. Preserve the
+  // pre-existing numeric TypedArray input contract through the intrinsic
+  // typed-array length getter and indexed slots: no caller iterator, map,
+  // species constructor or overridden "length" getter participates.
+  // DataView and arbitrary iterables are not cochain vectors.
+  const bad = () => new RangeError(
+    "weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required");
+  let vector;
+  if (Array.isArray(x)) {
+    if (x.length !== sheaf.c0) throw bad();
+    vector = sheafSourceArray(x, "weighted source cochain");
+  } else if (ArrayBuffer.isView(x)) {
+    const lengthGetter = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(Uint8Array.prototype), "length").get;
+    let length;
+    try { length = lengthGetter.call(x); }
+    catch { throw bad(); }
+    if (length !== sheaf.c0) throw bad();
+    vector = Object.freeze(Array.from({length}, (_,i) => x[i]));
+  } else {
+    throw bad();
+  }
   if (vector.some(value => typeof value !== "number" || !Number.isFinite(value)))
     throw new RangeError("weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required");
   const factors = edgeMetricFactors(sheaf, metrics), deltaX = apply(coboundary(sheaf), vector);
