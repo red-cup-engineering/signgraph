@@ -413,6 +413,20 @@ receiving establishes parity and then a measured improvement.
   a published version requires a distinct immutable
   [SemVer](https://semver.org/spec/v2.0.0.html) edition and native
   dependency/consumer receiving, not a source-only assertion.
+
+  **Manual native receiving gate:** the original
+  `.github/workflows/holonomy-qualification.yml` is deliberately
+  `workflow_dispatch`-only until runner allocation is independently verified.
+  It now reads the source-owned `packageManager: pnpm@11.28.5`, activates
+  that exact Corepack version under Node 24.19, and runs
+  `pnpm install --frozen-lockfile --ignore-scripts` against the original
+  `pnpm-lock.yaml` (v9.0). It then exercises the declared
+  `test:foundations:interop`, `check:keratin`, `test:keratin`,
+  holonomy, full native and original packed-receiving scripts.
+  The original packaged `test/receiving-script-package-contract.test.mjs`
+  includes a non-skipping manifest/toolchain/source-enrollment assertion.
+  A source edit to these files, or a workflow with no assigned runner,
+  is **not** a native test, registry-edition qualification or publication.
 - `hierarchical-circuit` — the established pure typed relation model
   for SEN circuit-shaped diagrams and finite FOUR-valued semantics.
   `planCombinationalCircuit` remains a pure graph-order projection for
