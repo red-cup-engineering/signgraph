@@ -398,16 +398,34 @@ const edgeMetricFactors = (sheaf, metrics) => {
   if (!Array.isArray(metrics) || metrics.length !== sheaf.edges.length) {
     throw new RangeError("weightedSheaf: one metric is required per edge, in sheaf edge order");
   }
+  // The chart itself was issued by cellularSheaf. Source metrics were not:
+  // receive every outer, row and scalar slot through the SAME native
+  // descriptor-only admission used for restriction matrices. Calling a
+  // caller's .every/.map or raw numeric getter here lets a negative matrix
+  // fabricate a positive definite replacement before Cholesky.
+  const admitted = sheafSourceArray(metrics, "weighted source metrics");
+  let slots = 0n;
+  for (const edge of sheaf.edges) {
+    slots += BigInt(edge.dim) * BigInt(edge.dim);
+    if (slots > 1_048_576n)
+      throw new RangeError("weightedSheaf: metric coefficient work budget exceeded");
+  }
   return sheaf.edges.map((edge, e) => {
-    const metric = metrics[e], d = edge.dim;
-    if (!Array.isArray(metric) || metric.length !== d || !metric.every((row) => Array.isArray(row) && row.length === d)) {
+    const metric = admitted[e], d = edge.dim;
+    if (!Array.isArray(metric) || metric.length !== d)
       throw new RangeError("weightedSheaf: an edge metric has the wrong stalk dimension");
-    }
-    const W = metric.map((row) => row.map((entry) => {
-      const value = numberOfEntry(entry);
-      if (!Number.isFinite(value)) throw new RangeError("weightedSheaf: a metric entry is not finite");
-      return value;
-    }));
+    const rows = sheafSourceArray(metric, "weighted edge metric");
+    const W = rows.map((sourceRow) => {
+      if (!Array.isArray(sourceRow) || sourceRow.length !== d)
+        throw new RangeError("weightedSheaf: an edge metric has the wrong stalk dimension");
+      const row = sheafSourceArray(sourceRow, "weighted metric row");
+      return row.map(entry => {
+        const value = numberOfEntry(sheafSourceScalar(entry));
+        if (!Number.isFinite(value))
+          throw new RangeError("weightedSheaf: a metric entry is not finite");
+        return value;
+      });
+    });
     for (let i = 0; i < d; i += 1) for (let j = 0; j < i; j += 1) {
       const a = W[i][j], b = W[j][i];
       if (Math.abs(a - b) > 32 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b))) {
@@ -457,10 +475,14 @@ export function weightedSheafLaplacian(sheaf, metrics) {
  * energies, not probabilities. SPD weights preserve ker L = ker δ = H⁰. */
 export function weightedSheafDirichlet(sheaf, metrics, x) {
   sheaf = admitCellularSheaf(sheaf);
-  if (x?.length !== sheaf.c0 || Array.from(x).some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+  if (!Array.isArray(x) || x.length !== sheaf.c0)
     throw new RangeError("weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required");
-  }
-  const factors = edgeMetricFactors(sheaf, metrics), deltaX = apply(coboundary(sheaf), x);
+  // Do not call the source's iterator or re-read caller-owned numeric slots
+  // after qualification: the energy must use the very cochain admitted.
+  const vector = sheafSourceArray(x, "weighted source cochain");
+  if (vector.some(value => typeof value !== "number" || !Number.isFinite(value)))
+    throw new RangeError("weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required");
+  const factors = edgeMetricFactors(sheaf, metrics), deltaX = apply(coboundary(sheaf), vector);
   let energy = 0;
   const perEdge = sheaf.edges.map((edge, e) => {
     const residual = deltaX.slice(sheaf.edgeOffsets[e], sheaf.edgeOffsets[e] + edge.dim), C = factors[e];
