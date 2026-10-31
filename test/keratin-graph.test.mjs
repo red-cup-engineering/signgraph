@@ -160,6 +160,24 @@ test('large exact Keratin charts preserve original source geometry while rank is
   assert.equal(linear.cohomology,null,'not evaluated is NOT exact H1=0');
   assert.match(linear.cohomologyStatus,/^not-evaluated: rational rank work budget exceeded/);
   assert.equal(linear.sourceOccurrences.length,16);
+  // The independently testable numerical H0 reader must remain usable on
+  // this SAME source-positioned Keratin sheaf when exact rational H1 rank
+  // exceeds its original preflight budget.
+  const hodge=hodgeCheck(linear.sheaf,Array(linear.sheaf.c0).fill(0),
+    {maxSteps:0});
+  assert.equal(hodge.cohomologyStatus,linear.cohomologyStatus);
+  assert.equal(hodge.h1,null,
+    'unassayed exact rank is not a theorem of H1 vanishing');
+  assert.equal(hodge.harmonic,true);
+  assert.equal(hodge.sectionResidual,0);
+  assert.equal(hodge.laplacianResidual,0);
+  const nonharmonic=Array(linear.sheaf.c0).fill(0);
+  nonharmonic[0]=1;
+  const obstructed=hodgeCheck(linear.sheaf,nonharmonic,{maxSteps:0});
+  assert.equal(obstructed.cohomologyStatus,linear.cohomologyStatus);
+  assert.equal(obstructed.h1,null);
+  assert.equal(obstructed.harmonic,false,
+    'not evaluating H1 does not convert a nonzero coboundary to a section');
   const observed=graph.feather.positions.map((p,i)=>({
     position:p.key,value:Array(16).fill(0),
     sourceRecord:'meter:'+i,evidence:{for:['witness:'+i],against:[]},
