@@ -277,7 +277,8 @@ test('foreign, accessor-backed, nonfinite or surplus numeric assertions refuse b
   let calls=0;
   const accessor=reading('a',[0],'meter');
   Object.defineProperty(accessor,'value',{get(){calls++;return [0];},enumerable:true});
-  assert.throws(()=>assessKeratinLinearObservations(linear,[accessor]),/own data fields/);
+  assert.throws(()=>assessKeratinLinearObservations(linear,[accessor]),/inert own data/,
+    'the original snapshot must refuse a getter before the obsolete later own-field reader');
   const array=reading('a',[0],'meter');
   Object.defineProperty(array.value,0,{get(){calls++;return 0;},enumerable:true});
   assert.throws(()=>assessKeratinLinearObservations(linear,[array]),/dense own data slots/);
