@@ -627,7 +627,13 @@ test("NI-addressed compact L-Space claims re-expand through the original source 
   ]);
   const full = queryInheritedTellings(frame, { predicate, object: "same-key" });
   assert.equal(full.total, 2);
-  const [alpha, beta] = full.entries;
+  // Original SignCell orders by canonical content identity, NOT the input
+  // sequence or a human-readable token name. Select each source occurrence
+  // by its actual token coordinate before checking witness identity.
+  const alpha = full.entries.find(entry => entry.token === firstToken);
+  const beta = full.entries.find(entry => entry.token === secondToken);
+  assert.notEqual(alpha, undefined, "alpha original source token must be present");
+  assert.notEqual(beta, undefined, "beta original source token must be present");
   assert.notEqual(semanticId(alpha.cell), semanticId(beta.cell));
   for (const original of full.entries) {
     const address = semanticId(original.cell);
