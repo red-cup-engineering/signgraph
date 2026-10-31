@@ -411,6 +411,24 @@ receiving establishes parity and then a measured improvement.
   differential retains its exactly computable rank-zero result. Exceeding
   the budget means **not evaluated**, never H1=0. This is no algebraic
   restriction on the existence of H0/H1 and grants no source authority.
+
+  **A single rational-rank status across consumers:** the original owner
+  now exports `cellularSheafCohomologyStatus(sheaf)`; it re-admits the
+  chart and returns exactly `"exact"`,
+  `"not-evaluated: nonexact source restrictions"`, or
+  `"not-evaluated: rational rank work budget exceeded"`. Keratin consumes
+  this original status instead of maintaining a second rank-budget
+  decision. The existing `hodgeCheck` also exposes `cohomologyStatus`
+  while reporting the independently testable *numeric degree-zero*
+  `harmonic` result. Its `h1` stays the original exact number only
+  when that rank was evaluated; an otherwise exact, over-budget chart has
+  `h1: null` (NOT zero), while a nonexact numerical chart preserves the
+  historical `h1: undefined`. A valid 257-vertex, 256-edge constant
+  sheaf has a directly checkable zero harmonic section although the
+  original dense rational rank has 65,792 slots and is unassayed. Numeric
+  harmonicity is not a Lean proof of global descent, independently
+  measured material activity, or a substitute for the separate H¹ rank.
+
   JSON Schema describes JSON structure, not executable JavaScript input
   admission, while W3C PROV-O's Entity/Activity/Agent provenance remains
   with its proper producer. Both source and consumer changes need a new
