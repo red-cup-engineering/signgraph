@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.7.1-dev.556",
+  "version": "0.7.2-dev.0",
   "packageManager": "pnpm@11.28.5",
   "type": "module",
   "description": "SignCell and SignChain sites, transport, relations and graph projections.",
@@ -8,6 +8,7 @@
     "src",
     "data/records/requirements-records",
     "test/graph.test.mjs",
+    "test/semantic-graph-query.test.mjs",
     "test/token-sheaf.test.mjs",
     "test/cellular-2complex.test.mjs",
     "test/sixfold-holonomy.test.mjs",
@@ -96,8 +97,8 @@
     "@red-cup-engineering/xml-document-rendering-service": "0.1.7",
     "@red-cup-engineering/computer-data-engineering-services-section": "0.7.1",
     "@red-cup-engineering/exact-number-data-service": "0.1.7",
-    "@red-cup-engineering/signcell": "0.13.1-dev.212",
-    "@red-cup-engineering/signchain": "0.4.2-dev.72",
+    "@red-cup-engineering/signcell": "0.13.4-dev.0",
+    "@red-cup-engineering/signchain": "0.4.3-dev.0",
     "@red-cup-engineering/json-schema-services-section": "0.5.0",
     "@red-cup-engineering/semiotic-content-address": "0.1.1",
     "@red-cup-engineering/computer-code-engineering-services-section": "0.1.2"
@@ -110,7 +111,7 @@
     "test:keratin": "node --test test/feather-graph.test.mjs test/cellular-sheaf.test.mjs test/keratin-graph.test.mjs",
     "demo:keratin": "node examples/keratin-hole-workbench.mjs",
     "test:packed-receiving": "node scripts/verify-packed-receiving.mjs",
-    "test:foundations:interop": "node --test test/evidence-order-receiving.test.mjs test/fiber-source-context.test.mjs test/site-source-admission.test.mjs test/site-specialization-closure.test.mjs test/cell-graph.test.mjs test/source-record-tower-flow.test.mjs test/cohomology-canonical-incidence.test.mjs test/token-sheaf.test.mjs test/feather-graph.test.mjs test/keratin-graph.test.mjs test/cellular-sheaf.test.mjs"
+    "test:foundations:interop": "node --test test/evidence-order-receiving.test.mjs test/fiber-source-context.test.mjs test/site-source-admission.test.mjs test/site-specialization-closure.test.mjs test/cell-graph.test.mjs test/source-record-tower-flow.test.mjs test/cohomology-canonical-incidence.test.mjs test/token-sheaf.test.mjs test/feather-graph.test.mjs test/keratin-graph.test.mjs test/cellular-sheaf.test.mjs test/semantic-graph-query.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -119,6 +120,7 @@
   "private": false,
   "receivingTests": [
     "test/graph.test.mjs",
+    "test/semantic-graph-query.test.mjs",
     "test/token-sheaf.test.mjs",
     "test/cellular-2complex.test.mjs",
     "test/sixfold-holonomy.test.mjs",

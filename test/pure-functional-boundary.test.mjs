@@ -16,10 +16,13 @@ const higher = {
 }[family];
 if (!higher) throw new Error("this assay belongs to one of the four Sign libraries");
 
-test("the published SignGraph surface contains pure library entries and no command payload", () => {
+test("the published SignGraph runtime exposes pure library entries and keeps receiving harnesses private", () => {
   assert.equal(manifest.bin, undefined, "process commands belong to the downstream effect owner");
-  assert.ok(!manifest.files.some(path => path === "scripts" || path.startsWith("scripts/")),
-    "effectful command scripts must not ship as a pure runtime payload");
+  // The archive deliberately ships its original native receiving assays.
+  // Their two private harnesses are test dependencies, not runtime entries.
+  assert.deepEqual(manifest.files.filter(path => path === "scripts" || path.startsWith("scripts/")).sort(),
+    ["scripts/qualify-packed-registry.mjs", "scripts/verify-packed-receiving.mjs"],
+    "only the original packed-receiving harnesses may accompany the library");
   for (const [name, target] of Object.entries(manifest.exports)) {
     assert.ok(target === "./package.json" ||
       (typeof target === "string" && target.startsWith("./src/") && !target.includes("/../")),
@@ -51,6 +54,9 @@ test("the Sign-family source is a pure functional substrate, not an effects prov
       ...code.matchAll(/\bimport\s*\(\s*["']([^"']+)["']/gu),
     ].map(match => match[1]);
     for (const specifier of imports) {
+      if (specifier.startsWith("."))
+        assert.doesNotMatch(specifier, /(?:^|\/)scripts(?:\/|$)/u,
+          `${path} may not import a private receiving harness into the runtime`);
       assert.doesNotMatch(specifier,
         /^(?:node:)?(?:fs(?:\/promises)?|child_process|http|https|net|tls|dgram|worker_threads)(?:\/|$)/u,
         `${path} may not acquire ambient I/O capabilities`);

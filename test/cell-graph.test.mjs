@@ -225,7 +225,7 @@ test("oriented graph and its symmetric counterpart never evaluate source accesso
     [{subject:"a",predicate:"p",object:"b",for:["w"]}],
     [Object.assign(Object.create({subject:"a"}),{predicate:"p",object:"b"})],
   ])for(const read of [relationGraphOfCells,flowNetworkOfCells])
-    assert.throws(()=>read(input),/signgraph site:/u);
+    assert.throws(()=>read(input),/signcell:/u);
   assert.equal(calls,0,"no getter ran during graph source qualification");
 });
 

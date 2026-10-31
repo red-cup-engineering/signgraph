@@ -1191,7 +1191,8 @@ test("hypothetical options use immutable source cuts without allowing erased arr
  const result=channelFlowWitnessPlacement(graph,input);
  input.proposedWitnessExchangeIds[0]="unadmitted";
  input.proposedObservedCompartmentIds[0]="unadmitted";
- assert.equal(result.resources[0].proposedIndividualEdgeMeters[0].id,at.e1.id);
+ assert.deepEqual(result.resources[0].proposedIndividualEdgeMeters.map(meter=>meter.id).sort(),
+   [at.e1.id,at.e3.id].sort(),"the source incidence retains both proposed meters after caller mutation");
  assert.deepEqual(result.resources[0].proposedObservedCompartmentIds,[at.B.id]);
  const gaps=[at.e1.id];gaps.length=2;
  assert.throws(()=>channelFlowWitnessPlacement(graph,{channel:at.channel,relations:roles,

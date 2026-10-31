@@ -148,7 +148,7 @@ function admittedPage(graph, subject, pattern, options) {
   let page;
   try {
     page = queryRelationalFieldPage(field, { ...selector, subject: reference },
-      { limit, after: cursor?.after ?? null });
+      { ...(limit === undefined ? {} : { limit }), after: cursor?.after ?? null });
   } catch (error) {
     if (error?.code === "invalid-cursor")
       throwRefusal(refused("invalid-cursor", "cursor edge is absent from this query"));

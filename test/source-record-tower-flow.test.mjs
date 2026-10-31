@@ -176,7 +176,7 @@ test("tower source cells reject accessor-backed arrays and non-cells before prod
   for(const input of [array,[source],[extra],[forged]]) {
     assert.throws(()=>sourceRecordTowerFlowOfCells(input,at=>{
       producers++;return towerFixture(at);
-    }),/signgraph site:/u);
+    }),/signcell:/u);
   }
   assert.equal(calls,0,"source getters must not execute");
   assert.equal(producers,0,"unadmitted source positions must never reach the native tower supplier");

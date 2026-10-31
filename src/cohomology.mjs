@@ -29,8 +29,8 @@ import { charPoly, fromInts, rank, toCount, toInt } from "@red-cup-engineering/e
 const integerRank = (matrix) => (matrix.length === 0 ? 0 : toCount(rank(fromInts(matrix))));
 /** The characteristic polynomial det(xI − A) of a host-integer matrix, highest degree first, exactly. */
 const characteristicPolynomial = (matrix) => (matrix.length === 0 ? Object.freeze([1]) : Object.freeze(charPoly(fromInts(matrix)).map(toInt).reverse()));
-import { coincides, coincidenceKey } from "@red-cup-engineering/signcell/cell";
-import { sourceIncidencePairs, sourceIncidenceTriples, sourceIsolatedEntities } from "./site.mjs";
+import { admitTripleSequence, coincides, coincidenceKey } from "@red-cup-engineering/signcell/cell";
+import { sourceIncidencePairs, sourceIsolatedEntities } from "./site.mjs";
 import { sixfoldMotion, sixfoldIdentity, sixfoldCompose, sixfoldInverse } from "./paths.mjs";
 import { readingOfRecord, record, sidesOfReading, topMass } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 import { coverNerve, h1Rank } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/coordination-cohomology";
@@ -59,7 +59,7 @@ export function cohomologyOfCells(cells, extraEntities = []) {
   // oriented flow. Read the *same* ordered, detached, undeduplicated source
   // incidence snapshot here; cohomology must not apply a weaker second
   // parser that sees a different vertex or invented edge.
-  const incidences = sourceIncidenceTriples(cells);
+  const incidences = admitTripleSequence(cells);
   const isolated = sourceIsolatedEntities(extraEntities);
   const entities = [], positions = new Map();
   const include = (term) => {

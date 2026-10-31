@@ -243,6 +243,18 @@ receiving establishes parity and then a measured improvement.
 
 ## What lives here
 
+Original Cell and triple source admission now comes from SignCell's public
+`./cell` entry. Sites, relation/flow graphs and cohomology receive
+`admitCellSequence` or `admitTripleSequence` without joining repeated source
+positions. SignGraph still owns graph interpretation, isolated vertices,
+ordered edge pairs and its 16,384-entry source budget. The older public
+`sourceIncidenceCells`/`sourceIncidenceTriples` names in `./site` re-export the
+same supplier functions for existing callers; they no longer contain a second
+admission implementation. Malformed Cell sources now report their SignCell
+refusal, while graph-specific constraints retain Graph diagnostics. Source
+evidence is validated before an extensional projection forgets it; that
+projection does not manufacture observed edges, witnesses or permissions.
+
 - `semantic-graph` — one closed, NI-addressed graph over SignCell's typed
   Marks, declarations, and EAVT-addressed witnessed edges. Its queries and
   bounded continuations preserve every source witness without pretending that

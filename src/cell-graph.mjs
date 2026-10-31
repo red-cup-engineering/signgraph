@@ -8,12 +8,11 @@
  * organizations are SignChain's `chuMap`.
  */
 import {
-  address, admitCell, cellSet, coincidenceKey, coincides, measured,
+  address, admitCell, admitCellSequence, admitTripleSequence, cellSet, coincidenceKey, coincides, measured,
   presence, recordOf, retainedCarrier, sameCell, valueOf
 } from "@red-cup-engineering/signcell/cell";
 import { natZero, natOne, natAdd, fromNatural } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { chuSpaceOfEntries } from "@red-cup-engineering/metrologic/chu";
-import { sourceIncidenceCells, sourceIncidenceTriples } from "./site.mjs";
 
 /** The Chu space of a cell set under a list of named observations. */
 export function cellGraph(cells, observations, options = {}) {
@@ -77,7 +76,7 @@ function relationGraphOfAdmittedIncidences(incidences) {
  * different input on a second pass. Parallel source occurrences remain edges.
  */
 export function relationGraphOfCells(cells) {
-    return relationGraphOfAdmittedIncidences(sourceIncidenceTriples(cells));
+    return relationGraphOfAdmittedIncidences(admitTripleSequence(cells));
 }
 /** The relation graph of a section (its entries' cells). Delegates to {@link relationGraphOfCells}. */
 export function relationGraph(section) {
@@ -104,7 +103,7 @@ export function flowNetworkOfCells(cells) {
     // Use precisely the same detached source positions for both the
     // symmetric weights and oriented boundary. The old second read of
     // caller-owned cells could disagree with the first graph index.
-    const incidences = sourceIncidenceTriples(cells);
+    const incidences = admitTripleSequence(cells);
     const graph = relationGraphOfAdmittedIncidences(incidences);
     // The weighted and directed readers must use the SAME upstream canonical
     // coincidence classes. Avoid linear vertex rescans per oriented edge.
@@ -182,7 +181,7 @@ export function sourceRecordTowerFlowOfCells(cells, towerOfCell) {
   }
   // A raw array and its elements are untrusted even when the callback is an
   // admitted producer. Read exactly one original, inert, source-ordered copy.
-  const admittedCells = sourceIncidenceCells(cells);
+  const admittedCells = admitCellSequence(cells);
   const entries = admittedCells.map((admitted, sourceIndex) => {
     const tower = receivedTower(towerOfCell(admitted));
     const actualRecord = recordOf(admitted);

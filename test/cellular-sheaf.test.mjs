@@ -246,7 +246,7 @@ test("original sparse duality uses one finite source vector and refuses false ze
       id:c.id,from:c.to,to:c.from,
     })));
     assert.deepEqual(applyTranspose(coboundary(reversed),edgeValues),
-      backward.map(v=>-v),"directed reversal must negate the same original dual at "+mask);
+      backward.map(v=>v===0?0:-v),"directed reversal must negate the same original dual at "+mask);
     verified++;
   }
   assert.equal(verified,512);
