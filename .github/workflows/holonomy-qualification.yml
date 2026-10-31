@@ -39,7 +39,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           printf 'Commit: %s\\n' "$GITHUB_SHA"
           node --version
-      - name: Install exact declared house-package dependencies
+      - name: Install exact declared group-package dependencies
         run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
       - name: Show installed source-owner dependency cohort
         run: npm ls @red-cup-engineering/signcell @red-cup-engineering/signchain --all
