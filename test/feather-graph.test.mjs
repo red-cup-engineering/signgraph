@@ -141,6 +141,30 @@ test('source-origin Feather admissions refuse executable selector, occurrence, C
     'the original valid performed fork and its independent contact remain unchanged');
 });
 
+test('original Feather posit budget applies to total witnesses across ALL source records and both testimony sides',()=>{
+  const feather=featherGraphOfPredications(fork,selectors);
+  const all=Array.from({length:8192},(_,i)=>`witness:${i}`);
+  const first={occurrence:'b>c',sourceRecord:'bulk:one',for:all,against:[]};
+  const second={occurrence:'b>c',sourceRecord:'bulk:two',for:[],against:['independent']};
+  const exact=positGraphOfFeather(feather,[first]);
+  assert.equal(exact.testimony.length,1);
+  assert.equal(exact.testimony[0].for.length,8192,
+    'the existing finite source budget remains inclusive');
+  assert.throws(()=>positGraphOfFeather(feather,[first,second]),
+    /aggregate witness budget/,
+    'row-local checks cannot admit 8193 witness slots');
+  assert.throws(()=>positGraphOfFeather(feather,[{...first,against:['opposed']}]),
+    /aggregate witness budget/,
+    'contrary testimony in the same row consumes the same budget');
+  const split=positGraphOfFeather(feather,[
+    {...first,for:all.slice(0,4096)},
+    {...second,for:all.slice(4096),against:[]},
+  ]);
+  assert.equal(split.testimony.reduce((n,row)=>n+row.for.length+row.against.length,0),8192);
+  assert.equal(split.feather,feather,
+    'bounded multiple-source testimony still preserves the original feather reading');
+});
+
 test('original Feather posit testimony is bounded inert source data, never a caller iterator',()=>{
   const feather=featherGraphOfPredications(fork,selectors);
   const one={occurrence:'b>c',sourceRecord:'performed:1',for:['report:1'],against:[]};
