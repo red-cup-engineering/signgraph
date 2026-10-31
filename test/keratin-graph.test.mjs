@@ -487,6 +487,78 @@ test('Keratin graph source admission rejects executable top-level and nested sou
  assert.equal(calls,0);
 });
 
+
+test('Keratin uses original Feather source cuts throughout discrete stalk, contact, hole and observer admission',()=>{
+  const input={source,selectors,stalks,contacts:contacts(false),faces:[],holes:[],locks:[],observers:[]};
+  let traps=0;
+  const protectedArray = values => new Proxy([...values],{
+    get(target,key,receiver){
+      if(key===Symbol.iterator||key==='map'||key==='every'||key==='some'){
+        traps++;
+        throw new Error('foreign caller-owned source iteration');
+      }
+      return Reflect.get(target,key,receiver);
+    },
+  });
+  const pair=['0','0'];
+  const pairProxy=new Proxy(pair,{
+    get(target,key,receiver){
+      if(key==='0'){traps++;return 'forged';}
+      return Reflect.get(target,key,receiver);
+    },
+  });
+  const contactsCut=contacts(false).map((record,index)=>index===0
+    ?{...record,allowed:protectedArray([pairProxy,parity(0)[1]])}
+    :record);
+  const graph=keratinGraphOfPredications({
+    ...input,
+    stalks:protectedArray(stalks),
+    contacts:protectedArray(contactsCut),
+    locks:protectedArray([{id:'cut:lock',position:id('a'),sourceRecord:'s:lock',excludes:protectedArray([])}]),
+    holes:protectedArray([{id:'cut:hole',sourceRecord:'s:hole',boundary:protectedArray(boundary)}]),
+    observers:protectedArray([{id:'cut:observer',
+      visiblePositions:protectedArray([id('a'),id('b')]),
+      visibleOccurrences:protectedArray(['a>b'])}]),
+  });
+  assert.equal(graph.kind,'signgraph.keratinGraph.finiteFiberHoleReading.v1');
+  assert.equal(graph.stalks.length,3);
+  assert.equal(graph.contacts.length,3);
+  assert.equal(graph.candidateHoles.length,1);
+  assert.equal(graph.observers.length,1);
+  assert.equal(traps,0,'no unqualified source-array iterator, method or numeric slot may run');
+});
+
+test('Keratin linear consumers traverse original immutable source cuts for stalks, evidence and numbers',()=>{
+  const graph=specimen({contacts:contacts(false)});
+  let traps=0;
+  const untrusted=original=>new Proxy([...original],{
+    get(target,key,receiver){
+      if(key===Symbol.iterator||key==='map'||key==='every'||key==='some'){
+        traps++;throw new Error('unqualified array method');
+      }
+      return Reflect.get(target,key,receiver);
+    },
+  });
+  const vertices=graph.feather.positions.map(p=>({position:p.key,dim:1}));
+  const relations=graph.feather.predications.map(edge=>({
+    occurrence:edge.occurrence,dim:1,restrict:{from:[[1]],to:[[1]]},
+  }));
+  const linear=keratinLinearSheaf(graph,{
+    vertexStalks:untrusted(vertices),relationStalks:untrusted(relations),
+  });
+  assert.equal(linear.cohomology.h0,1);
+  const rows=graph.feather.positions.map((point,i)=>({
+    position:point.key,
+    value:untrusted([0]),
+    sourceRecord:'qualified:'+i,
+    evidence:{for:untrusted(['witness:'+i]),against:untrusted([])},
+  }));
+  const result=assessKeratinLinearObservations(linear,untrusted(rows));
+  assert.equal(result.compatible,true);
+  assert.equal(result.status,'compatible-numeric-coboundary');
+  assert.equal(traps,0,'the original linear sheaf and observed numeric consumers used detached source cuts');
+});
+
 test('Keratin graph rejects hostile indexed source arrays, hidden fields and boundary steps',()=>{
  let calls=0;
  const base={source,selectors,stalks,contacts:contacts(false),faces:[],holes:[],locks:[],observers:[]};
