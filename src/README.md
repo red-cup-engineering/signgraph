@@ -101,7 +101,15 @@ and `featherSourceArray` reject accessor-backed selectors, hidden or
 decorated occurrence/Cell/position records, executable list iterators,
 sparse arrays and over-budget source/posit testimony **before** creating
 a fork, edge or charge. These functions return frozen data snapshots and
-preserve the independently supplied source occurrence IDs. The downstream
+preserve the independently supplied source occurrence IDs. Posit testimony
+now shares the existing 8,192-entry candidate budget across the **total**
+number of source witness entries (both `for` and `against`, over all rows),
+rather than admitting 8,192 records each with 8,192 copied witnesses.
+The limit is inclusive, and exceeding it refuses before the over-budget
+row is retained; it is an engineering resource bound, not a theorem that
+source evidence is true or independent. This tighter source-admission
+contract requires native and installed consumer tests before versioned release.
+The downstream
 Keratin workbench consumes these **same** guards with its own finite
 resource limits, rather than maintaining another admission algorithm.
 Original `test/feather-graph.test.mjs` is now selected by the package's
