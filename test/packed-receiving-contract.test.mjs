@@ -167,7 +167,7 @@ test('declared scoped registry remains source-qualified in the emitted receiver'
   mkdirSync(source); mkdirSync(packed);
   writeFileSync(join(source, '.npmrc'),
     'registry=https://default.invalid/root/\n' +
-    '@red-cup-engineering:registry=https://scoped.invalid/house/\n');
+    '@red-cup-engineering:registry=https://scoped.invalid/group/\n');
   const clear = {...process.env};
   for (const key of ['npm_config_registry', 'NPM_CONFIG_REGISTRY',
     'npm_config_@red-cup-engineering:registry', 'NPM_CONFIG_@red-cup-engineering:registry'])
@@ -186,9 +186,9 @@ test('declared scoped registry remains source-qualified in the emitted receiver'
   const handoff = qualifyPackedRegistry(read, {source, packed,
     scopes:['@red-cup-engineering']});
   const key = 'npm_config_@red-cup-engineering:registry';
-  assert.equal(handoff.environment[key], 'https://scoped.invalid/house/');
+  assert.equal(handoff.environment[key], 'https://scoped.invalid/group/');
   assert.equal(read(packed, handoff.environment, '@red-cup-engineering:registry'),
-    'https://scoped.invalid/house/');
+    'https://scoped.invalid/group/');
   assert.equal(read(packed, handoff.environment, 'registry'),
     'https://default.invalid/root/');
   assert.throws(() => qualifyPackedRegistry(
@@ -211,8 +211,8 @@ test('effective source-configured transitive-only registry cannot be lost in pac
   const source = join(root, 'source'), packed = join(root, 'packed');
   mkdirSync(source); mkdirSync(packed);
   const initial = 'registry=https://default.invalid/root/\n' +
-    '@red-cup-engineering:registry=https://scoped.invalid/house/\n' +
-    '@sg-transitive-only:registry=https://transitive.invalid/house/\n';
+    '@red-cup-engineering:registry=https://scoped.invalid/group/\n' +
+    '@sg-transitive-only:registry=https://transitive.invalid/group/\n';
   writeFileSync(join(source, '.npmrc'), initial);
   const clean = {...process.env};
   for (const key of Object.keys(clean))
@@ -237,18 +237,18 @@ test('effective source-configured transitive-only registry cannot be lost in pac
   assert.equal(read(packed, {}, '@sg-transitive-only:registry'), 'undefined');
   const handoff = qualifyPackedRegistry(read, {source, packed, scopes});
   assert.equal(handoff.environment['npm_config_@sg-transitive-only:registry'],
-    'https://transitive.invalid/house/');
+    'https://transitive.invalid/group/');
   assert.equal(read(packed, handoff.environment, '@sg-transitive-only:registry'),
     read(source, {}, '@sg-transitive-only:registry'));
   assert.throws(() => qualifyPackedRegistry(
     (cwd, extra={}, key='registry') => cwd === packed && key === '@sg-transitive-only:registry'
       ? 'https://imposter.invalid/' : read(cwd, extra, key),
     {source, packed, scopes}), /scope registry differs/);
-  writeFileSync(join(source, '.npmrc'), initial.replace('https://transitive.invalid/house/', 'http://transitive.invalid/house/'));
+  writeFileSync(join(source, '.npmrc'), initial.replace('https://transitive.invalid/group/', 'http://transitive.invalid/group/'));
   assert.throws(() => qualifyPackedRegistry(read, {source, packed, scopes}), /credential-free HTTPS/);
   // A protected credentialed registry can be omitted by npm --json; a plain
   // listing still names its scope, forcing fail-closed npm config get.
-  writeFileSync(join(source, '.npmrc'), initial.replace('https://transitive.invalid/house/', 'https://user:secret@transitive.invalid/house/'));
+  writeFileSync(join(source, '.npmrc'), initial.replace('https://transitive.invalid/group/', 'https://user:secret@transitive.invalid/group/'));
   assert(configuredRegistryScopes(npm(source, ['config', 'ls'])).includes('@sg-transitive-only'));
   assert.throws(() => qualifyPackedRegistry(read, {source, packed, scopes}));
   assert.throws(() => configuredRegistryScopes('@invalid/scope:registry = "https://bad.invalid/"'),
