@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cell, claimCoordinate, semanticId, sidesOf } from "@red-cup-engineering/signcell/cell";
+import { cell, claimCoordinate, semanticId, sidesOf, told as evidenceTold, valueOf } from "@red-cup-engineering/signcell/cell";
 import { SPECIALIZES, generalizations, tokenFrame } from "@red-cup-engineering/signcell/token-frame";
 import { possibilize, valuationOf } from "@red-cup-engineering/signchain/token-fiber";
 import { inherited, inheritedClaim, queryInheritedTellings, tellingsAt } from "../src/token-sheaf.mjs";
@@ -250,6 +250,258 @@ test("one source-told sheaf supports cross-token typed queries and stable local 
   assert.throws(() => queryInheritedTellings(frame, accessor), /plain data fields/u);
 });
 
+test("one SignCell-owned frame cut serves SignGraph sheaf/claim readers without executing foreign accessors", () => {
+  const wire = {
+    kind: "signcell.token-frame", predicate: SPECIALIZES,
+    cells: [told("child", "parent"), cell("parent", "can", "read", { for: ["source:first"] })],
+  };
+  const selection = { token: "child", predicate: "can", object: "read" };
+  const first = queryInheritedTellings(wire, selection);
+  assert.equal(first.total, 1);
+  assert.deepEqual(first.entries[0].cell.for, ["source:first"]);
+  assert.equal(inheritedClaim(wire, "child", "can", "read").cells.length, 1);
+  assert.equal(inherited(wire, "child").cells.length, 1);
+  assert.equal(tellingsAt(wire, "parent").length, 1);
+  wire.cells[1] = cell("parent", "can", "read", { against: ["source:later"] });
+  assert.deepEqual(first.entries[0].cell.for, ["source:first"],
+    "the original result is a source-owned immutable cut");
+  const next = queryInheritedTellings(wire, selection);
+  assert.notEqual(first.snapshot, next.snapshot);
+  assert.deepEqual(next.entries[0].cell.against, ["source:later"]);
+
+  let invoked = 0;
+  const getter = { ...wire };
+  Object.defineProperty(getter, "cells", {
+    enumerable: true, get() { invoked++; return wire.cells; },
+  });
+  for (const read of [
+    () => queryInheritedTellings(getter, selection),
+    () => inherited(getter, "child"),
+    () => inheritedClaim(getter, "child", "can", "read"),
+    () => tellingsAt(getter, "parent"),
+  ]) assert.throws(read, /must be source data, not a getter/);
+  const inheritedSelection = Object.create(Object.defineProperty({}, "predicate", {
+    enumerable: true, get() { invoked++; return "can"; },
+  }));
+  assert.throws(() => queryInheritedTellings(wire, inheritedSelection),
+    /only declared plain data fields/);
+  const accessorPage = { limit: 1 };
+  Object.defineProperty(accessorPage, "offset", {
+    enumerable: true, get() { invoked++; return 0; },
+  });
+  assert.throws(() => queryInheritedTellings(wire, selection, accessorPage),
+    /only declared plain data fields/);
+  assert.equal(invoked, 0, "no foreign getter supplied a Cell, filter or pagination cursor");
+});
+
+test("unmeasured FOUR values never create or erase witnessed sheaf obstructions", () => {
+  // SignCell's Valued value and witness presence are independently meaningful.
+  // A source may be presumed stable with NO tellings, or carry two opposing
+  // tellings while explicitly valued absurd. The inherited value remains that
+  // value; only the original SignCell told() lanes authorize witness conflict.
+  const names = ["absurd", "potential", "active", "stable"];
+  let checked = 0;
+  for (let mask = 0; mask < 4; mask++) for (const value of names) {
+    const positive = mask & 1 ? ["parent:support"] : [];
+    const negative = mask & 2 ? ["parent:oppose"] : [];
+    const frame = tokenFrame([
+      told("child", "parent", "source:classification"),
+      cell("parent", "states", "fact", {
+        for: positive, against: negative, value,
+      }),
+    ]);
+    const read = inheritedClaim(frame, "child", "states", "fact");
+    assert.equal(read.cells.length, 1, "a declared original source claim remains present");
+    const carried = read.cells[0];
+    assert.equal(valueOf(carried), value,
+      "a valuation is NOT overwritten by whether evidence was told");
+    assert.deepEqual([...carried.for], positive,
+      "no presumed value mints a positive witness");
+    assert.deepEqual([...carried.against], negative,
+      "an explicit value cannot erase original opposing witnesses");
+    assert.deepEqual(evidenceTold(carried),
+      [positive.length > 0, negative.length > 0]);
+    const actuallyOpposed = positive.length > 0 && negative.length > 0;
+    assert.equal(read.contested.length, actuallyOpposed ? 1 : 0,
+      "a source conflict depends on original witness presence, not the FOUR value");
+    if (actuallyOpposed) {
+      assert.deepEqual(read.contested[0].for, ["parent"]);
+      assert.deepEqual(read.contested[0].against, ["parent"]);
+    }
+
+    // Exercise the actual source-indexed paging consumer: an explicitly
+    // absent witness side must never be displayed as an opposing source.
+    const page = queryInheritedTellings(frame,
+      { token: "child", predicate: "states", object: "fact" });
+    assert.equal(page.total, 1);
+    assert.equal(page.entries[0].reading, value);
+    assert.deepEqual(page.entries[0].contested, read.contested[0] ?? null);
+    checked++;
+  }
+  assert.equal(checked, 16,
+    "every witness-presence FOUR point is crossed with every declared FOUR value");
+
+  // Two different source generalizations jointly carry both witnesses, even
+  // if their separately valued claims are absurd. No witness is invented.
+  const fork = tokenFrame([
+    told("child", "left", "source:left"),
+    told("child", "right", "source:right"),
+    cell("left", "states", "fact", { for: ["left:support"], value: "absurd" }),
+    cell("right", "states", "fact", { against: ["right:oppose"], value: "absurd" }),
+  ]);
+  const inheritedFork = inheritedClaim(fork, "child", "states", "fact");
+  assert.equal(valueOf(inheritedFork.cells[0]), "absurd");
+  assert.deepEqual(inheritedFork.cells[0].for, ["left:support"]);
+  assert.deepEqual(inheritedFork.cells[0].against, ["right:oppose"]);
+  assert.equal(inheritedFork.contested.length, 1);
+  assert.deepEqual(inheritedFork.contested[0].for, ["left"]);
+  assert.deepEqual(inheritedFork.contested[0].against, ["right"]);
+});
+
+test("finite gluing of every two-source FOUR testimony pair equals the SignChain knowledge fiber", () => {
+  const evidence = (mask,where) => ({
+    for: mask & 1 ? [where+":supports"] : [],
+    against: mask & 2 ? [where+":opposes"] : [],
+  });
+  let checked = 0;
+  for(let general=0; general<4; general++){
+    for(let specific=0; specific<4; specific++){
+      const wire = { kind:"signcell.token-frame", predicate:SPECIALIZES, cells: [
+        told("specific","general"),
+        cell("general","declares","claim",evidence(general,"general")),
+        cell("specific","declares","claim",evidence(specific,"specific")),
+      ] };
+      const valuation = valuationOf(wire,"declares","claim");
+      const read = possibilize(wire,valuation);
+      const inheritedCell = inheritedClaim(wire,"specific","declares","claim").cells[0];
+      const globalReading = read.find(entry=>entry.token==="specific").reading;
+      assert.equal(globalReading,valueOf(inheritedCell),
+        "SignGraph source gluing and SignChain source possibilization agree");
+      const expectedFor=[
+        ...evidence(general,"general").for,
+        ...evidence(specific,"specific").for
+      ].sort();
+      const expectedAgainst=[
+        ...evidence(general,"general").against,
+        ...evidence(specific,"specific").against
+      ].sort();
+      assert.deepEqual([...inheritedCell.for].sort(),expectedFor,
+        "source gluing retains every material positive witness");
+      assert.deepEqual([...inheritedCell.against].sort(),expectedAgainst,
+        "source gluing retains every material negative witness");
+      assert.deepEqual(sidesOf(inheritedCell),[expectedFor.length>0,expectedAgainst.length>0],
+        "unknown and contradiction remain distinct FOUR evidence states");
+      checked++;
+    }
+  }
+  assert.equal(checked,16,"all 4×4 local source testimony pairs are checked");
+});
+
+test("all three-token FOUR gluing configurations preserve original witnesses across four specialization topologies", () => {
+  // A finite independent expected-cover calculation, not an alternative
+  // FOUR implementation, cell codec, source graph or general sheaf theorem.
+  // This extends the original two-source 16-case receiving assay to cycles,
+  // forks, chains and disconnected source contexts without external testimony.
+  const networks = [
+    {name: "chain", edges: [["a", "b"], ["b", "c"]]},
+    {name: "fork", edges: [["a", "c"], ["b", "c"]]},
+    {name: "cycle", edges: [["a", "b"], ["b", "a"], ["b", "c"]]},
+    {name: "disconnected", edges: []},
+  ];
+  const tokens = ["a", "b", "c"];
+  const evidence = [
+    {for: [], against: []},
+    {for: ["support"], against: []},
+    {for: [], against: ["oppose"]},
+    {for: ["support"], against: ["oppose"]},
+  ];
+  const reading = { "false,false": "absurd", "true,false": "potential",
+    "false,true": "active", "true,true": "stable" };
+  let compared = 0;
+  for (const network of networks) for (let packed = 0; packed < 64; packed++) {
+    let remaining = packed;
+    const source = new Map(tokens.map(token => {
+      const sides = evidence[remaining % 4];
+      remaining = Math.floor(remaining / 4);
+      return [token, {for: sides.for.map(w => token + ":" + w),
+        against: sides.against.map(w => token + ":" + w)}];
+    }));
+    const wire = {kind: "signcell.token-frame", predicate: SPECIALIZES,
+      cells: [
+        ...network.edges.map(([specific, general], index) =>
+          cell(specific, SPECIALIZES, general, {for: ["hierarchy:" + index]})),
+        ...tokens.map(token => cell(token, "declares", "claim", source.get(token))),
+      ],
+    };
+    const possible = possibilize(wire, valuationOf(wire, "declares", "claim"));
+    for (const token of tokens) {
+      // Expected source cover is the reflexive-transitive closure of ORIGINAL
+      // positive specialization edges, not a display field on a wire frame.
+      const cover = new Set([token]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const [specific, general] of network.edges) {
+          if (cover.has(specific) && !cover.has(general)) {
+            cover.add(general);
+            changed = true;
+          }
+        }
+      }
+      const expectedFor = [...cover].flatMap(t => source.get(t).for).sort();
+      const expectedAgainst = [...cover].flatMap(t => source.get(t).against).sort();
+      const section = inheritedClaim(wire, token, "declares", "claim");
+      assert.equal(section.cells.length, 1,
+        "one original claim is read at every source-admitted token");
+      const glued = section.cells[0];
+      const expectedReading = reading[String(expectedFor.length > 0) + "," +
+        String(expectedAgainst.length > 0)];
+      assert.equal(possible.find(entry => entry.token === token).reading,
+        expectedReading, "SignChain agrees with independent source cover");
+      assert.equal(valueOf(glued), expectedReading,
+        "SignGraph gluing does not erase unknown or opposed FOUR evidence");
+      assert.deepEqual([...glued.for].sort(), expectedFor,
+        "every positive original source witness survives source gluing");
+      assert.deepEqual([...glued.against].sort(), expectedAgainst,
+        "every opposing original source witness survives source gluing");
+      assert.deepEqual(sidesOf(glued),
+        [expectedFor.length > 0, expectedAgainst.length > 0]);
+      compared++;
+    }
+  }
+  assert.equal(compared, 4 * 64 * 3,
+    "256 three-token source configurations, 768 independent claim comparisons");
+});
+
+test("original FOUR fiber possibilization agrees with SignGraph sheaf gluing over one transported source", () => {
+  const wire = { kind: "signcell.token-frame", predicate: SPECIALIZES, cells: [
+    told("child", "parent"),
+    cell("parent", "qualifies", "source", { for: ["maker"] }),
+    cell("child", "qualifies", "source", { against: ["challenger"] }),
+  ] };
+  const read = () => {
+    const valuation = valuationOf(wire, "qualifies", "source");
+    const possible = possibilize(wire, valuation);
+    const inheritedCell = inheritedClaim(wire, "child", "qualifies", "source").cells[0];
+    return {
+      modal: possible.find(entry => entry.token === "child").reading,
+      sides: sidesOf(inheritedCell), positive: [...inheritedCell.for], negative: [...inheritedCell.against],
+    };
+  };
+  const before = read();
+  assert.equal(before.modal, "stable");
+  assert.deepEqual(before.sides, [true, true], "opposing witnesses must not cancel during gluing");
+  assert.deepEqual(before.positive, ["maker"]);
+  assert.deepEqual(before.negative, ["challenger"]);
+  wire.cells[1] = cell("parent", "qualifies", "source", { against: ["maker-correction"] });
+  const after = read();
+  assert.equal(after.modal, "active");
+  assert.deepEqual(after.sides, [false, true]);
+  assert.deepEqual(after.positive, []);
+  assert.deepEqual([...after.negative].sort(), ["challenger", "maker-correction"]);
+  assert.deepEqual(before.positive, ["maker"], "a previous read retains its original source witnesses");
+});
+
 test("paged source claims retain immutable original testimony across wire edits", () => {
   const object = { text: "before" };
   const frame = Object.freeze({
@@ -375,7 +627,13 @@ test("NI-addressed compact L-Space claims re-expand through the original source 
   ]);
   const full = queryInheritedTellings(frame, { predicate, object: "same-key" });
   assert.equal(full.total, 2);
-  const [alpha, beta] = full.entries;
+  // Original SignCell orders by canonical content identity, NOT the input
+  // sequence or a human-readable token name. Select each source occurrence
+  // by its actual token coordinate before checking witness identity.
+  const alpha = full.entries.find(entry => entry.token === firstToken);
+  const beta = full.entries.find(entry => entry.token === secondToken);
+  assert.notEqual(alpha, undefined, "alpha original source token must be present");
+  assert.notEqual(beta, undefined, "beta original source token must be present");
   assert.notEqual(semanticId(alpha.cell), semanticId(beta.cell));
   for (const original of full.entries) {
     const address = semanticId(original.cell);
@@ -386,6 +644,18 @@ test("NI-addressed compact L-Space claims re-expand through the original source 
       "the compact NI resolves its full original side-specific witness and source coordinates");
     assert.equal(semanticId(exact.entries[0].cell), address);
     assert.notEqual(exact.selection.cellNi, undefined);
+    // RFC 6920's SHA-256 NI digest is exactly 43 base64url characters.
+    // The last sextet carries only four digest bits; toggling one of its
+    // two zero pad bits must REFUSE, not give a false "no matching source".
+    // This alias has the SAME 32 digest bytes as `address` but is not a
+    // canonical ni:///sha-256 name. URI Services is the original owner.
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const last = alphabet.indexOf(address.at(-1));
+    assert.equal(last % 4, 0, "source-issued NI addresses have zero pad bits");
+    const noncanonicalAlias = address.slice(0, -1) + alphabet[last + 1];
+    assert.notEqual(noncanonicalAlias, address);
+    assert.throws(() => queryInheritedTellings(frame, { cellNi: noncanonicalAlias }),
+      /noncanonical/, "an alias of the same digest must not look like absent testimony");
   }
   assert.deepEqual(sidesOf(queryInheritedTellings(frame, {
     cellNi: semanticId(alpha.cell),

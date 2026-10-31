@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { cell } from "@red-cup-engineering/signcell/cell";
-import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
+import { cellular2Complex, cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
-  apply, applyLaplacian, admitCellularSheaf, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf, sheafSourceScalar,
+  apply, applyLaplacian, admitCellularSheaf, cellularSheaf, cellularSheafCohomology, cellularSheafCohomologyStatus, exactCohomologyRankWithinBudget, MAX_EXACT_COHOMOLOGY_RANK_SLOTS, coboundary, cochain, constantSheaf, sheafSourceScalar,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
   weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection, tensorCellularSheaves, pullbackCellularSheaf, glueCellularSheafPatches,
 } from "../src/cellular-sheaf.mjs";
@@ -43,6 +43,106 @@ test("cellularSheaf: validates shapes, ids and endpoints", () => {
   assert.ok(Object.isFrozen(cellularSheaf({ vertices: v, edges: [ok] })));
 });
 
+test("constant sheaf source ownership excludes foreign array methods, accessor edges and undeclared incidence", () => {
+  const vertices=["alpha","beta"];
+  const existing=constantSheaf(vertices,[["alpha","beta"]]);
+  assert.equal(existing.vertices.length,2);
+  assert.equal(existing.edges.length,1);
+  assert.equal(existing.edges[0].id,0);
+  assert.equal(cellularSheafCohomology(existing).h0,1);
+  assert.deepEqual(cochain(existing,[
+    {vertex:"alpha",value:3},{vertex:"beta",value:3},
+  ],{missing:"refuse"}),[3,3],
+    "the original cochain consumer receives the repaired constant chart");
+  const withOwnId=constantSheaf(vertices,[{id:"claim:e",from:"alpha",to:"beta"}]);
+  assert.equal(withOwnId.edges[0].id,"claim:e");
+  const withoutId=constantSheaf(vertices,[{from:"alpha",to:"beta"}]);
+  assert.equal(withoutId.edges[0].id,0);
+  const nullProto=Object.assign(Object.create(null),{
+    id:"source:null-prototype",from:"alpha",to:"beta",
+  });
+  assert.equal(constantSheaf(vertices,[nullProto]).edges[0].id,
+    "source:null-prototype");
+
+  let executable=0;
+  const hostileVertices=[...vertices];
+  Object.defineProperty(hostileVertices,"map",{enumerable:true,get(){
+    executable++;throw Error("a foreign source map was invoked");
+  }});
+  assert.throws(()=>constantSheaf(hostileVertices,[["alpha","beta"]]),
+    /constantSheaf vertices.*sparse or decorated/);
+  const hostileEdges=[["alpha","beta"]];
+  Object.defineProperty(hostileEdges,"map",{enumerable:true,get(){
+    executable++;throw Error("a foreign edge list map was invoked");
+  }});
+  assert.throws(()=>constantSheaf(vertices,hostileEdges),
+    /constantSheaf edges.*sparse or decorated/);
+  const accessor={id:"claimed:e",to:"beta"};
+  Object.defineProperty(accessor,"from",{enumerable:true,get(){
+    executable++;throw Error("a foreign edge source getter was invoked");
+  }});
+  assert.throws(()=>constantSheaf(vertices,[accessor]),
+    /constantSheaf source edge.*inert own source fields/);
+  const inherited=Object.assign(Object.create({from:"alpha"}),{
+    id:"claim:e",to:"beta",
+  });
+  assert.throws(()=>constantSheaf(vertices,[inherited]),
+    /constantSheaf source edge.*plain original source record/);
+  const hidden={from:"alpha",to:"beta"};
+  Object.defineProperty(hidden,"authority",{value:"unearned"});
+  assert.throws(()=>constantSheaf(vertices,[hidden]),
+    /constantSheaf source edge.*exact inert own source fields/);
+  const decoratedTuple=["alpha","beta"];
+  Object.defineProperty(decoratedTuple,Symbol.iterator,{get(){
+    executable++;throw Error("tuple iterator invoked");
+  }});
+  assert.throws(()=>constantSheaf(vertices,[decoratedTuple]),
+    /constantSheaf edge pair.*sparse or decorated/);
+  assert.throws(()=>constantSheaf(vertices,[["alpha","beta","hidden"]]),
+    /exactly two endpoints/);
+  assert.equal(executable,0,
+    "source admission never executes caller array methods, getters or iterators");
+});
+
+test("constant sheaf construction checks work budgets and safe coordinate sums before allocating dense matrices",()=>{
+  const vertices=["a","b"];
+  assert.throws(()=>constantSheaf(vertices,[["a","b"]],2048),
+    /dense restriction construction not evaluated; coefficient slot budget exceeded/);
+  assert.throws(()=>constantSheaf(vertices,[["a","b"]],Number.MAX_SAFE_INTEGER),
+    /dense restriction construction not evaluated/);
+  for(const dim of [NaN,Infinity,-1,1.1,Number.MAX_SAFE_INTEGER+1])
+    assert.throws(()=>constantSheaf(vertices,[["a","b"]],dim),
+      /dimension must be a nonnegative safe integer/);
+  let accesses=0;
+  const oversized=Array(65537).fill("a");
+  Object.defineProperty(oversized,Symbol.iterator,{get(){
+    accesses++;throw Error("unbounded input visited");
+  }});
+  assert.throws(()=>constantSheaf(oversized,[]),
+    /source lists exceed finite admission budget/);
+  assert.throws(()=>constantSheaf(vertices,Array(65537).fill(["a","b"])),
+    /source lists exceed finite admission budget/);
+  assert.equal(accesses,0);
+  // No O(dim²) identity matrix is allocated for an edgeless source,
+  // while the underlying chart must still have representable coordinates.
+  const edgeless=constantSheaf(vertices,[],0);
+  assert.equal(edgeless.c0,0);
+  assert.equal(edgeless.c1,0);
+  assert.equal(cellularSheafCohomology(edgeless).h0,0);
+  assert.throws(()=>constantSheaf(vertices,[],Number.MAX_SAFE_INTEGER),
+    /vertex coordinate index exceeds safe integer range/);
+  assert.throws(()=>cellularSheaf({
+    vertices:[{id:"one",dim:Number.MAX_SAFE_INTEGER},{id:"two",dim:1}],
+    edges:[],
+  }),/vertex coordinate index exceeds safe integer range/,
+    "the original general chart owner also refuses rounded cochain coordinates");
+  const exact=constantSheaf(vertices,[["a","b"]],2);
+  assert.equal(exact.c0,4);
+  assert.equal(exact.c1,2);
+  assert.equal(cellularSheafCohomology(exact).h0,2);
+  assert.equal(cellularSheafCohomology(exact).h1,0);
+});
+
 test("coboundary and Laplacian: (δx)_e = F_to x_to − F_from x_from, L = δᵀδ", () => {
   const s = constantSheaf(["a", "b", "c"], [["a", "b"], ["b", "c"]]);
   assert.deepEqual(apply(coboundary(s), [1, 3, 6]), [2, 3]);
@@ -50,6 +150,108 @@ test("coboundary and Laplacian: (δx)_e = F_to x_to − F_from x_from, L = δᵀ
   assert.deepEqual(applyLaplacian(s, [5, 5, 5]), [0, 0, 0]);
   const L = sheafLaplacian(s);
   assert.deepEqual(L.entries.map((row) => row.map(([, v]) => v)), [[1, -1], [-1, 2, -1], [-1, 1]]);
+});
+
+test("original sparse duality uses one finite source vector and refuses false zero/overflow load certificates",()=>{
+  const s=constantSheaf(["a","b"],[["a","b"]]);
+  const delta=coboundary(s);
+  const x=[2,3],y=[4];
+  const dx=apply(delta,x),dty=applyTranspose(delta,y);
+  assert.deepEqual(dx,[1]);
+  assert.deepEqual(dty,[-4,4]);
+  assert.equal(dx[0]*y[0],x.reduce((sum,entry,i)=>sum+entry*dty[i],0),
+    "the original finite adjoint identity holds in both directions");
+  assert.deepEqual(apply(delta,Float64Array.from(x)),dx);
+  assert.deepEqual(applyTranspose(delta,Float64Array.from(y)),dty);
+
+  const reverse=coboundary(constantSheaf(["a","b"],[["b","a"]]));
+  assert.deepEqual(apply(reverse,x),[-dx[0]]);
+  assert.deepEqual(applyTranspose(reverse,y),dty.map(v=>-v));
+
+  let executed=0;
+  const getter=[4];
+  Object.defineProperty(getter,"0",{enumerable:true,get(){
+    executed++;return 0;
+  }});
+  assert.throws(()=>applyTranspose(delta,getter),
+    /applyTranspose source vector array slots must be inert own data/);
+  const hostile=[4];
+  Object.defineProperty(hostile,Symbol.iterator,{value(){
+    executed++;return [0][Symbol.iterator]();
+  }});
+  assert.throws(()=>applyTranspose(delta,hostile),
+    /applyTranspose source vector cannot be sparse or decorated/);
+  const forward=[2,3];
+  Object.defineProperty(forward,"0",{enumerable:true,get(){
+    executed++;return 0;
+  }});
+  assert.throws(()=>apply(delta,forward),
+    /apply source vector array slots must be inert own data/);
+  assert.equal(executed,0);
+
+  const typed=new Float64Array([4]);
+  Object.defineProperty(typed,"length",{get(){
+    executed++;throw Error("typed vector length getter executed");
+  }});
+  Object.defineProperty(typed,Symbol.iterator,{value(){
+    executed++;throw Error("typed vector iterator executed");
+  }});
+  assert.deepEqual(applyTranspose(delta,typed),dty);
+  assert.equal(executed,0);
+
+  const high=cellularSheaf({
+    vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+    edges:[{id:"e",from:"a",to:"b",dim:1,
+      restrict:{from:[[1e200]],to:[[0]]}}],
+  });
+  assert.throws(()=>applyTranspose(coboundary(high),[1e200]),
+    /applyTranspose: numerical product overflowed or underflowed host arithmetic/);
+  const tiny=cellularSheaf({
+    vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+    edges:[{id:"e",from:"a",to:"b",dim:1,
+      restrict:{from:[[1e-200]],to:[[0]]}}],
+  });
+  assert.throws(()=>applyTranspose(coboundary(tiny),[1e-200]),
+    /applyTranspose: numerical product overflowed or underflowed host arithmetic/,
+    "a source-bearing tiny nonzero load cannot become fabricated zero");
+
+  const stacked=cellularSheaf({
+    vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+    edges:["one","two"].map(id=>({id,from:"a",to:"b",dim:1,
+      restrict:{from:[[1e308]],to:[[0]]}})),
+  });
+  assert.throws(()=>applyTranspose(coboundary(stacked),[1,1]),
+    /applyTranspose: numerical sum overflowed host arithmetic/,
+    "two individually finite terms must not accumulate an unreported Infinity");
+  // Differential finite conformance over all 2^9 subsets of a
+  // three-position directed 1-skeleton, including original self-loops.
+  // This is exhaustive for this fixture, not a general proof of adjoints.
+  const positions=["witness:a","witness:b","witness:c"];
+  const possible=positions.flatMap((from,i)=>positions.map((to,j)=>({
+    id:"occurrence:"+i+":"+j,from,to,
+  })));
+  const observations=[2,-3,5];
+  let verified=0;
+  for(let mask=0;mask<512;mask++){
+    const contacts=possible.filter((_,i)=>(mask&(1<<i))!==0);
+    const sheaf=constantSheaf(positions,contacts);
+    const d=coboundary(sheaf);
+    const edgeValues=contacts.map((_,i)=>i%2===0?i+1:-(i+1));
+    const forward=apply(d,observations);
+    const backward=applyTranspose(d,edgeValues);
+    const lhs=forward.reduce((sum,v,i)=>sum+v*edgeValues[i],0);
+    const rhs=backward.reduce((sum,v,i)=>sum+v*observations[i],0);
+    assert.equal(lhs,rhs,"original sparse dual pairing at mask "+mask);
+    const reversed=constantSheaf(positions,contacts.map(c=>({
+      id:c.id,from:c.to,to:c.from,
+    })));
+    assert.deepEqual(applyTranspose(coboundary(reversed),edgeValues),
+      backward.map(v=>v===0?0:-v),"directed reversal must negate the same original dual at "+mask);
+    verified++;
+  }
+  assert.equal(verified,512);
+  assert.deepEqual(applyTranspose(delta,[4]),dty,
+    "negative controls do not change ordinary source-indexed linear algebra");
 });
 
 test("exact cohomology: agrees with cohomologyOfCells on the integer incidence", () => {
@@ -77,6 +279,150 @@ test("exact cohomology: rational restrictions and a twisted cycle", () => {
   assert.equal(cellularSheafCohomology(flat).h0, 1);
   const inexact = cellularSheaf({ vertices: vs, edges: [edge(1, "a", "b", 0.5, 1)] });
   assert.throws(() => cellularSheafCohomology(inexact), RangeError);
+});
+
+test("exact cohomology admits original sheaf custody, not counterfeit dimensions or an exact label", () => {
+  const built = constantSheaf(["source:a","source:b"], [["source:a","source:b"]]);
+  const reference = cellularSheafCohomology(built);
+  assert.equal(reference.h0,1);
+  assert.equal(reference.h1,0);
+  // A transported chart is mathematically re-admitted by the original
+  // constructor; it is not trusted merely because its labels agree.
+  const transported = JSON.parse(JSON.stringify(built));
+  assert.deepEqual(cellularSheafCohomology(transported),reference);
+  assert.equal(exactCohomologyRankWithinBudget(transported),true);
+  assert.throws(()=>cellularSheafCohomology({exact:true,c0:3,c1:0,edges:[]}),
+    /cellularSheaf chart/,
+    "a caller cannot issue H0/H1 by inventing an exact rank-zero chart");
+  assert.throws(()=>exactCohomologyRankWithinBudget({exact:true,c0:3,c1:0,edges:[]}),
+    /cellularSheaf chart/,
+    "budget qualification itself must not bless unissued geometry");
+  const corrupted={...transported,c0:9};
+  assert.throws(()=>cellularSheafCohomology(corrupted),
+    /derived indices, dimensions, restrictions or exactness differ/,
+    "a transported chart cannot rewrite original sheaf degree dimensions");
+  let executed=0;
+  const hostile={...transported};
+  Object.defineProperty(hostile,"exact",{enumerable:true,get(){executed++;return true;}});
+  assert.throws(()=>cellularSheafCohomology(hostile),/inert own source fields/);
+  assert.equal(executed,0);
+});
+
+test("exact rational rank bounds dense coefficient work before materialization without manufacturing vanishing",()=>{
+  const vertices=Array.from({length:257},(_,i)=>"source:vertex:"+i);
+  const edges=Array.from({length:256},(_,i)=>[vertices[i],vertices[i+1]]);
+  const expensive=constantSheaf(vertices,edges);
+  assert.equal(expensive.c0,257);
+  assert.equal(expensive.c1,256);
+  assert.equal(MAX_EXACT_COHOMOLOGY_RANK_SLOTS,65536);
+  assert.equal(exactCohomologyRankWithinBudget(expensive),false);
+  assert.throws(()=>cellularSheafCohomology(expensive),
+    /not evaluated; dense coefficient work budget exceeded/,
+    "out-of-budget rank MUST refuse instead of claiming H1=0");
+  const elementary=constantSheaf(["a","b","c"],[["a","b"],["b","c"]]);
+  assert.equal(exactCohomologyRankWithinBudget(elementary),true);
+  assert.equal(cellularSheafCohomology(elementary).h0,1);
+  assert.equal(cellularSheafCohomology(elementary).h1,0);
+  // A zero-row differential needs no rational matrix allocation, even if
+  // its valid H0 rank dimension happens to exceed the dense work cap.
+  const isolated=constantSheaf(vertices,[]);
+  assert.equal(exactCohomologyRankWithinBudget(isolated),true);
+  const trivial=cellularSheafCohomology(isolated);
+  assert.equal(trivial.h0,257);
+  assert.equal(trivial.h1,0);
+});
+
+test("exact H0/H1 retain original graph cohomology across all 512 three-position directed incidences",()=>{
+  const vertices=["source:a","source:b","source:c"];
+  const possible=vertices.flatMap((from,i)=>vertices.map((to,j)=>({
+    id:"directed:"+i+":"+j,from,to,
+  })));
+  let verified=0;
+  // Exhaustive finite metamodel over the nine independently present/absent
+  // oriented incidences (including self loops). This is a finite conformance
+  // assay of two existing source implementations, NOT a Lean theorem.
+  for(let mask=0;mask<(1<<possible.length);mask++){
+    const edges=possible.filter((_,i)=>(mask&(1<<i))!==0);
+    const sheaf=cellularSheafCohomology(constantSheaf(vertices,edges));
+    const complex=cellular2Complex({vertices,edges,faces:[]});
+    assert.equal(sheaf.h0,complex.betti.h0,"H0 differs at mask "+mask);
+    assert.equal(sheaf.h1,complex.graphOnlyH1,"graph-only H1 differs at mask "+mask);
+    assert.equal(sheaf.rank,complex.rank.zero,"δ rank differs at mask "+mask);
+    assert.equal(sheaf.h0-sheaf.h1,vertices.length-edges.length,
+      "Euler relation differs at mask "+mask);
+    verified++;
+  }
+  assert.equal(verified,512);
+});
+
+test("Hodge H0 remains numerically assessable when exact H1 exceeds the original rank budget",()=>{
+  // This chart is valid, small enough for ordinary numerical graph
+  // operations, but its 257*256 dense Q differential is 65,792 slots.
+  const vertices=Array.from({length:257},(_,i)=>"position:"+i);
+  const edges=Array.from({length:256},(_,i)=>[vertices[i],vertices[i+1]]);
+  const source=constantSheaf(vertices,edges);
+  assert.equal(source.c0,257);
+  assert.equal(source.c1,256);
+  assert.equal(source.exact,true);
+  assert.equal(exactCohomologyRankWithinBudget(source),false);
+  const expected="not-evaluated: rational rank work budget exceeded";
+  assert.equal(cellularSheafCohomologyStatus(source),expected);
+  assert.throws(()=>cellularSheafCohomology(source),
+    /exact rational rank not evaluated;/,
+    "a work-budget refusal is NOT exact H1=0");
+  const zero=hodgeCheck(source,Array(source.c0).fill(0),{maxSteps:0});
+  assert.equal(zero.cohomologyStatus,expected);
+  assert.equal(zero.h1,null,"unassayed exact H1 has no invented numerical value");
+  assert.equal(zero.harmonic,true);
+  assert.equal(zero.sectionResidual,0);
+  assert.equal(zero.laplacianResidual,0);
+  assert.equal(zero.section.length,source.c0);
+
+  const nonzero=Array(source.c0).fill(0);nonzero[0]=1;
+  const unrelaxed=hodgeCheck(source,nonzero,{maxSteps:0});
+  assert.equal(unrelaxed.cohomologyStatus,expected);
+  assert.equal(unrelaxed.h1,null);
+  assert.equal(unrelaxed.harmonic,false,
+    "not evaluating H1 cannot confer harmonicity on a nonzero residual");
+  assert.ok(unrelaxed.sectionResidual>0);
+
+  const transported=JSON.parse(JSON.stringify(source));
+  assert.equal(cellularSheafCohomologyStatus(transported),expected);
+  assert.deepEqual(hodgeCheck(transported,Array(source.c0).fill(0),
+    {maxSteps:0}),zero,
+    "original mathematical custody survives valid source transport");
+  const forged={...transported,c1:0};
+  assert.throws(()=>cellularSheafCohomologyStatus(forged),
+    /cellularSheaf chart:/,
+    "a false dimension cannot make an over-budget chart appear exact");
+});
+
+test("Hodge H1 status agrees with the original exact and nonexact chart contracts",()=>{
+  const exact=constantSheaf(["a","b","c"],
+    [["a","b"],["b","c"],["c","a"]]);
+  const original=cellularSheafCohomology(exact);
+  const reading=hodgeCheck(exact,[1,2,3],{maxSteps:30});
+  assert.equal(reading.cohomologyStatus,"exact");
+  assert.equal(reading.h1,original.h1);
+  assert.equal(original.h1,1);
+
+  // Nonexact binary64 restriction entries support numerical heat flow
+  // without pretending the exact rational H1 rank was computed.
+  const nonexact=cellularSheaf({
+    vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+    edges:[{id:"e",from:"a",to:"b",dim:1,
+      restrict:{from:[[0.5]],to:[[1]]}}],
+  });
+  assert.equal(nonexact.exact,false);
+  assert.equal(cellularSheafCohomologyStatus(nonexact),
+    "not-evaluated: nonexact source restrictions");
+  const numeric=hodgeCheck(nonexact,[0,0],{maxSteps:0});
+  assert.equal(numeric.cohomologyStatus,
+    "not-evaluated: nonexact source restrictions");
+  assert.equal(numeric.h1,undefined,
+    "the legacy unassayed nonexact H1 remains undefined");
+  assert.equal(numeric.harmonic,true,
+    "the zero section's numerical harmonicity is not an H1 proof");
 });
 
 test("diffusion: converges to the harmonic section (component means) and lies in ker L", () => {
@@ -164,6 +510,69 @@ test("diffuse: pinned testimony is order-independent, identical repetition is id
   assert.throws(() => diffuse(s, [3, 7], { fixed: [{ vertex: "a", value: Infinity }] }), /pinned stalk values/);
 });
 
+test("source-qualified heat flow rejects fabricated numeric vectors, boundary pins and options",()=>{
+  const sheaf=constantSheaf(["a","b"],[["a","b"]]);
+  let callbacks=0;
+  const forged=[0,4];
+  Object.defineProperty(forged,Symbol.iterator,{value(){
+    callbacks++;return [4,0][Symbol.iterator]();
+  }});
+  assert.throws(()=>diffuse(sheaf,forged,{maxSteps:0}),
+    /diffuse initial 0-cochain cannot be sparse or decorated/);
+  const getterVector=[0,4];
+  Object.defineProperty(getterVector,"0",{enumerable:true,get(){
+    callbacks++;return 4;
+  }});
+  assert.throws(()=>diffuse(sheaf,getterVector,{maxSteps:0}),
+    /diffuse initial 0-cochain array slots must be inert own data/);
+  const forgedPin={value:4};
+  Object.defineProperty(forgedPin,"vertex",{enumerable:true,get(){
+    callbacks++;return "a";
+  }});
+  assert.throws(()=>diffuse(sheaf,[0,4],{maxSteps:0,fixed:[forgedPin]}),
+    /diffuse fixed reading: requires exact inert own source fields/);
+  const decoratedPin={vertex:"a",value:0};
+  Object.defineProperty(decoratedPin,"sourceAuthority",{value:"fabricated"});
+  assert.throws(()=>diffuse(sheaf,[0,4],{maxSteps:0,fixed:[decoratedPin]}),
+    /diffuse fixed reading: requires exact inert own source fields/);
+  const inheritedPin=Object.assign(Object.create({vertex:"a"}),{value:4});
+  assert.throws(()=>diffuse(sheaf,[0,4],{maxSteps:0,fixed:[inheritedPin]}),
+    /diffuse fixed reading: requires a plain original source record/);
+  const pinnedValues=[0];
+  Object.defineProperty(pinnedValues,"0",{enumerable:true,get(){
+    callbacks++;return 0;
+  }});
+  assert.throws(()=>diffuse(sheaf,[0,4],{maxSteps:0,
+    fixed:[{vertex:"a",value:pinnedValues}]}),
+    /diffuse pinned coordinates array slots must be inert own data/);
+  const maliciousOptions={maxSteps:0};
+  Object.defineProperty(maliciousOptions,"tolerance",{enumerable:true,get(){
+    callbacks++;return 1e-12;
+  }});
+  assert.throws(()=>diffuse(sheaf,[0,4],maliciousOptions),
+    /diffuse options: requires exact inert own source fields/);
+  assert.throws(()=>hodgeCheck(sheaf,[0,4],maliciousOptions),
+    /hodgeCheck options: requires exact inert own source fields/);
+  assert.throws(()=>diffuse(sheaf,[0,4],{unknown:"issued"}),
+    /diffuse options: undeclared numerical option/);
+  assert.throws(()=>diffuse(sheaf,[0,4],{maxSteps:1000001}),/maxSteps/);
+  assert.equal(callbacks,0,"mathematical source admission runs no untrusted callbacks");
+
+  const original=diffuse(sheaf,[0,4],{maxSteps:10});
+  const typed=new Float64Array([0,4]);
+  Object.defineProperty(typed,"length",{get(){
+    callbacks++;throw Error("typed-array length override executed");
+  }});
+  Object.defineProperty(typed,Symbol.iterator,{value(){
+    callbacks++;throw Error("typed-array iterator executed");
+  }});
+  assert.deepEqual(diffuse(sheaf,typed,{maxSteps:10}),original,
+    "native numeric vector variants admit the same source coordinates");
+  assert.equal(callbacks,0);
+  const pinned=diffuse(sheaf,[0,4],{maxSteps:0,fixed:[{vertex:"a",value:0}]});
+  assert.deepEqual(pinned.section,[0,4],"a legitimate pinned coordinate is retained");
+});
+
 test("diffuse: rejects unstable steps and non-finite inputs instead of certifying numeric settlement", () => {
   const s = constantSheaf(["a", "b"], [["a", "b"]]);
   const ordinary = diffuse(s, [0, 10]);
@@ -183,6 +592,39 @@ test("diffuse: rejects unstable steps and non-finite inputs instead of certifyin
   assert.throws(() => diffuse(s, [1e308, -1e308]), {
     name: "RangeError", message: "apply: numerical sum overflowed host arithmetic",
   });
+});
+
+test("shared sheaf norm preserves nonzero residual and normalized rigidity across the binary64 exponent range",()=>{
+  const graph=constantSheaf(["a","b"],[["a","b"]]);
+  const reverse=constantSheaf(["a","b"],[["b","a"]]);
+  let verified=0;
+  for(const magnitude of [1e-200,1e-100,1,1e100,1e200,1e308]){
+    const result=diffuse(graph,[magnitude,0],{tolerance:0,maxSteps:0});
+    const backward=diffuse(reverse,[magnitude,0],{tolerance:0,maxSteps:0});
+    assert.equal(result.residual,magnitude,
+      "original nonzero coboundary cannot be squared into zero at "+magnitude);
+    assert.equal(result.compatible,false,
+      "a nonzero exact-tolerance coboundary is not a global section");
+    assert.equal(result.converged,false,
+      "a nonzero exact-tolerance gradient cannot be called stationary");
+    assert.equal(backward.residual,result.residual,
+      "directed reversal preserves the source's Euclidean residual");
+    verified++;
+  }
+  assert.equal(verified,6);
+  assert.throws(()=>diffuse(graph,[1.5e308,0],{tolerance:0,maxSteps:0}),
+    /numerical norm exceeded finite host arithmetic/,
+    "an unrepresentable gradient norm must refuse, never become valid infinity");
+
+  // The original normalized rigidity sheaf consumes this SAME native norm.
+  // Both tiny and large but finite nonzero bars remain nonzero directions,
+  // not spurious zero-length bars or all-zero restriction matrices.
+  for(const length of [1e-200,1e200]){
+    const sheaf=rigiditySheaf([[0,0],[length,0]],[[0,1]],2,
+      {normalize:true});
+    assert.deepEqual(sheaf.edges[0].restrict.from,[[1,0]]);
+    assert.deepEqual(sheaf.edges[0].restrict.to,[[1,0]]);
+  }
 });
 
 test("diffusion with pinned vertices: boundary conditions are admitted evidence", () => {
@@ -294,6 +736,74 @@ test("solveNormal: an unresolvable load is an obstruction in ker δ, not NaN", (
   assert.ok(!r.consistent);
   assert.ok(Number.isFinite(r.residual) && r.residual > 0.1);
   near(norm2(apply(coboundary(s), r.obstruction)), 0, 1e-8); // the obstruction is a motion
+});
+
+test("normal loads admit the declared finite vector, never iterable claims or underflowed obstructions",()=>{
+  const sheaf=constantSheaf(["a","b"],[["a","b"]]);
+  let callbacks=0;
+  const forged=[0,0];
+  Object.defineProperty(forged,Symbol.iterator,{value(){
+    callbacks++;return [1,-1][Symbol.iterator]();
+  }});
+  assert.throws(()=>solveNormal(sheaf,forged),
+    /solveNormal source load cannot be sparse or decorated/);
+  const accessor=[1,-1];
+  Object.defineProperty(accessor,"0",{enumerable:true,get(){
+    callbacks++;return 0;
+  }});
+  assert.throws(()=>solveNormal(sheaf,accessor),
+    /solveNormal source load array slots must be inert own data/);
+  const hostileOptions={};
+  Object.defineProperty(hostileOptions,"maxSteps",{enumerable:true,get(){
+    callbacks++;return 1000000;
+  }});
+  assert.throws(()=>solveNormal(sheaf,[1,-1],hostileOptions),
+    /solveNormal options: requires exact inert own source fields/);
+  for(const options of [{tolerance:NaN},{consistency:Infinity},{floor:-1},
+      {maxSteps:-1},{maxSteps:1000001},{unknown:1}]){
+    assert.throws(()=>solveNormal(sheaf,[1,-1],options),
+      /solveNormal: (tolerance|consistency|floor|maxSteps)|solveNormal options:/);
+  }
+  for(const invalid of [[Infinity,0],[NaN,0],["1",0]]){
+    assert.throws(()=>solveNormal(sheaf,invalid),/rhs stalk values must be finite numbers/);
+  }
+  assert.equal(callbacks,0,"normal solver cannot execute input getters or iterators");
+
+  const expected=solveNormal(sheaf,[1,-1]);
+  assert.ok(expected.consistent && expected.converged);
+  const typed=new Float64Array([1,-1]);
+  Object.defineProperty(typed,"length",{get(){
+    callbacks++;throw Error("typed-array length override");
+  }});
+  Object.defineProperty(typed,Symbol.iterator,{value(){
+    callbacks++;throw Error("typed-array iterator override");
+  }});
+  assert.deepEqual(solveNormal(sheaf,typed),expected);
+  assert.equal(callbacks,0);
+  const doubled=solveNormal(sheaf,[2,-2]);
+  near(doubled.section[0],2*expected.section[0]);
+  const reverse=constantSheaf(["a","b"],[["b","a"]]);
+  const reversed=solveNormal(reverse,[1,-1]);
+  near(reversed.section[0],-expected.section[0],
+    1e-9);
+  // A nonzero load on an edgeless original sheaf is a genuine obstruction.
+  // In particular the small value must not be squared into a false zero.
+  const noEdges=constantSheaf(["isolated"],[]);
+  for(const magnitude of [1e-200,1e-300,1e-310,1e-320]){
+    const result=solveNormal(noEdges,[magnitude]);
+    assert.equal(result.converged,true);
+    assert.equal(result.consistent,false,
+      "a real unresolvable load cannot be hidden by an unrequested numeric floor");
+    assert.equal(result.residual,magnitude);
+    assert.equal(result.rhsNorm,magnitude);
+  }
+  // An operator may declare an application-specific absolute scale, but
+  // the default floor is zero, never a secret 1e-300 acceptance threshold.
+  const explicitlyQualified=solveNormal(noEdges,[1e-310],{floor:1e-300});
+  assert.equal(explicitlyQualified.consistent,true,
+    "only the explicitly supplied floor grants this numerical tolerance");
+  assert.throws(()=>solveNormal(noEdges,[1e308],{consistency:1e308}),
+    /consistency limit exceeded finite host arithmetic/);
 });
 
 const norm2 = (v) => Math.sqrt(v.reduce((a, b) => a + b * b, 0));
@@ -415,6 +925,110 @@ test("huge but finite exact sheaf restrictions now project faithfully through Da
   });
   assert.equal(cellularSheafCohomology(overflowing).h0, 1);
   assert.throws(() => coboundary(overflowing), /exceeds finite binary64 range/);
+});
+
+test("weighted metrics and observed numeric cochains cannot execute source arrays or replace a negative metric",()=>{
+  const s=constantSheaf(["a","b"],[["a","b"]]);
+  let executed=0;
+  // Original source declared a NEGATIVE scalar, then supplied methods
+  // which replaced that scalar with +1 during the old Cholesky evaluation.
+  const fake=[[-1]];
+  Object.defineProperty(fake,"every",{value(){executed++;return true;}});
+  Object.defineProperty(fake,"map",{value(){executed++;return [[1]];}});
+  assert.throws(()=>weightedSheafDirichlet(s,[fake],[0,2]),
+    /weighted edge metric cannot be sparse or decorated/);
+  assert.throws(()=>weightedSheafLaplacian(s,[fake]),
+    /weighted edge metric cannot be sparse or decorated/);
+  assert.throws(()=>weightedSheafDirichlet(s,[[[-1]]],[0,2]),
+    /not positive definite/);
+  const row=[1];
+  Object.defineProperty(row,"0",{enumerable:true,get(){
+    executed++;throw Error("called hostile metric scalar getter");
+  }});
+  assert.throws(()=>weightedSheafDirichlet(s,[[row]],[0,2]),
+    /weighted metric row array slots must be inert own data/);
+  const metrics=[[[1]]];
+  Object.defineProperty(metrics[0],"0",{enumerable:true,get(){
+    executed++;throw Error("called hostile metric-row getter");
+  }});
+  assert.throws(()=>weightedSheafLaplacian(s,metrics),
+    /weighted edge metric array slots must be inert own data/);
+  const witness=[0,2];
+  Object.defineProperty(witness,"0",{enumerable:true,get(){
+    executed++;throw Error("called hostile numeric source getter");
+  }});
+  assert.throws(()=>weightedSheafDirichlet(s,[[[1]]],witness),
+    /weighted source cochain array slots must be inert own data/);
+  const decorated=[[[1]]];
+  Object.defineProperty(decorated,Symbol("unadmitted"),{value:true});
+  assert.throws(()=>weightedSheafDirichlet(s,decorated,[0,2]),
+    /weighted source metrics cannot be sparse or decorated/);
+  const vector=[0,2];
+  Object.defineProperty(vector,Symbol("unadmitted"),{value:true});
+  assert.throws(()=>weightedSheafDirichlet(s,[[[1]]],vector),
+    /weighted source cochain cannot be sparse or decorated/);
+  const rational={kind:"exactNumber.rational",den:"1"};
+  Object.defineProperty(rational,"num",{enumerable:true,get(){
+    executed++;throw Error("called hostile rational metric getter");
+  }});
+  assert.throws(()=>weightedSheafDirichlet(s,[[[rational]]],[0,2]),
+    /exact source scalar cannot contain accessors or hidden data/);
+  const typed=new Float64Array([0,2]);
+  Object.defineProperty(typed,"length",{get(){
+    executed++;throw Error("typed-array length override executed");
+  }});
+  Object.defineProperty(typed,Symbol.iterator,{value(){
+    executed++;throw Error("typed-array iterator executed");
+  }});
+  Object.defineProperty(typed,"map",{value(){
+    executed++;throw Error("typed-array map override executed");
+  }});
+  assert.equal(weightedSheafDirichlet(s,[[[1]]],typed).energy,4,
+    "the original numeric TypedArray consumer remains admitted without source callbacks");
+  assert.throws(()=>weightedSheafDirichlet(s,[[[1]]],new DataView(new ArrayBuffer(16))),
+    /finite 0-cochain/);
+  assert.throws(()=>weightedSheafDirichlet(s,[[[1]]],new Float64Array([Infinity,2])),
+    /finite 0-cochain/);
+  assert.equal(executed,0,"metric and observed-value source callbacks must not execute");
+  assert.equal(weightedSheafDirichlet(s,[[[1]]],[0,2]).energy,4,
+    "the original lawful unit metric still has its expected energy");
+});
+
+test("native weighted Dirichlet equals quadratic Laplacian energy under incidence reversal and metric scaling",()=>{
+  const chart=constantSheaf(["a","b"],[["a","b"]],2);
+  const reverse=constantSheaf(["a","b"],[["b","a"]],2);
+  const W=[[[2,1],[1,3]]];
+  const x=[2,3,4,5];
+  const sourceEnergy=weightedSheafDirichlet(chart,W,x);
+  const L=weightedSheafLaplacian(chart,W);
+  const Lx=apply(L,x);
+  const quadratic=x.reduce((sum,v,i)=>sum+v*Lx[i],0);
+  near(sourceEnergy.energy,28,1e-12);
+  near(quadratic,sourceEnergy.energy,1e-12);
+  near(weightedSheafDirichlet(reverse,W,x).energy,sourceEnergy.energy,1e-12,
+    "an oriented edge reversal reverses the residual but preserves quadratic energy");
+  const doubled=[[[4,2],[2,6]]];
+  near(weightedSheafDirichlet(chart,doubled,x).energy,2*sourceEnergy.energy,1e-12);
+  const sourceCarried=[[[ "2","1" ],[ "1","3" ]]];
+  near(weightedSheafDirichlet(chart,sourceCarried,x).energy,sourceEnergy.energy,1e-12);
+  let positiveMatrices=0;
+  for(let a=1;a<=4;a++)for(let b=-2;b<=2;b++)for(let c=1;c<=5;c++){
+    if(a*c<=b*b)continue; // Sylvester's criterion on 2×2 symmetric W
+    const matrix=[[[a,b],[b,c]]];
+    const e=weightedSheafDirichlet(chart,matrix,x).energy;
+    const applied=apply(weightedSheafLaplacian(chart,matrix),x);
+    const q=x.reduce((sum,v,i)=>sum+v*applied[i],0);
+    const rev=weightedSheafDirichlet(reverse,matrix,x).energy;
+    assert.ok(Math.abs(e-q)<1e-9*Math.max(1,Math.abs(e)),
+      "finite SPD Dirichlet/Laplacian agreement at "+a+","+b+","+c);
+    assert.ok(Math.abs(e-rev)<1e-9*Math.max(1,Math.abs(e)),
+      "finite SPD orientation reversal at "+a+","+b+","+c);
+    positiveMatrices++;
+  }
+  assert.ok(positiveMatrices>=50,
+    "finite law assay must actually exercise many strictly positive matrices");
+  assert.equal(sourceEnergy.perEdge[0].id,0,
+    "numerical energy still retains the original source-indexed edge identity");
 });
 
 test("numeric sheaf and weighted Dirichlet receipts reject overflow instead of fabricating Infinity", () => {
@@ -603,6 +1217,64 @@ test("covered source-local sheaf sections actually glue; contradictory and missi
  assert.equal(locallyBroken.failedRegion,"odoo");
 });
 
+
+test("native source-qualified tensor charts are received by original exact extension and gluing",()=>{
+  const a=constantSheaf(["a","b"],[["a","b"]]);
+  const b=constantSheaf(["a","b"],[["a","b"]]);
+  const tensor=tensorCellularSheaves([
+    {sourceRef:"original:stalk-a",sheaf:a},
+    {sourceRef:"original:stalk-b",sheaf:b},
+  ]);
+  assert.equal(admitCellularSheaf(tensor),tensor,
+    "the original tensor producer must issue a chart accepted by its own sheaf receiver");
+  assert.deepEqual(tensor.tensor.factors,["original:stalk-a","original:stalk-b"]);
+  const extended=extendCellularSheafSection(tensor,[{
+    vertex:"a",coordinate:0,value:"4",sourceRecord:"witness:local-a",
+  }]);
+  assert.equal(extended.status,"mathematically-liftable");
+  assert.deepEqual(extended.exactSection.map(x=>x.num+"/"+x.den),["4/1","4/1"]);
+  const glued=glueCellularSheafPatches(tensor,[{
+    region:"common-ground",sourceRef:"witness:local-b",
+    vertices:[{vertex:"a",values:["4"]},{vertex:"b",values:["4"]}],
+  }]);
+  assert.equal(glued.status,"globally-glued");
+  assert.deepEqual(glued.exactGlobalSection.map(x=>x.num+"/"+x.den),["4/1","4/1"]);
+  // Native custody is not transferable by merely copying a JSON carrier
+  // with an extra tensor label. A genuine issued package/transport receiver is
+  // a separate original release/contract gate.
+  assert.throws(()=>admitCellularSheaf(structuredClone(tensor)),
+    /exact inert own source fields/);
+});
+
+test("cellular tensor input rejects executable, hidden and decorated source factors",()=>{
+  const first=constantSheaf(["a","b"],[["a","b"]]);
+  const second=constantSheaf(["a","b"],[["a","b"]]);
+  const good={sourceRef:"source:first",sheaf:first};
+  let called=0;
+  const malicious={sourceRef:"source:second"};
+  Object.defineProperty(malicious,"sheaf",{
+    enumerable:true,get(){called++;return second;},
+  });
+  assert.throws(()=>tensorCellularSheaves([good,malicious]),
+    /exact inert own source fields/);
+  const hidden={sourceRef:"source:second",sheaf:second};
+  Object.defineProperty(hidden,"authority",{value:"unearned"});
+  assert.throws(()=>tensorCellularSheaves([good,hidden]),
+    /exact inert own source fields/);
+  assert.throws(()=>tensorCellularSheaves(Array(5).fill(good)),
+    /requires 2\.\.4 exact source-attributed factors/,
+    "factor count refuses before allocating any source-descriptor map");
+  const array=[good,{sourceRef:"source:second",sheaf:second}];
+  Object.defineProperty(array,Symbol.iterator,{
+    get(){called++;return Array.prototype[Symbol.iterator];},
+  });
+  assert.throws(()=>tensorCellularSheaves(array),
+    /cannot be sparse or decorated/);
+  assert.equal(called,0,"tensor source admission never executes getters or custom iterators");
+  assert.deepEqual(tensorCellularSheaves([good,{sourceRef:"source:second",sheaf:second}])
+    .tensor.factors,["source:first","source:second"],
+    "legitimate native tensor factor references retain original order");
+});
 
 test("different original enterprise/cloud stalks pull back to one witnessed base and tensor before exact gluing",()=>{
   const O=cellularSheaf({
@@ -883,6 +1555,61 @@ test("source-admitted exact sheaf chart survives JSON transport without changing
   assert.deepEqual(glueCellularSheafPatches(copied,patches),
     glueCellularSheafPatches(original,patches),
     "source-local gluing cannot depend on in-process identity of the same valid original chart");
+});
+
+test("mathematical sheaf consumers refuse counterfeit charts before numerical readout",()=>{
+  const issued=constantSheaf(["source:a","source:b"],
+    [{id:"e",from:"source:a",to:"source:b"}],1);
+  const copy=()=>JSON.parse(JSON.stringify(issued));
+  const forged={...copy(),c0:17};
+  const numerical=[
+    ["cochain",s=>cochain(s,[])],
+    ["coboundary",s=>coboundary(s)],
+    ["Laplacian",s=>sheafLaplacian(s)],
+    ["metric Laplacian",s=>weightedSheafLaplacian(s,[[[1]]])],
+    ["Dirichlet",s=>weightedSheafDirichlet(s,[[[1]]],[0,0])],
+    ["diffusion",s=>diffuse(s,[0,0],{maxSteps:0})],
+    ["Hodge",s=>hodgeCheck(s,[0,0],{maxSteps:0})],
+    ["normal solver",s=>solveNormal(s,[0,0])],
+  ];
+  for(const [name,read] of numerical)
+    assert.throws(()=>read(forged),/cellularSheaf chart:/u,
+      name+" cannot accept caller-forged cellular coordinates");
+  let getterCalls=0;
+  const accessor=copy();
+  Object.defineProperty(accessor,"c0",{enumerable:true,get(){
+    getterCalls++;
+    throw Error("unadmitted source getter executed");
+  }});
+  for(const [name,read] of numerical)
+    assert.throws(()=>read(accessor),/cellularSheaf chart:.*inert own source fields/u,
+      name+" must reject a getter before numerical interpretation");
+  assert.equal(getterCalls,0);
+});
+
+test("verified transported charts retain the original cochain and numerical sheaf semantics",()=>{
+  const issued=constantSheaf(["a","b"],[{id:"e",from:"a",to:"b"}],1);
+  const transported=JSON.parse(JSON.stringify(issued));
+  const admitted=admitCellularSheaf(transported);
+  assert.deepEqual(admitted,issued);
+  assert.notEqual(admitted,transported);
+  const reports=[{vertex:"a",value:2},{vertex:"b",value:4}];
+  const numerical=[
+    ["cochain",s=>cochain(s,reports,{missing:"refuse"})],
+    ["coboundary",s=>coboundary(s)],
+    ["Laplacian",s=>sheafLaplacian(s)],
+    ["weighted Laplacian",s=>weightedSheafLaplacian(s,[[[2]]])],
+    ["Dirichlet",s=>weightedSheafDirichlet(s,[[[2]]],[2,4])],
+    ["diffusion",s=>diffuse(s,[2,4],{maxSteps:5})],
+    ["Hodge",s=>hodgeCheck(s,[2,4],{maxSteps:5})],
+    ["normal solver",s=>solveNormal(s,[-1,1])],
+  ];
+  for(const [name,read] of numerical)
+    assert.deepEqual(read(transported),read(issued),
+      name+" must preserve exact source geometry and bounded computation");
+  assert.deepEqual(apply(coboundary(transported),[2,4]),[2]);
+  assert.ok(Math.abs(weightedSheafDirichlet(transported,[[[2]]],[2,4]).energy-8)<1e-12,
+    "host-float Cholesky energy agrees within round-off, not bit-for-bit");
 });
 
 test("derived sheaf indices and declared exactness cannot be forged into source-valid mathematical claims",()=>{

@@ -114,10 +114,28 @@ A getter could fabricate a position, contact restriction or observer field
 after the check. It also enumerated sparse/decorated and getter-backed arrays
 as apparently declared stalk/edge witnesses.
 
-The existing `fields`, `nameList`, `limit`, `boundaryWalk` and
+The original Feather source reader now owns the shared `featherSourceFields`
+and `featherSourceArray` guards. Keratin consumes these exact functions,
+retaining its own budgets and refusal diagnostics: it does not implement
+a second selector, occurrence, boundary or evidence-admission algorithm.
+The existing `fields` adapter, `nameList`, `limit`, `boundaryWalk` and
 directed contact table paths now refuse ordinary executable getters,
-inherited source fields, hidden or symbol-decorated data and sparse arrays
-before interpreting them. Existing original feather occurrences, source
+hidden or symbol-decorated data and sparse arrays before interpreting them.
+The `fields` guard now also returns one frozen, null-prototype **own-data
+snapshot**. The graph, linear-sheaf, numeric-observation and
+finite-analysis options now read it directly, not a raw record's inherited
+`faces`, `holes`, `locks`, `observers`, `tolerance`,
+`maxAssignments` or stalk arrays. The same rule applies to EVERY nested
+stalk, directed contact, boundary step, lock, filled face, hole,
+observer, linear edge and restriction record. A missing original coordinate
+stays missing; `Object.prototype` can supply neither evidence nor geometry.
+The existing native test suite contains hostile inherited-data and getter
+regressions with descriptor restoration, but those tests have not run against
+the pinned dependency installation. A separately executed eight-assertion
+source-only V8 assay covered the original `fields` guard, not the complete
+graph construction.
+
+Existing original feather occurrences, source
 record names, Contact FOUR constraints, exact two-cell homology, observer
 scope and Graphviz semantics remain unchanged. SignCell retains identity;
 SignGraph retains geometric interpretation. This is NOT proof of genuine

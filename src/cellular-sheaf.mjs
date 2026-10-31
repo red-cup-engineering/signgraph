@@ -65,6 +65,32 @@ export function sheafSourceArray(value, label) {
   }));
 }
 
+/** One data-only numeric source cut for all downstream numerical
+ * evaluations. Ordinary arrays use our existing source descriptor reader;
+ * numeric typed arrays use the intrinsic typed-array length and indexed
+ * elements, never caller-provided iterators, map, species or length getters.
+ * This is a mathematical finite-vector admission, not witness provenance. */
+const typedArrayLength = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype), "length").get;
+const finiteNumericVectorSource = (source, dimension, label, shapeError, finiteError) => {
+  let vector;
+  if (Array.isArray(source)) {
+    if (source.length !== dimension) throw new RangeError(shapeError);
+    vector = sheafSourceArray(source, label);
+  } else if (ArrayBuffer.isView(source)) {
+    let count;
+    try { count = typedArrayLength.call(source); }
+    catch { throw new RangeError(shapeError); }
+    if (count !== dimension) throw new RangeError(shapeError);
+    vector = Object.freeze(Array.from({length:count}, (_, i) => source[i]));
+  } else {
+    throw new RangeError(shapeError);
+  }
+  if (vector.some(value => typeof value !== "number" || !Number.isFinite(value)))
+    throw new RangeError(finiteError);
+  return vector;
+};
+
 
 /** Source-inert exact scalar retention. Does not redefine the original
  * Exact Number rationals or authorize an observer's reported coefficient.
@@ -135,6 +161,11 @@ export function cellularSheaf(source) {
     if (vertexIndex.has(key)) throw new RangeError("cellularSheaf: duplicate vertex id");
     vertexIndex.set(key, index);
     const dim = dimensionOf(sheafSourceField(vertex,"dim"), "a vertex dim");
+    // Coordinate offsets are JavaScript safe integers, never rounded
+    // approximations of actual stalk dimensions. Detect overflow before
+    // exposing an invented cochain index to any downstream solver.
+    if (dim > Number.MAX_SAFE_INTEGER - c0)
+      throw new RangeError("cellularSheaf: vertex coordinate index exceeds safe integer range");
     vertexOffsets.push(c0);
     c0 += dim;
     return Object.freeze({ id, dim });
@@ -154,6 +185,8 @@ export function cellularSheaf(source) {
     const fi = vertexIndex.get(coincidenceKey(fromId)), ti = vertexIndex.get(coincidenceKey(toId));
     if (fi === undefined || ti === undefined) throw new RangeError("cellularSheaf: an edge names a vertex that is not in the sheaf");
     const dim = dimensionOf(sheafSourceField(edge,"dim"), "an edge dim");
+    if (dim > Number.MAX_SAFE_INTEGER - c1)
+      throw new RangeError("cellularSheaf: edge coordinate index exceeds safe integer range");
     const check = (matrix, vertexDim, side) => {
       if (!Array.isArray(matrix) || matrix.length !== dim) {
         throw new RangeError(`cellularSheaf: restriction ${side} of an edge must be ${dim} × ${vertexDim}`);
@@ -222,18 +255,65 @@ export function admitCellularSheaf(source) {
   return rebuilt;
 }
 
-/** The constant sheaf ℝ^dim on a graph: identity restrictions. edges: [{ id, from, to }] or [from, to]. */
+/** The constant sheaf ℝ^dim on a graph: identity restrictions.
+ * Edges are exactly source arrays [from,to] or plain source records with
+ * {from,to,id?}. This public original producer must admit its own source
+ * before constructing a cellular chart: cellularSheaf cannot undo a getter
+ * or overridden iterator already executed in this convenience constructor.
+ *
+ * Resource limits apply to materialized source and restriction slots, not
+ * to abstract existence of the constant sheaf. Graphs outside these limits
+ * must be handled by the proper bounded/streaming owner, not claimed false.
+ */
 export function constantSheaf(vertexIds, edgeList, dim = 1) {
-  const identity = Array.from({ length: dim }, (_, i) => Array.from({ length: dim }, (_, j) => (i === j ? 1 : 0)));
+  if (!Number.isSafeInteger(dim) || dim < 0)
+    throw new RangeError("constantSheaf: dimension must be a nonnegative safe integer");
+  if (!Array.isArray(vertexIds) || !Array.isArray(edgeList))
+    throw new TypeError("constantSheaf: vertices and edges must be source arrays");
+  // Preflight before materializing any property-descriptor list. These limits
+  // avoid large caller allocations through the identity-matrix shortcut.
+  const MAX_SOURCE_ITEMS = 65_536, MAX_DENSE_SLOTS = 1_048_576n;
+  if (vertexIds.length > MAX_SOURCE_ITEMS || edgeList.length > MAX_SOURCE_ITEMS)
+    throw new RangeError("constantSheaf: source lists exceed finite admission budget");
+  const vertices = sheafSourceArray(vertexIds, "constantSheaf vertices");
+  const edges = sheafSourceArray(edgeList, "constantSheaf edges");
+  const slots = edges.length === 0 ? 0n :
+    BigInt(dim) * BigInt(dim) * (1n + 2n * BigInt(edges.length));
+  if (slots > MAX_DENSE_SLOTS)
+    throw new RangeError("constantSheaf: dense restriction construction not evaluated; coefficient slot budget exceeded");
+  // No restriction matrix is needed for an edgeless source. Every output
+  // coordinate is issued by the original cellularSheaf constructor.
+  const identity = edges.length === 0 ? [] :
+    Array.from({ length: dim }, (_, i) => Array.from({ length: dim }, (_, j) => i === j ? 1 : 0));
   return cellularSheaf({
-    vertices: vertexIds.map((id) => ({ id, dim })),
-    edges: edgeList.map((edge, index) => {
-      const [fromId, toId, id] = Array.isArray(edge) ? [edge[0], edge[1], index] : [edge.from, edge.to, edge.id ?? index];
-      return { id, from: fromId, to: toId, dim, restrict: { from: identity, to: identity } };
+    vertices: vertices.map(id => ({ id, dim })),
+    edges: edges.map((edge, index) => {
+      if (Array.isArray(edge)) {
+        const pair = sheafSourceArray(edge, "constantSheaf edge pair");
+        if (pair.length !== 2)
+          throw new TypeError("constantSheaf: an oriented source edge pair has exactly two endpoints");
+        return { id: index, from: pair[0], to: pair[1], dim,
+          restrict: { from: identity, to: identity } };
+      }
+      const declared = sourceCoverRecord(edge,
+        Object.hasOwn(edge, "id") ? ["id","from","to"] : ["from","to"],
+        "constantSheaf source edge");
+      return { id: declared.id ?? index, from: declared.from, to: declared.to, dim,
+        restrict: { from: identity, to: identity } };
     }),
   });
 }
 
+/** A source-bearing cellular chart must be issued by this module or fully
+ * reconstructed by admitCellularSheaf before ANY downstream cochain,
+ * coboundary, Laplacian, metric, diffusion or normal-solver math. Otherwise
+ * an invented coordinate count can masquerade as a measured zero or as a
+ * zero residual. Issued charts enter in O(1), imported charts undergo
+ * complete reconstruction; neither route authenticates an external witness.
+ *
+ * This is one source-owned mathematical admission boundary, not a
+ * duplicate solver, extra schema, or alternative graph representation.
+ */
 /** A finite numeric 0-cochain over vertex stalks, in vertex order.
  * The historical default mathematically extends absent values by zero;
  * no observer may interpret that default as a measured zero.
@@ -243,6 +323,7 @@ export function constantSheaf(vertexIds, edgeList, dim = 1) {
  * Witnesses, source authority and FOUR remain with their original owners.
  */
 export function cochain(sheaf, entries, options = {}) {
+  sheaf = admitCellularSheaf(sheaf);
   const missing = sheafSourceField(options,"missing",true) ?? "zero";
   if (!["zero", "refuse"].includes(missing))
     throw new TypeError("cochain: missing policy must be zero or refuse");
@@ -287,6 +368,7 @@ const rowOf = (map) => [...map.entries()].sort((a, b) => a[0] - b[0]);
 
 /** The coboundary δ⁰ : C⁰ → C¹ as a sparse block matrix. */
 export function coboundary(sheaf) {
+  sheaf = admitCellularSheaf(sheaf);
   const entries = [];
   sheaf.edges.forEach((edge, e) => {
     const f = sheaf.fromIndex[e], t = sheaf.toIndex[e];
@@ -304,13 +386,17 @@ export function coboundary(sheaf) {
   return sparse(sheaf.c1, sheaf.c0, entries);
 }
 
-/** Apply a sparse matrix to a vector, summing each row in column order. */
+/** Apply an original sparse matrix to one finite, inert numeric vector;
+ * row and column order follows the issued source. No caller-defined
+ * iterator/getter can substitute coordinates after mathematical admission. */
 export function apply(matrix, x) {
-  if (x.length !== matrix.cols) throw new RangeError("apply: vector length does not match the matrix");
+  const vector=finiteNumericVectorSource(x,matrix.cols,"apply source vector",
+    "apply: vector length does not match the matrix",
+    "apply: vector entries must be finite numbers");
   return matrix.entries.map((row) => {
     let sum = 0;
     for (const [column, value] of row) {
-      sum += numericProduct(value, x[column], "apply");
+      sum += numericProduct(value, vector[column], "apply");
       if (!Number.isFinite(sum)) throw new RangeError("apply: numerical sum overflowed host arithmetic");
     }
     return sum;
@@ -331,6 +417,7 @@ const gramLaplacian = (sheaf, entries) => {
 
 /** The sheaf Laplacian L = δᵀδ on C⁰, sparse and symmetric. */
 export function sheafLaplacian(sheaf) {
+  sheaf = admitCellularSheaf(sheaf);
   return gramLaplacian(sheaf, coboundary(sheaf).entries);
 }
 
@@ -341,16 +428,34 @@ const edgeMetricFactors = (sheaf, metrics) => {
   if (!Array.isArray(metrics) || metrics.length !== sheaf.edges.length) {
     throw new RangeError("weightedSheaf: one metric is required per edge, in sheaf edge order");
   }
+  // The chart itself was issued by cellularSheaf. Source metrics were not:
+  // receive every outer, row and scalar slot through the SAME native
+  // descriptor-only admission used for restriction matrices. Calling a
+  // caller's .every/.map or raw numeric getter here lets a negative matrix
+  // fabricate a positive definite replacement before Cholesky.
+  const admitted = sheafSourceArray(metrics, "weighted source metrics");
+  let slots = 0n;
+  for (const edge of sheaf.edges) {
+    slots += BigInt(edge.dim) * BigInt(edge.dim);
+    if (slots > 1_048_576n)
+      throw new RangeError("weightedSheaf: metric coefficient work budget exceeded");
+  }
   return sheaf.edges.map((edge, e) => {
-    const metric = metrics[e], d = edge.dim;
-    if (!Array.isArray(metric) || metric.length !== d || !metric.every((row) => Array.isArray(row) && row.length === d)) {
+    const metric = admitted[e], d = edge.dim;
+    if (!Array.isArray(metric) || metric.length !== d)
       throw new RangeError("weightedSheaf: an edge metric has the wrong stalk dimension");
-    }
-    const W = metric.map((row) => row.map((entry) => {
-      const value = numberOfEntry(entry);
-      if (!Number.isFinite(value)) throw new RangeError("weightedSheaf: a metric entry is not finite");
-      return value;
-    }));
+    const rows = sheafSourceArray(metric, "weighted edge metric");
+    const W = rows.map((sourceRow) => {
+      if (!Array.isArray(sourceRow) || sourceRow.length !== d)
+        throw new RangeError("weightedSheaf: an edge metric has the wrong stalk dimension");
+      const row = sheafSourceArray(sourceRow, "weighted metric row");
+      return row.map(entry => {
+        const value = numberOfEntry(sheafSourceScalar(entry));
+        if (!Number.isFinite(value))
+          throw new RangeError("weightedSheaf: a metric entry is not finite");
+        return value;
+      });
+    });
     for (let i = 0; i < d; i += 1) for (let j = 0; j < i; j += 1) {
       const a = W[i][j], b = W[j][i];
       if (Math.abs(a - b) > 32 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b))) {
@@ -376,6 +481,7 @@ const edgeMetricFactors = (sheaf, metrics) => {
  * Uses (Cᵀδ)ᵀ(Cᵀδ) where W = CCᵀ; the existing coboundary preserves self-edge cancellation and
  * non-identity restrictions. Sparse columns and all sums follow sheaf edge/stalk order. */
 export function weightedSheafLaplacian(sheaf, metrics) {
+  sheaf = admitCellularSheaf(sheaf);
   const factors = edgeMetricFactors(sheaf, metrics), delta = coboundary(sheaf);
   const entries = [];
   sheaf.edges.forEach((edge, e) => {
@@ -398,10 +504,12 @@ export function weightedSheafLaplacian(sheaf, metrics) {
  * Returns the unweighted edge residual and its metric energy for attribution; these are numeric
  * energies, not probabilities. SPD weights preserve ker L = ker δ = H⁰. */
 export function weightedSheafDirichlet(sheaf, metrics, x) {
-  if (x?.length !== sheaf.c0 || Array.from(x).some((value) => typeof value !== "number" || !Number.isFinite(value))) {
-    throw new RangeError("weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required");
-  }
-  const factors = edgeMetricFactors(sheaf, metrics), deltaX = apply(coboundary(sheaf), x);
+  sheaf = admitCellularSheaf(sheaf);
+  const vector = finiteNumericVectorSource(x, sheaf.c0,
+    "weighted source cochain",
+    "weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required",
+    "weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required");
+  const factors = edgeMetricFactors(sheaf, metrics), deltaX = apply(coboundary(sheaf), vector);
   let energy = 0;
   const perEdge = sheaf.edges.map((edge, e) => {
     const residual = deltaX.slice(sheaf.edgeOffsets[e], sheaf.edgeOffsets[e] + edge.dim), C = factors[e];
@@ -431,9 +539,51 @@ export const applyLaplacian = (sheaf, x) => apply(sheafLaplacian(sheaf), x);
 
 // — exact cohomology over ℚ —
 
-/** The exact cohomology receipt: dim H⁰ = dim C⁰ − rank δ, dim H¹ = dim C¹ − rank δ over ℚ. Needs exact restriction entries. */
+/** The native exact rank implementation materializes a dense C¹ × C⁰
+ * rational differential. This is a finite coefficient-SLOT admission bound,
+ * NOT an algebraic dimension axiom, a bound on rational coefficient bit size,
+ * or a verified CPU-time guarantee. The original Exact Number owner alone
+ * implements and qualifies ratRank. */
+export const MAX_EXACT_COHOMOLOGY_RANK_SLOTS = 65_536;
+
+/** Preflight the actual source-owned mathematical chart. Returning false
+ * means "not evaluated", NEVER zero cohomology. Empty rows/columns have
+ * provable rank zero and require no dense matrix, regardless of dimension.
+ * Re-admit transported charts through the existing cellularSheaf owner;
+ * caller-supplied 'exact', dimensions or incidence cannot bypass admission.
+ */
+export function exactCohomologyRankWithinBudget(sheaf) {
+  sheaf = admitCellularSheaf(sheaf);
+  const { c0, c1 } = sheaf;
+  return Number.isSafeInteger(c0) && Number.isSafeInteger(c1) &&
+    c0 >= 0 && c1 >= 0 &&
+    (c0 === 0 || c1 === 0 || c0 <= Math.floor(MAX_EXACT_COHOMOLOGY_RANK_SLOTS / c1));
+}
+
+/** Canonical source-owned cohomology evaluation status. The mathematical
+ * degrees exist independently of our finite solver budget: NOT evaluated
+ * is not a zero Betti number. Keratin and Hodge share this same policy.
+ * Transported charts are reconstructed through the original owner.
+ */
+export function cellularSheafCohomologyStatus(sheaf) {
+  sheaf = admitCellularSheaf(sheaf);
+  if (!sheaf.exact) return "not-evaluated: nonexact source restrictions";
+  return exactCohomologyRankWithinBudget(sheaf)
+    ? "exact"
+    : "not-evaluated: rational rank work budget exceeded";
+}
+
+/** Exact H⁰/H¹ over ℚ, only of an original issued or fully re-admitted
+ * cellular chart, with resource-qualified rank evaluation. A transported
+ * readout is reconstructed from actual restrictions, not trusted because
+ * it carries matching 'exact' or degree labels. */
 export function cellularSheafCohomology(sheaf) {
-  if (!sheaf.exact) throw new RangeError("cellularSheafCohomology: restriction entries must be exact (integers, bigints, rational carriers or \"a/b\")");
+  sheaf = admitCellularSheaf(sheaf);
+  const status = cellularSheafCohomologyStatus(sheaf);
+  if (status === "not-evaluated: nonexact source restrictions")
+    throw new RangeError("cellularSheafCohomology: restriction entries must be exact (integers, bigints, rational carriers or \"a/b\")");
+  if (status !== "exact")
+    throw new RangeError("cellularSheafCohomology: exact rational rank not evaluated; dense coefficient work budget exceeded");
   const rankValue = sheaf.c1 === 0 || sheaf.c0 === 0 ? 0 : ratRank(exactCoboundary(sheaf));
   const h0 = sheaf.c0 - rankValue, h1 = sheaf.c1 - rankValue;
   return Object.freeze({ kind: "signgraph.cellularSheafCohomology", h0, h1, vanishing: rankVanishing(h1), rank: rankValue, c0: sheaf.c0, c1: sheaf.c1 });
@@ -595,6 +745,18 @@ const sourceCoverRecord=(source, fields, label) => {
     fields.map(key=>[key,descriptors[key].value])));
 };
 
+/** A subset of explicitly declared pure numerical options, admitted by the
+ * SAME original source record reader as mathematical charts and covers. */
+const numericalSourceOptions=(source, allowed, label) => {
+  if (!source || typeof source !== "object" || Array.isArray(source) ||
+      ![Object.prototype,null].includes(Object.getPrototypeOf(source)))
+    throw new TypeError(label+": requires a plain original source record");
+  const keys = Object.keys(source);
+  if (keys.some(key => !allowed.includes(key)))
+    throw new TypeError(label+": undeclared numerical option");
+  return sourceCoverRecord(source, keys, label);
+};
+
 /** Evaluate an explicitly source-qualified finite local cover and construct
  * (or refute) a GLOBAL exact section. No missing observation becomes a zero.
  * All original chart and patch values are admitted BEFORE an exact solver is
@@ -731,17 +893,32 @@ export function glueCellularSheafPatches(sheaf, patches) {
  * chart composes with exact section extension, cover gluing and pullback.
  */
 export function tensorCellularSheaves(factors) {
-  if (!Array.isArray(factors) || factors.length < 2 || factors.length > 4 ||
-      factors.some(factor => factor?.sheaf?.kind !== "signgraph.cellularSheaf" ||
-        factor.sheaf.exact !== true || typeof factor.sourceRef !== "string" ||
-        !factor.sourceRef.trim()))
+  // Source qualification precedes ALL factor property access. The old
+  // factors.some(factor => factor?.sheaf?.kind) path could execute an
+  // untrusted getter before interpreting original stalk geometry. Retain the
+  // one existing original sheaf/Exact Number/SignCell custody boundary.
+  // Bound the outer list BEFORE sheafSourceArray snapshots its descriptors.
+  // A very large dense input must not allocate millions of index records
+  // only to be refused for exceeding the existing four-factor limit.
+  if(!Array.isArray(factors) || factors.length<2 || factors.length>4)
     throw new TypeError("cellularSheaf tensor requires 2..4 exact source-attributed factors");
-  const source=factors[0].sheaf;
+  const sourceFactors=sheafSourceArray(factors,"tensor factors");
+  const admittedFactors=sourceFactors.map(input=>{
+    const factor=sourceCoverRecord(input,["sourceRef","sheaf"],"cellularSheaf tensor factor");
+    if(typeof factor.sourceRef!=="string" || !factor.sourceRef.trim() ||
+       factor.sourceRef.length>1024)
+      throw new TypeError("cellularSheaf tensor requires a bounded original source reference");
+    const sheaf=admitCellularSheaf(factor.sheaf);
+    if(sheaf.exact!==true)
+      throw new TypeError("cellularSheaf tensor requires 2..4 exact source-attributed factors");
+    return Object.freeze({sourceRef:factor.sourceRef,sheaf});
+  });
+  const source=admittedFactors[0].sheaf;
   // A sheaf's source identity is its witnessed vertex/edge incidence, not
   // its input-array enumeration. Multiple custodians may supply the same
   // lawful base chart in a different order. Align exact SignCell
   // coincidence keys rather than treating that order as physical geometry.
-  const aligned=factors.map(factor=>{
+  const aligned=admittedFactors.map(factor=>{
     const other=factor.sheaf;
     if(other.vertices.length!==source.vertices.length ||
        other.edges.length!==source.edges.length)
@@ -801,19 +978,44 @@ export function tensorCellularSheaves(factors) {
     });
     product=cellularSheaf({vertices,edges});
   }
-  return Object.freeze({...product,
+  const result=Object.freeze({...product,
     tensor:Object.freeze({
       kind:"signgraph.cellularSheaf.stalkwiseTensor.v1",
-      factors:Object.freeze(factors.map(f=>f.sourceRef)),
+      factors:Object.freeze(admittedFactors.map(f=>f.sourceRef)),
       base:"identical source-indexed oriented 1-skeleton",
       algebra:"exact rational stalk tensor with Kronecker restriction",
     })
   });
+  // This original package has JUST constructed and verified the base chart.
+  // The public augmented tensor is another issued in-process chart and must
+  // be eligible for the same exact extension/gluing consumers. A foreign JSON
+  // copy has no such custody: admitCellularSheaf must reconstruct/verify it.
+  admittedCellularSheaves.add(result);
+  return result;
 }
 
 // — the heat flow —
 
-const norm = (vector) => { let sum = 0; for (const v of vector) sum += v * v; return Math.sqrt(sum); };
+/** One numerically scaled Euclidean norm for diffusion, rigidity and
+ * source-local load obstructions; do not let squaring underflow a nonzero
+ * residual into a false zero or overflow a representable norm. */
+const norm = (values) => {
+  let scale=0,ssq=1;
+  for (const value of values) {
+    if (typeof value !== "number" || !Number.isFinite(value))
+      throw new RangeError("cellularSheaf: numerical norm requires finite values");
+    const absolute=Math.abs(value);
+    if (absolute===0) continue;
+    if (scale<absolute) {
+      ssq=1+ssq*(scale/absolute)**2;
+      scale=absolute;
+    } else ssq+=(absolute/scale)**2;
+  }
+  const result=scale*Math.sqrt(ssq);
+  if(!Number.isFinite(result))
+    throw new RangeError("cellularSheaf: numerical norm exceeded finite host arithmetic");
+  return result;
+};
 
 /** The Gershgorin bound on L's spectrum: the largest absolute row sum (λ_max ≤ this). */
 export function gershgorinBound(laplacian) {
@@ -822,24 +1024,30 @@ export function gershgorinBound(laplacian) {
   return bound;
 }
 
-/** Heat flow x ← x − αLx from x₀, with optional pinned vertex values (boundary conditions, admitted
- *  evidence: `fixed` is [{ vertex, value }], held constant). α defaults to 1 / Gershgorin bound, which is
+/** Heat flow x ← x − αLx from x₀, with optional caller-supplied pinned
+ *  boundary conditions (`fixed`: [{vertex,value}]). Source admission checks
+ *  their inert data, NOT that anyone actually observed the values.
+ *  α defaults to 1 / Gershgorin bound, which is
  *  conservative and energy-stable. Explicit steps must satisfy α·Gershgorin(L) < 2. Stops when the free gradient
  *  ‖L x‖ falls to `tolerance`, or after `maxSteps`. Returns
  *  { section, residual: ‖δx‖, gradient, steps, converged, firings, crossings }: `firings` are the steps at which
  *  some edge's residual ‖(δx)_e‖ crossed `tolerance`; `crossings` names those edges and directions. */
-export function diffuse(sheaf, x0, { step, tolerance = 1e-12, maxSteps = 100000, fixed = [] } = {}) {
-  if (x0?.length !== sheaf.c0) throw new RangeError("diffuse: x0 has the wrong length");
-  if (Array.from(x0).some((v) => typeof v !== "number" || !Number.isFinite(v))) {
-    throw new RangeError("diffuse: initial stalk values must be finite numbers");
-  }
-  if (typeof tolerance !== "number" || !Number.isFinite(tolerance) || tolerance < 0) {
+export function diffuse(sheaf, x0, options = {}) {
+  sheaf = admitCellularSheaf(sheaf);
+  const qualified=numericalSourceOptions(options,
+    ["step","tolerance","maxSteps","fixed"], "diffuse options");
+  const {step,tolerance=1e-12,maxSteps=100000,fixed=[]}=qualified;
+  const initial=finiteNumericVectorSource(x0,sheaf.c0,"diffuse initial 0-cochain",
+    "diffuse: x0 has the wrong length",
+    "diffuse: initial stalk values must be finite numbers");
+  if (typeof tolerance !== "number" || !Number.isFinite(tolerance) || tolerance < 0)
     throw new RangeError("diffuse: tolerance must be finite and non-negative");
-  }
-  if (!Number.isSafeInteger(maxSteps) || maxSteps < 0) {
-    throw new RangeError("diffuse: maxSteps must be a non-negative safe integer");
-  }
-  if (!Array.isArray(fixed)) throw new TypeError("diffuse: fixed must be an array of vertex readings");
+  if (!Number.isSafeInteger(maxSteps) || maxSteps < 0 || maxSteps > 1_000_000)
+    throw new RangeError("diffuse: maxSteps must be an integer from 0 to 1000000");
+  if (!Array.isArray(fixed))
+    throw new TypeError("diffuse: fixed must be an array of vertex readings");
+  const sourceFixed=sheafSourceArray(fixed,"diffuse fixed readings").map(reading=>
+    sourceCoverRecord(reading,["vertex","value"],"diffuse fixed reading"));
   const delta = coboundary(sheaf), laplacian = sheafLaplacian(sheaf);
   const bound = gershgorinBound(laplacian);
   if (!Number.isFinite(bound)) throw new RangeError("diffuse: Laplacian bound is not finite");
@@ -852,12 +1060,14 @@ export function diffuse(sheaf, x0, { step, tolerance = 1e-12, maxSteps = 100000,
   }
   const pinned = new Array(sheaf.c0).fill(false);
   const seen = new Map();
-  const x = [...x0];
-  for (const { vertex, value } of fixed) {
+  const x = [...initial];
+  for (const { vertex, value } of sourceFixed) {
     const index = sheaf.vertices.findIndex((candidate) => coincidenceKey(candidate.id) === coincidenceKey(vertex));
     if (index < 0) throw new RangeError("diffuse: unknown pinned vertex");
-    const values = Array.isArray(value) ? value : [value];
-    if (values.length !== sheaf.vertices[index].dim) throw new RangeError("diffuse: pinned value has the wrong dimension");
+    const values = Array.isArray(value)
+      ? sheafSourceArray(value,"diffuse pinned coordinates") : [value];
+    if (values.length !== sheaf.vertices[index].dim)
+      throw new RangeError("diffuse: pinned value has the wrong dimension");
     if (values.some((v) => typeof v !== "number" || !Number.isFinite(v))) {
       throw new RangeError("diffuse: pinned stalk values must be finite numbers");
     }
@@ -920,12 +1130,25 @@ export const harmonicProjection = (sheaf, x0, options = {}) => diffuse(sheaf, x0
  *  Numerically this reports residual-based approximate harmonicity, not a
  *  machine-checked proof of exact gluing. */
 export function hodgeCheck(sheaf, x0, options = {}) {
-  const tolerance = options.tolerance ?? 1e-12;
-  const limit = diffuse(sheaf, x0, { ...options, fixed: [] });
+  sheaf = admitCellularSheaf(sheaf);
+  const qualified=numericalSourceOptions(options,
+    ["step","tolerance","maxSteps","fixed"],"hodgeCheck options");
+  const tolerance = qualified.tolerance ?? 1e-12;
+  // Hodge's free projection intentionally discards supplied fixed conditions,
+  // but MUST NOT execute a caller's getter while performing that discard.
+  const limit = diffuse(sheaf, x0, { ...qualified, fixed: [] });
   const laplacianResidual = norm(applyLaplacian(sheaf, limit.section));
+  // Degree-zero numeric harmonicity is independently assessable when the
+  // unrelated exact degree-one rank is too expensive to materialize.
+  // Share the ORIGINAL rank policy with Keratin: do not invent h1=0 and
+  // do not confuse a nonexact restriction with a budget-exhausted one.
+  const cohomologyStatus = cellularSheafCohomologyStatus(sheaf);
+  const h1 = cohomologyStatus === "exact"
+    ? cellularSheafCohomology(sheaf).h1
+    : sheaf.exact ? null : undefined;
   return Object.freeze({
     kind: "signgraph.hodgeCheck",
-    h1: sheaf.exact ? cellularSheafCohomology(sheaf).h1 : undefined,
+    h1, cohomologyStatus,
     section: limit.section, sectionResidual: limit.residual, laplacianResidual, steps: limit.steps,
     harmonic: limit.converged && limit.residual <= tolerance * 1e3 && laplacianResidual <= tolerance,
   });
@@ -1113,11 +1336,23 @@ export function planConnectedBarExchanges({ points, beforeBars, afterBars, dimen
 
 // — the dual: loads, and the transpose of the coboundary —
 
-/** Mᵀ y for a sparse matrix, summing in row order (deterministic). */
+/** Mᵀy for the original sparse matrix, summing in source row order.
+ * The same finite-vector source and numeric product laws as apply prevent
+ * false zero loads and nonfinite results in the normal solver and Keratin.
+ * This is a numerical reading, not an authenticated physical load. */
 export function applyTranspose(matrix, y) {
-  if (y.length !== matrix.rows) throw new RangeError("applyTranspose: vector length does not match the matrix");
+  const vector=finiteNumericVectorSource(y,matrix.rows,"applyTranspose source vector",
+    "applyTranspose: vector length does not match the matrix",
+    "applyTranspose: vector entries must be finite numbers");
   const out = new Array(matrix.cols).fill(0);
-  matrix.entries.forEach((row, i) => { for (const [column, value] of row) out[column] += value * y[i]; });
+  matrix.entries.forEach((row, i) => {
+    for (const [column, value] of row) {
+      const total=out[column]+numericProduct(value,vector[i],"applyTranspose");
+      if (!Number.isFinite(total))
+        throw new RangeError("applyTranspose: numerical sum overflowed host arithmetic");
+      out[column]=total;
+    }
+  });
   return out;
 }
 
@@ -1128,13 +1363,35 @@ export function applyTranspose(matrix, y) {
  *  carry — the system is inconsistent and the unresolvable part is returned as `obstruction` (= rhs − δᵀ f,
  *  a 0-cochain in ker δ), never NaN. Returns { section: f, obstruction, residual: ‖obstruction‖, rhsNorm,
  *  steps, converged, consistent }. The option "floor" is a load scale below which a residual is round-off, not obstruction. */
-export function solveNormal(sheaf, rhs, { tolerance = 1e-12, consistency = 1e-9, floor = 0, maxSteps = 4 * (sheaf.c0 + sheaf.c1) + 16 } = {}) {
-  if (rhs.length !== sheaf.c0) throw new RangeError("solveNormal: rhs has the wrong length");
+export function solveNormal(sheaf, rhs, options = {}) {
+  sheaf = admitCellularSheaf(sheaf);
+  const qualified=numericalSourceOptions(options,
+    ["tolerance","consistency","floor","maxSteps"],"solveNormal options");
+  const {tolerance=1e-12,consistency=1e-9,floor=0} = qualified;
+  // Work allocation and every algebraic tolerance are source-owned numbers,
+  // never values supplied through executable source property getters.
+  const maxSteps=qualified.maxSteps ?? 4 * (sheaf.c0 + sheaf.c1) + 16;
+  if (!Number.isSafeInteger(maxSteps) || maxSteps < 0 || maxSteps > 1_000_000)
+    throw new RangeError("solveNormal: maxSteps must be an integer from 0 to 1000000");
+  for (const [name,value] of Object.entries({tolerance,consistency,floor}))
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
+      throw new RangeError("solveNormal: "+name+" must be finite and nonnegative");
+  const load=finiteNumericVectorSource(rhs,sheaf.c0,"solveNormal source load",
+    "solveNormal: rhs has the wrong length",
+    "solveNormal: rhs stalk values must be finite numbers");
   const delta = coboundary(sheaf);
-  const dot = (a, b) => { let sum = 0; for (let i = 0; i < a.length; i += 1) sum += a[i] * b[i]; return sum; };
+  const dot = (a, b) => {
+    let sum = 0;
+    for (let i = 0; i < a.length; i += 1) {
+      sum += numericProduct(a[i],b[i],"solveNormal");
+      if (!Number.isFinite(sum))
+        throw new RangeError("solveNormal: numerical dot sum exceeded finite host arithmetic");
+    }
+    return sum;
+  };
   const f = new Array(sheaf.c1).fill(0);
-  const r = [...rhs];
-  const rhsNorm = norm(rhs);
+  const r = [...load];
+  const rhsNorm = norm(load);
   let s = apply(delta, r), gamma = dot(s, s);
   const stop = (tolerance * Math.sqrt(gamma)) ** 2;
   let p = [...s], steps = 0, converged = gamma === 0;
@@ -1154,9 +1411,15 @@ export function solveNormal(sheaf, rhs, { tolerance = 1e-12, consistency = 1e-9,
     p = s.map((v, i) => v + beta * p[i]);
   }
   const residual = norm(r);
+  // A source-supplied floor is an EXPLICIT absolute-scale allowance.
+  // The former hidden 1e-300 fallback declared genuine subnormal
+  // unresolvable loads consistent even when the caller chose floor=0.
+  const consistencyLimit=consistency*Math.max(rhsNorm,floor);
+  if(!Number.isFinite(consistencyLimit))
+    throw new RangeError("solveNormal: consistency limit exceeded finite host arithmetic");
   return Object.freeze({
     kind: "signgraph.normalSolution", section: Object.freeze(f), obstruction: Object.freeze(r), residual, rhsNorm,
-    steps, converged, consistent: converged && residual <= consistency * Math.max(rhsNorm, floor, 1e-300),
+    steps, converged, consistent: converged && residual <= consistencyLimit,
   });
 }
 

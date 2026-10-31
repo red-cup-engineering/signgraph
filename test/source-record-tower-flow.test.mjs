@@ -23,6 +23,40 @@ const towerFixture = (source) => {
   });
 };
 
+test("strict installed SignCell chargeRecordTowerOfCell produces the original Graph source-record tower", async () => {
+  // Deliberately NOT a fixture and NOT a conditional skip. The real package
+  // supplier MUST be published and selected before this proof-receiving gate
+  // may turn green. Missing export means missing integration, not success.
+  const {chargeRecordTowerOfCell} = await import("@red-cup-engineering/signcell/charge-spin");
+  assert.equal(typeof chargeRecordTowerOfCell,"function",
+    "the exact installed SignCell edition must export its native tower producer");
+  const positive = cell("A","rel","B", {
+    for:["original:witness-a","original:witness-b"],
+    against:["original:opposition"],
+  });
+  const second = cell("A","rel","B", {for:["original:independent-presentation"]});
+  const graph=sourceRecordTowerFlowOfCells([positive,second],chargeRecordTowerOfCell);
+  assert.equal(graph.kind,"signgraph.source-record-tower-flow.v1");
+  assert.equal(graph.entries.length,2,
+    "two original source occurrences may coincide extensionally without being one performance");
+  assert.equal(graph.extensionalCells.length,1);
+  assert.equal(graph.flow.edges.length,2);
+  assert.equal(graph.entries[0].sourceAddress,address(positive));
+  assert.equal(graph.entries[1].sourceAddress,address(second));
+  assert.deepEqual(graph.entries[0].tower.sourceCell.for,positive.for);
+  assert.deepEqual(graph.entries[0].tower.sourceCell.against,positive.against);
+  assert.deepEqual(graph.entries[0].tower.record,record(2,1));
+  assert.deepEqual(graph.entries[0].tower.minimumRecord,record(1,1));
+  assert.deepEqual(graph.entries[0].tower.retainedSurplus,record(1,0));
+  assert.equal(graph.entries[0].tower.observedCharge,"stable");
+  assert.equal(graph.entries[0].tower.valuedCharge,valueOf(positive));
+  assert.ok(samePoint(at(graph.chu,positive,"source-evidence-charge"),"stable"));
+  assert.equal("electricCharge" in graph.entries[0].tower,false,
+    "the FOUR evidence tower does not manufacture physical electric charge");
+  assert.equal("quantumSpin" in graph.entries[0].tower,false,
+    "a finite FOUR readout is not quantum spin testimony");
+});
+
 test("original SignGraph accepts source-ordered record towers without erasing parallel presentations", () => {
   const a = cell("A", "rel", "B", { for: ["w1", "w2"], against: ["w3"] });
   const b = cell("A", "rel", "B", { for: ["w4"] });
@@ -142,7 +176,7 @@ test("tower source cells reject accessor-backed arrays and non-cells before prod
   for(const input of [array,[source],[extra],[forged]]) {
     assert.throws(()=>sourceRecordTowerFlowOfCells(input,at=>{
       producers++;return towerFixture(at);
-    }),/signgraph site:/u);
+    }),/signcell:/u);
   }
   assert.equal(calls,0,"source getters must not execute");
   assert.equal(producers,0,"unadmitted source positions must never reach the native tower supplier");

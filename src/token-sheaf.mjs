@@ -15,8 +15,9 @@
  * claim at a time, the inherited section is the fiber SignChain's possibilizing gives: gluing over ↑t
  * is ◇. The object position is reached through the converse generator.
  */
-import { address, cell, cellSetAddress, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, retainedCarrier, semanticId, sidesOf } from "@red-cup-engineering/signcell/cell";
-import { cacheableTokenFrame, extent, generalizations, tokenFrame, top } from "@red-cup-engineering/signcell/token-frame";
+import { address, cell, cellSetAddress, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, retainedCarrier, semanticId, told as evidenceTold } from "@red-cup-engineering/signcell/cell";
+import { admitTokenFrame, cacheableTokenFrame, extent, generalizations, top } from "@red-cup-engineering/signcell/token-frame";
+import { isNiUri } from "@red-cup-engineering/uri-services-section/ni-uri";
 
 const INHERITED = "signgraph.inherited-tellings";
 const frozen = (values) => Object.freeze([...values]);
@@ -78,8 +79,9 @@ const directClaim = (frame, token, claim) =>
   claimSectionsOf(frame).byToken.get(coincidenceKey(token))?.get(claim) ?? [];
 /** The section at a token: what is told of it directly. */
 export const tellingsAt = (frame, token) => {
-  generalizations(frame, token); // the frame owns the membership law
-  return directTellings(frame, token);
+  const source = admitTokenFrame(frame);
+  generalizations(source, token); // the frame owns the membership law
+  return directTellings(source, token);
 };
 
 /**
@@ -110,9 +112,15 @@ function glueInherited(frame, token, selectedClaim) {
   const sources = frozen(slots.map((slot) => frozen(from.get(slot))));
   const contested = [];
   slots.forEach((slot, index) => {
-    const [toldFor, toldAgainst] = sidesOf(cells[index]);
+    // SignCell's Valued.value is NOT its witness presence when a Cell has
+    // been presumed, met or otherwise valued. An explicit stable value with
+    // no source tellings is not a source contradiction; an explicit absurd
+    // value cannot erase actually told opposite witnesses. Use SignCell's
+    // original source-evidence reader, never the FOUR-value side reader.
+    const [toldFor, toldAgainst] = evidenceTold(cells[index]);
     if (!(toldFor && toldAgainst)) return;
-    const side = (which) => frozen(sources[index].filter((source) => sidesOf(source.cell)[which]).map((source) => source.token));
+    const side = (which) => frozen(sources[index].filter(
+      (source) => evidenceTold(source.cell)[which]).map((source) => source.token));
     contested.push(Object.freeze({ cell: cells[index], for: side(0), against: side(1) }));
   });
   return Object.freeze({ kind: INHERITED, token, cells, sources, contested: frozen(contested) });
@@ -120,7 +128,7 @@ function glueInherited(frame, token, selectedClaim) {
 
 /** The whole inherited section, over the original token frame's actual cover. */
 export function inherited(frame, token) {
-  return glueInherited(frame, token);
+  return glueInherited(admitTokenFrame(frame), token);
 }
 
 /**
@@ -135,9 +143,10 @@ export function inherited(frame, token) {
  * responsibility of the owner supplying this frame, not this pure function.
  */
 export function inheritedClaim(frame, token, predicate, object) {
+  const source = admitTokenFrame(frame);
   // Check actual token membership before even interpreting a claim coordinate.
-  generalizations(frame, token);
-  return glueInherited(frame, token, claimCoordinate(predicate, object));
+  generalizations(source, token);
+  return glueInherited(source, token, claimCoordinate(predicate, object));
 }
 
 /**
@@ -162,44 +171,49 @@ export function inheritedClaim(frame, token, predicate, object) {
 export function queryInheritedTellings(frame, selection = {}, page = {}) {
   const admitted = (record, keys, label) => {
     if (record === null || typeof record !== "object" || Array.isArray(record) ||
-        Reflect.ownKeys(record).some((key) => typeof key !== "string" || !keys.includes(key) ||
-          !Object.hasOwn(Object.getOwnPropertyDescriptor(record, key), "value")))
+        ![Object.prototype, null].includes(Object.getPrototypeOf(record)))
       throw new TypeError("signgraph " + label + ": only declared plain data fields are admitted");
+    const descriptors = Object.getOwnPropertyDescriptors(record);
+    if (Reflect.ownKeys(descriptors).some((key) => typeof key !== "string" ||
+        !keys.includes(key) || !descriptors[key].enumerable ||
+        !Object.hasOwn(descriptors[key], "value")))
+      throw new TypeError("signgraph " + label + ": only declared plain data fields are admitted");
+    return Object.fromEntries(Object.entries(descriptors).map(([key, slot]) => [key, slot.value]));
   };
-  admitted(selection, ["token", "predicate", "object", "reading", "cellNi"], "claim selection");
-  admitted(page, ["offset", "limit"], "claim page");
-  const { token, predicate, object, reading, cellNi } = selection;
-  const { offset = 0, limit = 24 } = page;
-  if (Reflect.ownKeys(selection).some((key) => selection[key] === undefined) ||
+  // Read a fixed inert set of OWN data coordinates. Destructuring raw input
+  // would consult inherited source getters even when Reflect.ownKeys passed.
+  const chosen = admitted(selection, ["token", "predicate", "object", "reading", "cellNi"], "claim selection");
+  const requestedPage = admitted(page, ["offset", "limit"], "claim page");
+  const { token, predicate, object, reading, cellNi } = chosen;
+  const { offset = 0, limit = 24 } = requestedPage;
+  if (Reflect.ownKeys(chosen).some((key) => chosen[key] === undefined) ||
       !Number.isSafeInteger(offset) || offset < 0 ||
       !Number.isSafeInteger(limit) || limit < 1 || limit > 128 ||
       (reading !== undefined && !["absurd", "potential", "active", "stable"].includes(reading)) ||
-      (cellNi !== undefined && (typeof cellNi !== "string" ||
-        !/^ni:\/\/\/sha-256;[A-Za-z0-9_-]{43}$/u.test(cellNi))))
+      (cellNi !== undefined && !isNiUri(cellNi)))
     throw new TypeError("signgraph claim query: noncanonical coordinate, reading or page");
   // Materialize one immutable, owned cut of any mutable wire presentation.
   // The original frame maker owns clone/merge/admission; this query never
   // re-interprets an in-flight mutation as one coherent historical source.
-  const source = cacheableTokenFrame(frame) && frame.predicate !== undefined
-    ? frame : tokenFrame(frame.cells, { predicate: frame.predicate });
+  const source = admitTokenFrame(frame);
   const admittedTokens = top(source);
-  const scopedTokens = Object.hasOwn(selection, "token")
+  const scopedTokens = Object.hasOwn(chosen, "token")
     ? admittedTokens.filter((known) => coincides(known, token)) : admittedTokens;
-  if (Object.hasOwn(selection, "token") && scopedTokens.length === 0)
+  if (Object.hasOwn(chosen, "token") && scopedTokens.length === 0)
     generalizations(source, token); // original precise foreign-token refusal
-  const exact = Object.hasOwn(selection, "predicate") && Object.hasOwn(selection, "object");
+  const exact = Object.hasOwn(chosen, "predicate") && Object.hasOwn(chosen, "object");
 
   // A source-told claim becomes available at its source and at positively
   // witnessed specializations. Use the original frame's extent law to select
   // only those candidate tokens BEFORE gluing their sections. A nonexistent
   // claim does not require asking each token whether it has been denied.
-  const indexed = Object.hasOwn(selection, "predicate") || Object.hasOwn(selection, "object");
+  const indexed = Object.hasOwn(chosen, "predicate") || Object.hasOwn(chosen, "object");
   let tokens = scopedTokens;
   if (indexed) {
     const index = claimSectionsOf(source);
     const sources = exact
       ? index.byClaim.get(claimCoordinate(predicate, object))
-      : Object.hasOwn(selection, "predicate")
+      : Object.hasOwn(chosen, "predicate")
         ? index.byPredicate.get(coincidenceKey(predicate))
         : index.byObject.get(coincidenceKey(object));
     const candidateKeys = new Set();
@@ -222,8 +236,8 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
     const contests = new Map(section.contested.map((entry) => [address(entry.cell), entry]));
     for (let i = 0; i < section.cells.length; i++) {
       const at = section.cells[i];
-      if ((Object.hasOwn(selection, "predicate") && !coincides(at.predicate, predicate)) ||
-          (Object.hasOwn(selection, "object") && !coincides(at.object, object))) continue;
+      if ((Object.hasOwn(chosen, "predicate") && !coincides(at.predicate, predicate)) ||
+          (Object.hasOwn(chosen, "object") && !coincides(at.object, object))) continue;
       const value = knowledgeReading(at);
       if (reading !== undefined && value !== reading) continue;
       // SignCraft's existing Hydra source-claim @id is semanticId(at).
@@ -257,7 +271,7 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   return Object.freeze({
     kind: "signgraph.inherited-telling-query", version: 1,
     snapshot, sourceCells,
-    selection: retainedCarrier(selection),
+    selection: retainedCarrier(chosen),
     total, offset, limit,
     next: offset + window.length < total ? offset + window.length : null,
     entries: window,

@@ -19,9 +19,19 @@
  * Terms are opaque values compared by SignCell coincidence (canonical bytes).
  * Evidence is not part of a site: a site is where values can be, not what they are.
  */
-import { admitCell, cell, coincidenceKey, coincides, retainedCarrier, triple, tripleKey } from "@red-cup-engineering/signcell/cell";
+import {
+  admitTriple, cell, coincidenceKey, coincides, readSourceArray, readSourceRecord,
+  retainedCarrier, triple, tripleKey,
+} from "@red-cup-engineering/signcell/cell";
 import { rule } from "@red-cup-engineering/signchain/rules";
 import { createGraph, reachable } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
+
+// Retain the published names without keeping a second Cell admission owner.
+// Native graph consumers import these operations directly from SignCell.
+export {
+  admitCellSequence as sourceIncidenceCells,
+  admitTripleSequence as sourceIncidenceTriples,
+} from "@red-cup-engineering/signcell/cell";
 
 // Distinct values by coincidence, first occurrence kept, in one pass over canonical-byte keys
 // (comparing every value with every kept one was quadratic in the number of cells).
@@ -34,85 +44,8 @@ const uniqueBy = (values, keyOf) => {
   return Object.freeze([...seen.values()]);
 };
 
-/** Inert finite source records: reject accessors, extra fields and inherited
- * declarations before a caller's executable properties can affect a site.
- * SignCell remains the owner of nested coordinate and evidence admission.
- */
-const sourceRecord = (value, role) => {
-  if (value === null || typeof value !== "object" || Array.isArray(value) ||
-      ![Object.prototype, null].includes(Object.getPrototypeOf(value)))
-    throw new TypeError(`signgraph site: ${role} must be a plain source record`);
-  return Object.getOwnPropertyDescriptors(value);
-};
-const dataField = (descriptors, name, role) => {
-  const slot = descriptors[name];
-  if (!slot || !slot.enumerable || !Object.hasOwn(slot, "value"))
-    throw new TypeError(`signgraph site: ${role}.${name} must be inert own data`);
-  return slot.value;
-};
-const exactFields = (descriptors, required, optional = []) => {
-  const names = Reflect.ownKeys(descriptors);
-  return names.every(name => typeof name === "string" &&
-    [...required, ...optional].includes(name)) &&
-    required.every(name => Object.hasOwn(descriptors, name)) &&
-    names.length >= required.length;
-};
-const sourceList = (value, role) => {
-  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype ||
-      value.length > 16384)
-    throw new TypeError(`signgraph site: ${role} must be a bounded plain source array`);
-  const fields = Object.getOwnPropertyDescriptors(value);
-  if (Reflect.ownKeys(fields).length !== value.length + 1)
-    throw new TypeError(`signgraph site: ${role} must be dense and undecorated`);
-  return Array.from({length: value.length}, (_, index) =>
-    dataField(fields, String(index), role));
-};
-/** The original source cell admission shared by both extensional topology
- * and witness-bearing tower readers. A tower requires an actual SignCell;
- * its evidence cannot be manufactured by interpreting a bare triple.
- */
-const sourceCell = (value, requireEvidence = false) => {
-  const fields = sourceRecord(value, "cell");
-  const names = ["subject", "predicate", "object"];
-  const hasEvidence = ["for", "against", "value"].some(name => Object.hasOwn(fields, name));
-  if (!exactFields(fields, hasEvidence ? [...names, "for", "against"] : names,
-      hasEvidence ? ["value"] : []) || (requireEvidence && !hasEvidence))
-    throw new TypeError("signgraph site: a source cell must be an exact triple or evidence-bearing SignCell");
-  const terms = Object.fromEntries(names.map(name => [name, dataField(fields, name, "cell")]));
-  if (!hasEvidence) return triple(terms);
-  const evidence = {
-    for: sourceList(dataField(fields, "for", "cell"), "cell.for"),
-    against: sourceList(dataField(fields, "against", "cell"), "cell.against"),
-    ...(Object.hasOwn(fields, "value") ? {value: dataField(fields, "value", "cell")} : {}),
-  };
-  return admitCell({...terms, ...evidence});
-};
-const sourceTriple = value => {
-  const admitted = sourceCell(value);
-  return Object.hasOwn(admitted, "for") ? triple(admitted) : admitted;
-};
-
-/**
- * Read the ORIGINAL ordered incidences shared by sites, relation graphs and
- * oriented flow networks. This uses the site's existing exact source Triple /
- * SignCell admission, but deliberately does NOT deduplicate triples: repeated
- * source positions remain separate graph edges even when their semantic
- * cell addresses coincide. The resulting detached triples have NO evidential
- * force; source occurrence histories live with their original owner.
- */
-export function sourceIncidenceTriples(values) {
-  return Object.freeze(sourceList(values, "incidence cells").map(sourceTriple));
-}
-
-/** Exact source-ordered SignCell presentations for FOUR/Record tower readers.
- * Unlike sourceIncidenceTriples, this retains original positive, opposing and
- * written-value evidence; a bare triple is explicitly NOT a witnessed Cell.
- * No deduplication, new observation, time, authority or source signature.
- */
-export function sourceIncidenceCells(values) {
-  return Object.freeze(sourceList(values, "evidence cells")
-    .map(value => sourceCell(value, true)));
-}
+// Graph owns its source budget; SignCell owns how an original source is read.
+const sourceList = (value, role) => readSourceArray(value, `signgraph site: ${role}`, 16384);
 
 /** Separately declared isolated vertices are ORIGINAL opaque SignCell terms,
  * never a basis for inventing edges or observational testimony. Qualify the
@@ -144,13 +77,12 @@ export function sourceIncidencePairs(values) {
 export const specializationMorphism = (specialized, general) =>
   Object.freeze({ kind: "signgraph.specialization", domain: general, codomain: specialized });
 export const isSpecializationMorphism = value => {
-  if (value === null || typeof value !== "object" || Array.isArray(value) ||
-      ![Object.prototype, null].includes(Object.getPrototypeOf(value))) return false;
-  const fields = Object.getOwnPropertyDescriptors(value);
-  return exactFields(fields, ["kind", "domain", "codomain"]) &&
-    ["kind", "domain", "codomain"].every(name =>
-      fields[name].enumerable && Object.hasOwn(fields[name], "value")) &&
-    fields.kind.value === "signgraph.specialization";
+  try {
+    const source = readSourceRecord(value, "signgraph site: specialization");
+    return Object.keys(source).length === 3 &&
+      ["kind", "domain", "codomain"].every(name => Object.hasOwn(source, name)) &&
+      source.kind === "signgraph.specialization";
+  } catch (error) { if (error instanceof TypeError) return false; throw error; }
 };
 
 /** The distinct entity terms (subjects and objects) of a list of cells. */
@@ -179,12 +111,11 @@ export function site(witnesses, specializations = []) {
   const originalCells = [], originalMorphisms = [];
   for (const value of all) {
     if (isSpecializationMorphism(value)) {
-      const fields = sourceRecord(value, "specialization");
+      const source = readSourceRecord(value, "signgraph site: specialization");
       originalMorphisms.push(retainedCarrier(specializationMorphism(
-        dataField(fields, "codomain", "specialization"),
-        dataField(fields, "domain", "specialization"))));
+        source.codomain, source.domain)));
     } else {
-      originalCells.push(sourceTriple(value));
+      originalCells.push(admitTriple(value, { maxWitnesses: 16384 }));
     }
   }
   const cells = uniqueBy(originalCells, tripleKey);
@@ -215,21 +146,13 @@ export function closeSpecialization(base) {
   // Public closure is a receiving boundary, too: a direct caller need not
   // have entered through site(). Copy only inert own source fields, so spread
   // cannot execute a getter after the graph has already been traversed.
-  const fields = sourceRecord(base, "base");
-  const original = [];
-  for (const key of Reflect.ownKeys(fields)) {
-    if (typeof key !== "string")
-      throw new TypeError("signgraph site: base keys must be string source data");
-    original.push([key, dataField(fields, key, "base")]);
-  }
-  const admittedBase = Object.fromEntries(original);
-  const declarations = sourceList(dataField(fields, "specialization", "base"),
+  const admittedBase = readSourceRecord(base, "signgraph site: base");
+  const declarations = sourceList(admittedBase.specialization,
     "base.specialization").map(edge => {
       if (!isSpecializationMorphism(edge))
         throw new TypeError("signgraph site: invalid source specialization");
-      const positions = sourceRecord(edge, "specialization");
-      return [dataField(positions, "domain", "specialization"),
-        dataField(positions, "codomain", "specialization")];
+      const source = readSourceRecord(edge, "signgraph site: specialization");
+      return [source.domain, source.codomain];
     });
   const graph = createGraph();
   const terms = new Map();

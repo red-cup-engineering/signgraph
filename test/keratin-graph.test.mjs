@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {keratinGraphOfPredications,keratinPositionKey,keratinLinearSheaf,assessKeratinLinearObservations,analyzeKeratinGraph,keratinGraphToDot} from '../src/keratin-graph.mjs';
+import { apply, applyTranspose, coboundary, diffuse, hodgeCheck, solveNormal, weightedSheafDirichlet, weightedSheafLaplacian } from '../src/cellular-sheaf.mjs';
 
 const p = (s, display='same') => ({performed:s,side:'token',display});
 const edge = (id, from, predicate, to) => ({occurrence:id,sourceRecord:`source:${id}`,cell:{subject:p(from),predicate,object:p(to)}});
@@ -120,6 +121,8 @@ test('linear keratin sheaf reuses native cellular restriction/cohomology arithme
     occurrence:e.occurrence,dim:1,restrict:{from:[[1]],to:[[1]]},
   }));
   const ordinary=keratinLinearSheaf(g,{vertexStalks,relationStalks});
+  assert.equal(ordinary.cohomologyStatus,'exact',
+    'a small original rational sheaf remains fully evaluated');
   assert.equal(ordinary.cohomology.h0,1);
   assert.equal(ordinary.cohomology.h1,1);
   assert.equal(ordinary.sourceOccurrences.length,3);
@@ -131,6 +134,62 @@ test('linear keratin sheaf reuses native cellular restriction/cohomology arithme
   assert.throws(()=>keratinLinearSheaf(g,{vertexStalks,relationStalks:relationStalks.slice(1)}),/missing original directed relation/);
 });
 
+test('large exact Keratin charts preserve original source geometry while rank is explicitly not evaluated',()=>{
+  // 17 genuine performed positions with stalk dimension 16 give 272 C0
+  // coordinates and 16 edges of dimension 16 give 256 C1 coordinates.
+  // Their dense rank would materialize 69,632 rational coefficients,
+  // exceeding the original cellular-sheaf owner's 65,536-slot budget.
+  const sourceRows=Array.from({length:16},(_,i)=>
+    edge('performed:'+i,'p'+i,'continued-by','p'+(i+1)));
+  const graph=keratinGraphOfPredications({
+    source:sourceRows,selectors,
+    stalks:Array.from({length:17},(_,i)=>({position:id('p'+i),states:['0']})),
+    contacts:sourceRows.map(row=>({occurrence:row.occurrence,allowed:[['0','0']]})),
+  });
+  const identity16=Array.from({length:16},(_,i)=>
+    Array.from({length:16},(_,j)=>i===j?1:0));
+  const linear=keratinLinearSheaf(graph,{
+    vertexStalks:graph.feather.positions.map(p=>({position:p.key,dim:16})),
+    relationStalks:graph.feather.predications.map(p=>({
+      occurrence:p.occurrence,dim:16,restrict:{from:identity16,to:identity16},
+    })),
+  });
+  assert.equal(linear.sheaf.exact,true);
+  assert.equal(linear.sheaf.c0,272);
+  assert.equal(linear.sheaf.c1,256);
+  assert.equal(linear.cohomology,null,'not evaluated is NOT exact H1=0');
+  assert.match(linear.cohomologyStatus,/^not-evaluated: rational rank work budget exceeded/);
+  assert.equal(linear.sourceOccurrences.length,16);
+  // The independently testable numerical H0 reader must remain usable on
+  // this SAME source-positioned Keratin sheaf when exact rational H1 rank
+  // exceeds its original preflight budget.
+  const hodge=hodgeCheck(linear.sheaf,Array(linear.sheaf.c0).fill(0),
+    {maxSteps:0});
+  assert.equal(hodge.cohomologyStatus,linear.cohomologyStatus);
+  assert.equal(hodge.h1,null,
+    'unassayed exact rank is not a theorem of H1 vanishing');
+  assert.equal(hodge.harmonic,true);
+  assert.equal(hodge.sectionResidual,0);
+  assert.equal(hodge.laplacianResidual,0);
+  const nonharmonic=Array(linear.sheaf.c0).fill(0);
+  nonharmonic[0]=1;
+  const obstructed=hodgeCheck(linear.sheaf,nonharmonic,{maxSteps:0});
+  assert.equal(obstructed.cohomologyStatus,linear.cohomologyStatus);
+  assert.equal(obstructed.h1,null);
+  assert.equal(obstructed.harmonic,false,
+    'not evaluating H1 does not convert a nonzero coboundary to a section');
+  const observed=graph.feather.positions.map((p,i)=>({
+    position:p.key,value:Array(16).fill(0),
+    sourceRecord:'meter:'+i,evidence:{for:['witness:'+i],against:[]},
+  }));
+  const result=assessKeratinLinearObservations(linear,observed);
+  assert.equal(result.compatible,true,
+    'bounded numeric coboundary remains usable even when exact rational cohomology is unassayed');
+  assert.equal(result.residualNorm,0);
+  assert.equal(result.positions.length,17);
+  assert.equal(result.sourceAuthentication,'caller-supplied-not-adjudicated');
+});
+
 const linearSpec=(graph,{twisted=false}={})=>keratinLinearSheaf(graph,{
   vertexStalks:graph.feather.positions.map(p=>({position:p.key,dim:1})),
   relationStalks:graph.feather.predications.map(e=>({
@@ -139,6 +198,135 @@ const linearSpec=(graph,{twisted=false}={})=>keratinLinearSheaf(graph,{
   })),
 });
 const reading=(position,value,sourceRecord)=>({position:id(position),value,sourceRecord,evidence:{for:[sourceRecord],against:[]}});
+
+test('witness-qualified Keratin linear observations retain genuine source-indexed weighted energy',()=>{
+  const graph=specimen({contacts:contacts(false)});
+  const linear=linearSpec(graph);
+  const observed=graph.feather.positions.map((position,index)=>({
+    position:position.key,value:index,
+    sourceRecord:'meter:'+index,
+    evidence:{for:['witness:'+index],against:[]},
+  }));
+  const report=assessKeratinLinearObservations(linear,observed);
+  assert.equal(report.status,'incompatible-numeric-coboundary');
+  assert.equal(report.compatible,false,
+    'nonzero observed coboundary must remain a numeric obstruction');
+  assert.equal(report.positions.length,3);
+  const weights=linear.sheaf.edges.map(()=>[[2]]);
+  const energy=weightedSheafDirichlet(linear.sheaf,weights,report.vector);
+  const typedEnergy=weightedSheafDirichlet(linear.sheaf,weights,
+    Float64Array.from(report.vector));
+  assert.ok(Math.abs(typedEnergy.energy-energy.energy)<1e-12,
+    'the original numeric TypedArray consumer retains the same source-qualified geometry');
+  assert.ok(Math.abs(energy.energy-12)<1e-12,
+    'all three original directed source contacts retain the triangle energy');
+  const laplacian=weightedSheafLaplacian(linear.sheaf,weights);
+  const Lx=apply(laplacian,report.vector);
+  const quadratic=report.vector.reduce((sum,v,i)=>sum+v*Lx[i],0);
+  assert.ok(Math.abs(energy.energy-quadratic)<1e-12,
+    'the same original numeric cochain is received by both weighted kernels');
+  assert.deepEqual(new Set(energy.perEdge.map(e=>e.id)),
+    new Set(graph.feather.predications.map(p=>p.occurrence)),
+    'weighted energy retains original source-indexed occurrence addresses');
+
+  // An opposing original witness prevents a numerical cochain from being
+  // issued. This is the genuine Keratin information→numeric gate, not an
+  // implied right to a measured or physical energy claim.
+  const opposed=observed.map((row,i)=>i===0?{
+    ...row,evidence:{for:row.evidence.for,against:['counter:witness']},
+  }:row);
+  const refused=assessKeratinLinearObservations(linear,opposed);
+  assert.equal(refused.vector,null);
+  assert.equal(refused.status,'unassayed-incomplete-or-unqualified-source');
+
+  let calls=0;
+  const malicious=[[-1]];
+  Object.defineProperty(malicious,'map',{value(){
+    calls++;return [[1]];
+  }});
+  assert.throws(()=>weightedSheafDirichlet(linear.sheaf,
+    [malicious,...weights.slice(1)],report.vector),
+  /weighted edge metric cannot be sparse or decorated/);
+  assert.equal(calls,0,
+    'a numerical metric must not replace its declared source before Cholesky');
+});
+
+test('Keratin source-qualified numeric fibers receive heat flow and normal loads without fabricated witnesses',()=>{
+  const graph=specimen({contacts:contacts(false)});
+  const linear=linearSpec(graph);
+  const original=graph.feather.positions.map((position,i)=>({
+    position:position.key,value:i*2,sourceRecord:'reading:'+i,
+    evidence:{for:['observed:'+i],against:[]},
+  }));
+  const observed=assessKeratinLinearObservations(linear,original);
+  assert.deepEqual(observed.vector,[0,2,4]);
+  assert.equal(observed.sourceAuthentication,'caller-supplied-not-adjudicated');
+
+  // The SAME original issued sheaf accepts numeric source cuts, including
+  // the established binary64 typed-cochain carrier, without a second graph.
+  const flow=diffuse(linear.sheaf,observed.vector,{maxSteps:100});
+  const typedFlow=diffuse(linear.sheaf,Float64Array.from(observed.vector),{maxSteps:100});
+  assert.deepEqual(typedFlow,flow);
+  assert.equal(flow.converged,true);
+  assert.ok(flow.compatible);
+  const harmonic=hodgeCheck(linear.sheaf,observed.vector,{maxSteps:100});
+  assert.equal(harmonic.harmonic,true);
+  assert.equal(harmonic.h1,linear.cohomology.h1);
+  assert.deepEqual(harmonic.section,flow.section);
+
+  // A mathematically issued load from the SAME oriented coboundary is
+  // representable. The normal solver returns a finite response and an
+  // independently checkable δᵀf reading without inventing source authority.
+  const delta=coboundary(linear.sheaf);
+  const orientedEdgeTestimony=[1,0,-1];
+  const load=applyTranspose(delta,orientedEdgeTestimony);
+  // The SAME original Keratin source chart is received by both sides of
+  // the linear dual pairing, not a separately reconstructed load ledger.
+  const edgeResidual=apply(delta,observed.vector);
+  const lhs=edgeResidual.reduce((sum,value,i)=>sum+value*orientedEdgeTestimony[i],0);
+  const rhs=observed.vector.reduce((sum,value,i)=>sum+value*load[i],0);
+  assert.ok(Math.abs(lhs-rhs)<1e-12);
+  assert.deepEqual(applyTranspose(delta,Float64Array.from(orientedEdgeTestimony)),load);
+  let dualCalls=0;
+  const importedEdgeTestimony=[...orientedEdgeTestimony];
+  Object.defineProperty(importedEdgeTestimony,"0",{enumerable:true,get(){
+    dualCalls++;return 0;
+  }});
+  assert.throws(()=>applyTranspose(delta,importedEdgeTestimony),
+    /applyTranspose source vector array slots must be inert own data/);
+  assert.equal(dualCalls,0,
+    'a caller getter must not rewrite the original Keratin edge load');
+  const balanced=solveNormal(linear.sheaf,load);
+  assert.equal(balanced.consistent,true);
+  const roundtrip=applyTranspose(delta,balanced.section);
+  for(let i=0;i<load.length;i++)
+    assert.ok(Math.abs(roundtrip[i]-load[i])<1e-9);
+  assert.deepEqual(solveNormal(linear.sheaf,Float64Array.from(load)),balanced);
+
+  let calls=0;
+  const forgedLoad=[...load];
+  Object.defineProperty(forgedLoad,Symbol.iterator,{value(){
+    calls++;return [0,0,0][Symbol.iterator]();
+  }});
+  assert.throws(()=>solveNormal(linear.sheaf,forgedLoad),
+    /solveNormal source load cannot be sparse or decorated/);
+  const forgedPin={value:0};
+  Object.defineProperty(forgedPin,'vertex',{enumerable:true,get(){
+    calls++;return graph.feather.positions[0].key;
+  }});
+  assert.throws(()=>diffuse(linear.sheaf,observed.vector,{maxSteps:0,
+    fixed:[forgedPin]}),
+  /diffuse fixed reading: requires exact inert own source fields/);
+  assert.equal(calls,0);
+
+  const contrary=original.map((v,i)=>i===0
+    ?{...v,evidence:{for:v.evidence.for,against:['counter:witness']}}:v);
+  const unqualified=assessKeratinLinearObservations(linear,contrary);
+  assert.equal(unqualified.vector,null);
+  assert.throws(()=>solveNormal(linear.sheaf,unqualified.vector),
+    /solveNormal: rhs has the wrong length/,
+    'a refused observation cannot be smuggled into the normal solver as an empty or zero load');
+});
 
 test('a complete observed linear sheaf preserves source identity and never proves a separate discrete model',()=>{
   const graph=specimen(),linear=linearSpec(graph);
@@ -277,11 +465,64 @@ test('foreign, accessor-backed, nonfinite or surplus numeric assertions refuse b
   let calls=0;
   const accessor=reading('a',[0],'meter');
   Object.defineProperty(accessor,'value',{get(){calls++;return [0];},enumerable:true});
-  assert.throws(()=>assessKeratinLinearObservations(linear,[accessor]),/own data fields/);
+  assert.throws(()=>assessKeratinLinearObservations(linear,[accessor]),/inert own data/,
+    'the original snapshot must refuse a getter before the obsolete later own-field reader');
   const array=reading('a',[0],'meter');
   Object.defineProperty(array.value,0,{get(){calls++;return 0;},enumerable:true});
   assert.throws(()=>assessKeratinLinearObservations(linear,[array]),/dense own data slots/);
   assert.equal(calls,0,'malicious getters were not invoked to obtain the numerical source');
+});
+
+test('Keratin linear sheaf and observation arrays refuse executable, decorated and oversized sources',()=>{
+  const graph=specimen();
+  const vertexStalks=graph.feather.positions.map(p=>({position:p.key,dim:1}));
+  const relationStalks=graph.feather.predications.map(e=>({
+    occurrence:e.occurrence,dim:1,restrict:{from:[[1]],to:[[1]]},
+  }));
+  assert.equal(keratinLinearSheaf(graph,{vertexStalks,relationStalks}).cohomology.h0,1,
+    'ordinary original linear sheaf inputs remain admitted');
+  let calls=0;
+  const getterOptions={relationStalks};
+  Object.defineProperty(getterOptions,'vertexStalks',{
+    enumerable:true,get(){calls++;return vertexStalks;},
+  });
+  assert.throws(()=>keratinLinearSheaf(graph,getterOptions),/linear sheaf options.*inert/);
+  const decoratedVertices=[...vertexStalks];
+  Object.defineProperty(decoratedVertices,'authority',{value:'unearned'});
+  assert.throws(()=>keratinLinearSheaf(graph,{vertexStalks:decoratedVertices,relationStalks}),
+    /linear vertex stalks.*dense, undecorated/);
+  const accessorRelations=[...relationStalks];
+  Object.defineProperty(accessorRelations,'0',{
+    enumerable:true,get(){calls++;return relationStalks[0];},
+  });
+  assert.throws(()=>keratinLinearSheaf(graph,{vertexStalks,relationStalks:accessorRelations}),
+    /linear relation stalks.*inert data/);
+  const oversizedRelations=Array(257).fill(relationStalks[0]);
+  assert.throws(()=>keratinLinearSheaf(graph,{vertexStalks,relationStalks:oversizedRelations}),
+    /linear relation stalks.*work limit 256/);
+
+  const linear=linearSpec(graph);
+  const accessorObservations=[reading('a',0,'meter')];
+  Object.defineProperty(accessorObservations,'0',{
+    enumerable:true,get(){calls++;return reading('a',0,'meter');},
+  });
+  assert.throws(()=>assessKeratinLinearObservations(linear,accessorObservations),
+    /linear observations.*inert data/);
+  const enormousNumeric=reading('a',[0],'meter');
+  enormousNumeric.value.length=1000000;
+  assert.throws(()=>assessKeratinLinearObservations(linear,[enormousNumeric]),
+    /linear observation values.*work limit 16/);
+  const decoratedNumeric=reading('a',[0],'meter');
+  Object.defineProperty(decoratedNumeric.value,'surplus',{value:1});
+  assert.throws(()=>assessKeratinLinearObservations(linear,[decoratedNumeric]),
+    /linear observation values require dense own data slots/);
+  const decoratedWitness=reading('a',0,'meter');
+  Object.defineProperty(decoratedWitness.evidence.for,Symbol('secret'),{
+    get(){calls++;return 'forged';},
+  });
+  assert.throws(()=>assessKeratinLinearObservations(linear,[decoratedWitness]),
+    /linear observation for testimony requires material source identities/);
+  assert.equal(calls,0,'hostile source getters never ran during bounded admission');
 });
 
 test('two duplicate candidate hole cycles can each be nontrivial while their aggregate boundary span has rank one',()=>{
@@ -305,6 +546,117 @@ test('graph workbench refuses undeclared parameters and oversized computational 
   assert.throws(()=>analyzeKeratinGraph(specimen(),{surprise:true}),/undeclared fields/);
 });
 
+test('omitted Keratin source options cannot borrow executable or fabricated Object.prototype data',()=>{
+  // A missing optional value means absent source evidence, not permission to
+  // consult a host's prototype. Keep global test poisoning synchronous and
+  // restore every original descriptor even if an assertion fails.
+  const poison=(key,act)=>{
+    const original=Object.getOwnPropertyDescriptor(Object.prototype,key);
+    let called=0;
+    Object.defineProperty(Object.prototype,key,{
+      configurable:true,
+      get(){called++;throw new Error('foreign inherited '+key+' is not source data');},
+    });
+    try{act();}
+    finally{
+      if(original)Object.defineProperty(Object.prototype,key,original);
+      else delete Object.prototype[key];
+    }
+    assert.equal(called,0,'omitted '+key+' cannot invoke inherited source getter');
+  };
+  poison('faces',()=>{
+    const graph=specimen();
+    assert.equal(graph.filledFaces.length,0,'missing faces remain an empty optional family');
+    assert.equal(graph.topology.betti.h1,1);
+  });
+  const graph=specimen();
+  const linear=linearSpec(graph);
+  poison('maxAssignments',()=>{
+    const analysis=analyzeKeratinGraph(graph);
+    assert.equal(analysis.sectionStatus,'exact');
+  });
+  poison('tolerance',()=>{
+    const result=assessKeratinLinearObservations(linear,[]);
+    assert.equal(result.status,'unassayed-incomplete-or-unqualified-source');
+    assert.equal(result.vector,null);
+  });
+  poison('vertexStalks',()=>{
+    assert.throws(()=>keratinLinearSheaf(graph,{}),
+      /linear sheaf requires vertexStalks and relationStalks/);
+  });
+});
+
+test('nested Keratin fields must be material records, not ambient inherited source facts',()=>{
+  // The original fields() guard now returns a data-only snapshot. Every
+  // nested consumer must actually USE it; checking descriptors and then
+  // reading the original would silently pick up absent source coordinates
+  // from host Object.prototype data.
+  const base={source,selectors,stalks,contacts:contacts(true),faces:[],holes:[],locks:[],observers:[]};
+  const graph=specimen();
+  const vertexStalks=graph.feather.positions.map(p=>({position:p.key,dim:1}));
+  const relationStalks=graph.feather.predications.map(e=>({
+    occurrence:e.occurrence,dim:1,restrict:{from:[[1]],to:[[1]]},
+  }));
+  const cannotInherit=(key,value,invoke,reason)=>{
+    const saved=Object.getOwnPropertyDescriptor(Object.prototype,key);
+    Object.defineProperty(Object.prototype,key,{value,configurable:true});
+    try { assert.throws(invoke,reason); }
+    finally {
+      if(saved)Object.defineProperty(Object.prototype,key,saved);
+      else delete Object.prototype[key];
+    }
+  };
+  cannotInherit('states',['0','1'],
+    ()=>keratinGraphOfPredications({...base,stalks:[{position:id('a')},...stalks.slice(1)]}),
+    /stalk states.*invalid named list/);
+  cannotInherit('allowed',parity(0),
+    ()=>keratinGraphOfPredications({...base,contacts:[{occurrence:'a>b'},...base.contacts.slice(1)]}),
+    /contact admissibility must be a bounded array/);
+  cannotInherit('excludes',['0'],
+    ()=>keratinGraphOfPredications({...base,locks:[{id:'lock',position:id('a'),sourceRecord:'s:lock'}]}),
+    /invalid named list/);
+  cannotInherit('direction',1,
+    ()=>keratinGraphOfPredications({...base,holes:[{id:'gap',sourceRecord:'s:gap',boundary:[
+      {occurrence:'a>b'},...boundary.slice(1),
+    ]}]}),
+    /each oriented step must reference an original occurrence/);
+  cannotInherit('visibleOccurrences',[],
+    ()=>keratinGraphOfPredications({...base,observers:[{id:'scope',visiblePositions:[id('a')]}]}),
+    /invalid named list/);
+  const missingRestrict=[{occurrence:relationStalks[0].occurrence,dim:1},...relationStalks.slice(1)];
+  cannotInherit('restrict',{from:[[1]],to:[[1]]},
+    ()=>keratinLinearSheaf(graph,{vertexStalks,relationStalks:missingRestrict}),
+    /linear restriction matrices.*plain source record/);
+  assert.equal(keratinGraphOfPredications(base).kind,
+    'signgraph.keratinGraph.finiteFiberHoleReading.v1',
+    'legitimate material source declarations remain accepted');
+});
+
+test('Keratin never imports fabricated Feather source positions or selector laws',()=>{
+  const good=specimen();
+  assert.equal(good.feather.predications.length,source.length);
+  let invoked=0;
+  const occurrence={...source[0],cell:{...source[0].cell,subject:{...source[0].cell.subject}}};
+  Object.defineProperty(occurrence.cell.subject,'performed',{
+    enumerable:true,get(){invoked++;return 'forged:position';},
+  });
+  assert.throws(()=>specimen({source:[occurrence,...source.slice(1)]}),/feather graph:/,
+    'original source-position admission happens before Keratin model construction');
+  const input=[...source];
+  Object.defineProperty(input,Symbol.iterator,{
+    get(){invoked++;return Array.prototype[Symbol.iterator];},
+  });
+  assert.throws(()=>specimen({source:input}),/feather graph:/);
+  const selector={...selectors};
+  Object.defineProperty(selector,'transversePredicate',{
+    enumerable:true,get(){invoked++;return 'contacts';},
+  });
+  assert.throws(()=>specimen({selectors:selector}),/feather graph:/);
+  assert.equal(invoked,0,'source predicates and positions were never generated by caller callbacks');
+  assert.equal(specimen().candidateHoles.length,good.candidateHoles.length,
+    'existing valid original Feather→Keratin receiving stays source-consistent');
+});
+
 test('Keratin graph source admission rejects executable top-level and nested source records',()=>{
  let calls=0;
  const base={source,selectors,stalks,contacts:contacts(false),faces:[],holes:[],locks:[],observers:[]};
@@ -322,6 +674,78 @@ test('Keratin graph source admission rejects executable top-level and nested sou
  for(const invalid of cases)assert.throws(()=>keratinGraphOfPredications(invalid),
    /keratin graph:.*inert/u);
  assert.equal(calls,0);
+});
+
+
+test('Keratin uses original Feather source cuts throughout discrete stalk, contact, hole and observer admission',()=>{
+  const input={source,selectors,stalks,contacts:contacts(false),faces:[],holes:[],locks:[],observers:[]};
+  let traps=0;
+  const protectedArray = values => new Proxy([...values],{
+    get(target,key,receiver){
+      if(key===Symbol.iterator||key==='map'||key==='every'||key==='some'){
+        traps++;
+        throw new Error('foreign caller-owned source iteration');
+      }
+      return Reflect.get(target,key,receiver);
+    },
+  });
+  const pair=['0','0'];
+  const pairProxy=new Proxy(pair,{
+    get(target,key,receiver){
+      if(key==='0'){traps++;return 'forged';}
+      return Reflect.get(target,key,receiver);
+    },
+  });
+  const contactsCut=contacts(false).map((record,index)=>index===0
+    ?{...record,allowed:protectedArray([pairProxy,parity(0)[1]])}
+    :record);
+  const graph=keratinGraphOfPredications({
+    ...input,
+    stalks:protectedArray(stalks),
+    contacts:protectedArray(contactsCut),
+    locks:protectedArray([{id:'cut:lock',position:id('a'),sourceRecord:'s:lock',excludes:protectedArray([])}]),
+    holes:protectedArray([{id:'cut:hole',sourceRecord:'s:hole',boundary:protectedArray(boundary)}]),
+    observers:protectedArray([{id:'cut:observer',
+      visiblePositions:protectedArray([id('a'),id('b')]),
+      visibleOccurrences:protectedArray(['a>b'])}]),
+  });
+  assert.equal(graph.kind,'signgraph.keratinGraph.finiteFiberHoleReading.v1');
+  assert.equal(graph.stalks.length,3);
+  assert.equal(graph.contacts.length,3);
+  assert.equal(graph.candidateHoles.length,1);
+  assert.equal(graph.observers.length,1);
+  assert.equal(traps,0,'no unqualified source-array iterator, method or numeric slot may run');
+});
+
+test('Keratin linear consumers traverse original immutable source cuts for stalks, evidence and numbers',()=>{
+  const graph=specimen({contacts:contacts(false)});
+  let traps=0;
+  const untrusted=original=>new Proxy([...original],{
+    get(target,key,receiver){
+      if(key===Symbol.iterator||key==='map'||key==='every'||key==='some'){
+        traps++;throw new Error('unqualified array method');
+      }
+      return Reflect.get(target,key,receiver);
+    },
+  });
+  const vertices=graph.feather.positions.map(p=>({position:p.key,dim:1}));
+  const relations=graph.feather.predications.map(edge=>({
+    occurrence:edge.occurrence,dim:1,restrict:{from:[[1]],to:[[1]]},
+  }));
+  const linear=keratinLinearSheaf(graph,{
+    vertexStalks:untrusted(vertices),relationStalks:untrusted(relations),
+  });
+  assert.equal(linear.cohomology.h0,1);
+  const rows=graph.feather.positions.map((point,i)=>({
+    position:point.key,
+    value:untrusted([0]),
+    sourceRecord:'qualified:'+i,
+    evidence:{for:untrusted(['witness:'+i]),against:untrusted([])},
+  }));
+  const result=assessKeratinLinearObservations(linear,untrusted(rows));
+  assert.equal(result.compatible,true);
+  assert.equal(result.status,'compatible-numeric-coboundary');
+  assert.equal(traps,0,'the original linear sheaf and observed numeric consumers used detached source cuts');
 });
 
 test('Keratin graph rejects hostile indexed source arrays, hidden fields and boundary steps',()=>{

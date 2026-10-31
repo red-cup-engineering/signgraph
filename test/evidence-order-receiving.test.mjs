@@ -97,15 +97,23 @@ test("native original SignCell predication identity crosses SignChain theory int
   // Count and carrier kind alone are insufficient. A SignChain supplier that
   // silently swaps subject/object projections would still satisfy both.
   // Check each original source-generated morphism, trace and endpoint.
-  const originalNode = [source.subject, source.predicate, source.object];
+  assert.equal(typeof signCellPredication.predicationBaseNodeOf, "function",
+    "installed source owner must construct the original base-node role");
+  const originalNode = signCellPredication.predicationBaseNodeOf(source);
+  const converseNode = signCellPredication.predicationBaseNodeOf({
+    subject: source.object, predicate: source.predicate, object: source.subject,
+  });
+  assert.deepEqual(originalNode, [source.subject, source.predicate, source.object],
+    "source-issued node preserves its exact three original positions");
   const expectedRules = [
-    ["typedTheory.inferenceMorphism.converse", originalNode,
-      [source.object, source.predicate, source.subject]],
+    ["typedTheory.inferenceMorphism.converse", originalNode, converseNode],
     ["typedTheory.inferenceMorphism.subjectProjection", originalNode, source.subject],
     ["typedTheory.inferenceMorphism.objectProjection", originalNode, source.object],
   ];
   assert.equal(typeof signCellPredication.baseObjectCoincides, "function",
     "installed source owner must qualify original base endpoints");
+  assert.equal(signCellPredication.baseObjectCoincides(originalNode, [...originalNode]), false,
+    "a same-shaped array term cannot impersonate the original base-node role");
   for (const [index, [kind, domain, codomain]] of expectedRules.entries()) {
     const rule = received.rules[index];
     assert.equal(rule.kind, "typedTheory.inferenceRule");

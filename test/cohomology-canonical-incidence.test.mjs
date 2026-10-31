@@ -120,7 +120,7 @@ test("cohomology source admission refuses getter-backed, hidden, foreign and ove
   for(const [cells,extra] of [
     [input,[]],[[foreign],[]],[[hidden],[]],
     [[valid],extraEntities],[[bareWithoutPredicate],[]]
-  ])assert.throws(()=>cohomologyOfCells(cells,extra),/signgraph site:/u);
+  ])assert.throws(()=>cohomologyOfCells(cells,extra),/signgraph site:|signcell:/u);
   const oversized=Array(16385).fill(valid);
   Object.defineProperty(oversized,"0",{enumerable:true,get:getter});
   assert.throws(()=>cohomologyOfCells(oversized),/bounded plain source array/u);

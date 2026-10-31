@@ -25,16 +25,66 @@ const MAX_FORK_PAIRS = 8192;
 const generatedReadouts = new WeakSet();
 
 function fail(message) { throw new TypeError(`feather graph: ${message}`); }
+/** Original source-position/claim admission shared with the downstream
+ * Keratin workbench. The elected owner is Feather, the earliest reader of
+ * performed directed predications; consumers supply their own error prefix.
+ * A fixed null-prototype snapshot prevents the post-admission read of
+ * inherited source fields, even when an optional coordinate is absent.
+ */
+export function featherSourceFields(record, keys, context, scope = 'feather graph') {
+  // The public admission boundary must ALWAYS throw on refusal. A supplied
+  // callback could return without throwing and thereby allow the caller's
+  // executable fields to become source positions. Scope is diagnostic only.
+  const refuse = message => {
+    throw new TypeError(`${scope === 'keratin graph' ? 'keratin graph' : 'feather graph'}: ${message}`);
+  };
+  if (!isRecord(record) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(record)))
+    refuse(`${context}: undeclared fields or invalid object; requires plain source record`);
+  const descriptors = Object.getOwnPropertyDescriptors(record);
+  const names = Reflect.ownKeys(descriptors);
+  if (names.some(key => typeof key !== 'string' || !keys.includes(key) ||
+      !descriptors[key].enumerable || !Object.hasOwn(descriptors[key], 'value')))
+    refuse(`${context}: undeclared fields or invalid object; requires inert own data`);
+  const source = Object.create(null);
+  for (const name of names)
+    Object.defineProperty(source, name, {value: descriptors[name].value, enumerable: true});
+  return Object.freeze(source);
+}
+/** Bounded, ordinary dense original source lists: refuse accessor entries,
+ * source-specific iterators, invisible annotations, subclasses and sparsity
+ * before any first-party graph algorithm traverses their entries.
+ */
+export function featherSourceArray(values, context, maximum = 256, scope = 'feather graph') {
+  const refuse = message => {
+    throw new TypeError(`${scope === 'keratin graph' ? 'keratin graph' : 'feather graph'}: ${message}`);
+  };
+  if (!Array.isArray(values) || Object.getPrototypeOf(values) !== Array.prototype ||
+      values.length > maximum)
+    refuse(`${context}: list exceeds work limit ${maximum}`);
+  const descriptors = Object.getOwnPropertyDescriptors(values);
+  if (Reflect.ownKeys(descriptors).length !== values.length + 1)
+    refuse(`${context}: array must be dense, undecorated inert data`);
+  // Admission must return a detached, immutable cut of the inspected own
+  // slots, not the caller's mutable source list. No foreign iterator runs.
+  const snapshot = new Array(values.length);
+  for (let i = 0; i < values.length; i++) {
+    const slot = descriptors[String(i)];
+    if (!slot || !slot.enumerable || !Object.hasOwn(slot, 'value'))
+      refuse(`${context}: array slots must be inert data`);
+    snapshot[i] = slot.value;
+  }
+  return freeze(snapshot);
+}
 function positionOf(value) {
-  if (!isRecord(value) || !named(value.performed) || !['token', 'claim'].includes(value.side))
+  const position = featherSourceFields(value, ['performed', 'side', 'display'], 'source-position role');
+  if (!named(position.performed) || !['token', 'claim'].includes(position.side))
     fail('each endpoint must be a source-position role {performed,side}');
-  if (Object.hasOwn(value, 'display') && typeof value.display !== 'string')
+  if (Object.hasOwn(position, 'display') && typeof position.display !== 'string')
     fail('a Mark display must be an opaque text readout, not an identity');
-  if (Object.keys(value).some(key => !['performed', 'side', 'display'].includes(key)))
-    fail('source-position roles accept only performed, side, and optional display');
-  const key = JSON.stringify([value.performed, value.side]);
-  return freeze({ key, performed: value.performed, side: value.side,
-    ...(Object.hasOwn(value, 'display') ? {display: value.display} : {}) });
+  const key = JSON.stringify([position.performed, position.side]);
+  return freeze({ key, performed: position.performed, side: position.side,
+    ...(Object.hasOwn(position, 'display') ? {display: position.display} : {}) });
 }
 
 /**
@@ -46,9 +96,15 @@ function positionOf(value) {
  * in the supplied axial relation. A transverse contact is recorded ONLY if a
  * separate source predication actually supplies it. Route equality is unknown.
  */
-export function featherGraphOfPredications(source, { axialPredicate, transversePredicate } = {}) {
+export function featherGraphOfPredications(source, options = {}) {
   if (!Array.isArray(source) || source.length === 0 || source.length > MAX_PREDICATIONS)
     fail(`requires 1-${MAX_PREDICATIONS} original predication occurrences`);
+  // Protect source occurrence iteration AND selectors before the original
+  // graph can read any purported performed source position or relation.
+  const admittedSource = featherSourceArray(source, 'original predications', MAX_PREDICATIONS);
+  const selectors = featherSourceFields(options,
+    ['axialPredicate', 'transversePredicate'], 'predicate selectors');
+  const {axialPredicate, transversePredicate} = selectors;
   if (!named(axialPredicate) || !named(transversePredicate) || axialPredicate === transversePredicate)
     fail('distinct axialPredicate and transversePredicate selectors are required');
   const ids = new Set(), positions = new Map(), predications = [];
@@ -60,19 +116,22 @@ export function featherGraphOfPredications(source, { axialPredicate, transverseP
       positions.set(role.key, role);
     return role.key;
   };
-  for (const original of source) {
-    if (!isRecord(original) || Object.keys(original).some(key => !['occurrence', 'sourceRecord', 'cell'].includes(key)))
-      fail('each source occurrence requires only occurrence, sourceRecord, and cell');
-    if (!named(original.occurrence) || !named(original.sourceRecord) || !isRecord(original.cell) ||
-        !named(original.cell.predicate)) fail('each occurrence needs identity, source record, and predicate');
+  for (const rawOccurrence of admittedSource) {
+    const original = featherSourceFields(rawOccurrence,
+      ['occurrence', 'sourceRecord', 'cell'], 'source occurrence');
+    const predication = featherSourceFields(original.cell,
+      ['subject', 'predicate', 'object'], 'source predication cell');
+    if (!named(original.occurrence) || !named(original.sourceRecord) ||
+        !named(predication.predicate))
+      fail('each occurrence needs identity, source record, and predicate');
     if (ids.has(original.occurrence)) fail('duplicate original occurrence identity');
     ids.add(original.occurrence);
-    const subject = positionOf(original.cell.subject), object = positionOf(original.cell.object);
+    const subject = positionOf(predication.subject), object = positionOf(predication.object);
     remember(subject); remember(object);
     predications.push(freeze({
       occurrence: original.occurrence,
       sourceRecord: original.sourceRecord,
-      subject: subject.key, predicate: original.cell.predicate, object: object.key,
+      subject: subject.key, predicate: predication.predicate, object: object.key,
     }));
   }
   predications.sort((a, b) => compare(a.occurrence, b.occurrence));
@@ -169,23 +228,36 @@ export function featherGraphOfPredications(source, { axialPredicate, transverseP
  * two opposed witnesses are not absence, and no claimed Charge is inferred.
  */
 export function positGraphOfFeather(feather, posits) {
-  if (!isRecord(feather) || !generatedReadouts.has(feather) || !Array.isArray(posits))
+  if (!isRecord(feather) || !generatedReadouts.has(feather))
     fail('posit reading requires an existing feather graph and posit testimony list');
+  // Keep source testimony finite before inspection. The original graph's
+  // existing 8192 candidate budget also bounds caller-reported posit rows
+  // and individual testimony lanes; no new independent witness is inferred.
+  const admittedPosits = featherSourceArray(posits, 'posit testimony', MAX_FORK_PAIRS);
   const originals = new Set(feather.predications.map(item => item.occurrence));
   const told = new Set(), chargeOccurrences = [];
-  for (const posit of posits) {
-    if (!isRecord(posit) || Object.keys(posit).some(key => !['occurrence', 'sourceRecord', 'for', 'against'].includes(key)))
-      fail('posit testimony must contain only occurrence, sourceRecord, for, against');
+  // A bound on each row and lane alone is multiplicative: 8192 rows with
+  // 8192 witnesses EACH can demand tens of millions of copied entries.
+  // Share the established finite candidate budget across both testimony
+  // sides and ALL source records, before retaining any new row.
+  let witnessSlots = 0;
+  for (const sourcePosit of admittedPosits) {
+    const posit = featherSourceFields(sourcePosit,
+      ['occurrence', 'sourceRecord', 'for', 'against'], 'posit testimony');
+    const forSide = featherSourceArray(posit.for, 'posit for witnesses', MAX_FORK_PAIRS);
+    const againstSide = featherSourceArray(posit.against, 'posit against witnesses', MAX_FORK_PAIRS);
+    if (forSide.length + againstSide.length > MAX_FORK_PAIRS - witnessSlots)
+      fail(`posit testimony aggregate witness budget exceeds ${MAX_FORK_PAIRS} source entries`);
+    witnessSlots += forSide.length + againstSide.length;
     if (!originals.has(posit.occurrence) || !named(posit.sourceRecord) ||
-        !Array.isArray(posit.for) || !Array.isArray(posit.against) ||
-        ![...posit.for, ...posit.against].every(named))
+        !forSide.every(named) || !againstSide.every(named))
       fail('each posit must charge an original predication with explicit for/against witnesses');
     const id = JSON.stringify([posit.occurrence, posit.sourceRecord]);
     if (told.has(id)) fail('duplicate original posit testimony');
     told.add(id);
     chargeOccurrences.push(freeze({
       occurrence: posit.occurrence, sourceRecord: posit.sourceRecord,
-      for: freeze([...posit.for]), against: freeze([...posit.against]),
+      for: freeze(forSide), against: freeze(againstSide),
     }));
   }
   chargeOccurrences.sort((a, b) => compare(a.occurrence, b.occurrence) || compare(a.sourceRecord, b.sourceRecord));

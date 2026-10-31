@@ -49,6 +49,20 @@ not in a second benchmark registry. A green graph test proves one native
 graph behavior; it does not prove LangGraph parity or a running customer
 service.
 
+## SignCell-owned frames into graph sheaf readers
+
+`./token-sheaf` now consumes the existing SignCell-owned
+`admitTokenFrame` boundary for direct, inherited, selected-claim and paged
+reads. One admitted source cut determines both token specialization and
+source cell testimony, so a mutable foreign frame cannot produce a page
+from different source revisions or execute an accessor during reconstruction.
+The original source API and publication obligations are in
+[SignCell's token-frame contract](https://github.com/red-cup-engineering/signcell/blob/30803c6363505197a5aafffb6d3f08b13e6a9e9c/src/README.md#portable-token-frame-source-boundary).
+Neither graph projection nor a query's content address grants source rights,
+causal witnessing or external Work acceptance. This is a proposed consumer
+migration; package pins and receiving tests must select an immutable
+edition of the new SignCell API before a release/settlement claim.
+
 ## Feather graphs: posit graphs as charged feather readings
 
 The original [Obsmetrologia feather-graph assay](https://github.com/lenticule-science/obsmetrologia/blob/main/docs/research/2026-10-16-relationlessness-spiral-pisot-prior-work-assay.md#relation-only-feather-graphs-candidate-derived-forks-and-first-negative-controls)
@@ -81,6 +95,32 @@ carrier. The original SignChain FOUR adjudication and original authority to
 admit that testimony remain with their existing owners. Even a JSON copy of
 the readout cannot acquire in-process derivation authority.
 
+**Source-admission boundary:** Feather is the earliest executable owner of
+the performed source-position reader. Its original `featherSourceFields`
+and `featherSourceArray` reject accessor-backed selectors, hidden or
+decorated occurrence/Cell/position records, executable list iterators,
+sparse arrays and over-budget source/posit testimony **before** creating
+a fork, edge or charge. The guards return frozen **shallow source cuts**:
+record snapshots or detached arrays of inspected own data slots. The Feather
+reader traverses these cuts rather than continuing with a mutable caller
+array; its nested position, Cell, and testimony records are separately
+admitted. The original source occurrence IDs are retained. Posit testimony
+now shares the existing 8,192-entry candidate budget across the **total**
+number of source witness entries (both `for` and `against`, over all rows),
+rather than admitting 8,192 records each with 8,192 copied witnesses.
+The limit is inclusive, and exceeding it refuses before the over-budget
+row is retained; it is an engineering resource bound, not a theorem that
+source evidence is true or independent. This tighter source-admission
+contract requires native and installed consumer tests before versioned release.
+The downstream
+Keratin workbench consumes these **same** guards with its own finite
+resource limits, rather than maintaining another admission algorithm.
+Original `test/feather-graph.test.mjs` is now selected by the package's
+packed receiving inventory, Keratin test route and foundations
+interoperability route. Fourteen focused checks executed the exact
+source-only Feather module under V8; the actual Node 24.2+ frozen-registry
+and independently installed consumer tests remain unreceived.
+
 **Scientific frontier:** the original Articulating `Beneath` relation is a
 proposition about performances, not yet a proved object-language
 `SourceDirectedCell`. Source-record IDs and caller-declared predicate
@@ -89,6 +129,21 @@ production, cone-observer lift and route comparison remain the mathematical
 obligations of [Obsmetrologia issue #79](https://github.com/lenticule-science/obsmetrologia/issues/79).
 The present pure implementation is a **conditional view over caller-qualified
 source acts**, not a theorem or authenticated source importer.
+
+**Original consumer source-cut convergence:** the Keratin workbench now
+uses the immutable arrays **returned** by Feather's original
+`featherSourceArray` for discrete stalks, contacts, directed allowed pairs,
+boundary walks, locks, observers and linear stalk, testimony and numeric
+observations. Merely calling the guard and then iterating caller-owned arrays
+was not a qualified source snapshot: a proxy's own descriptors could describe
+one list while its later iterator/getter supplied a different list.
+The original `test/keratin-graph.test.mjs` contains positive original-source
+consumer checks with adversarial method/index access; the fixed
+array bound, independent-source testimony and mathematical qualification
+remain unchanged. Proxy descriptor traps still require a host security
+boundary; this fix claims only that no post-admission raw-array read is
+used for those admitted arrays. Native Node/pinned dependency/packed receiver
+qualification remains mandatory.
 
 ## Keratin Graphs: hole-aware sheaf/fiber graphing
 
@@ -110,7 +165,14 @@ unfilled boundary, a global-section obstruction, and a causally inaccessible
 interior are *not equivalent*. A separate `keratinLinearSheaf` reading
 delegates vector-stalk restrictions and exact rational H0/H1 to the original
 `cellularSheaf` engine. Graph-sheaf H1 is not asserted to equal filled-surface
-H1.
+H1. `keratinLinearSheaf` now reports `cohomologyStatus: "exact"` only when
+the original issued/re-admitted chart has passed the upstream exact rank
+work guard. A valid over-budget exact chart retains its original `sheaf`,
+source occurrences, and separately bounded numeric coboundary reader, but
+returns `cohomology: null` and
+`cohomologyStatus: "not-evaluated: rational rank work budget exceeded"`.
+Nonexact restrictions have a distinct unevaluated status. Neither case is
+a certificate that H0 or H1 vanishes.
 
 `assessKeratinLinearObservations` is the strict **observed information → numeric
 geometry** gate on that exact linear source graph. Each local numeric reading
@@ -181,6 +243,18 @@ receiving establishes parity and then a measured improvement.
 
 ## What lives here
 
+Original Cell and triple source admission now comes from SignCell's public
+`./cell` entry. Sites, relation/flow graphs and cohomology receive
+`admitCellSequence` or `admitTripleSequence` without joining repeated source
+positions. SignGraph still owns graph interpretation, isolated vertices,
+ordered edge pairs and its 16,384-entry source budget. The older public
+`sourceIncidenceCells`/`sourceIncidenceTriples` names in `./site` re-export the
+same supplier functions for existing callers; they no longer contain a second
+admission implementation. Malformed Cell sources now report their SignCell
+refusal, while graph-specific constraints retain Graph diagnostics. Source
+evidence is validated before an extensional projection forgets it; that
+projection does not manufacture observed edges, witnesses or permissions.
+
 - `semantic-graph` — one closed, NI-addressed graph over SignCell's typed
   Marks, declarations, and EAVT-addressed witnessed edges. Its queries and
   bounded continuations preserve every source witness without pretending that
@@ -203,15 +277,33 @@ receiving establishes parity and then a measured improvement.
   specialization, and `inherited(frame, token)` glues the sections of the
   token's generalizations by knowledge join, holding a disagreement as a
   contested cell with each side's generalizations (the gluing obstruction).
-  Claim by claim it is SignChain's possibilizing of the told fiber. Heyting
-  algebra (SignCell), fiber algebra (SignChain), sheaf (here): the
-  dependencies run that way only.
+  Claim by claim its FOUR value is SignChain's possibilizing of the
+  source valuation. Heyting algebra (SignCell), fiber algebra (SignChain),
+  sheaf (here): the dependencies run that way only.
+
+  The original SignCell Valued carrier distinguishes an explicitly written
+  FOUR value from the source's actually told positive and negative witness
+  lanes. Inherited Cells retain both, but `contested` and the `for` /
+  `against` source-token lists are computed from SignCell's own `told`
+  operation (witness presence), never its `sidesOf` value projection.
+  Consequently a presumed `stable` value without witnesses has no claimed
+  source opposition, and an explicitly `absurd` value with opposing original
+  witnesses retains its witnessed conflict. `reading` selection continues
+  to use the independently legitimate FOUR value. The source conflict
+  report is not an authenticated Activity, Agent or derivation under W3C
+  PROV-O, nor an authorization or a proof of physical sheaf gluing.
+  Existing `test/token-sheaf.test.mjs` exhaustively tests the 4×4 finite
+  presence/value grid and the original paged claim consumer.
   `inheritedClaim(frame, token, predicate, object)` selects one exact claim
   through SignCell's shared `claimCoordinate`, retaining the same cells,
   both witness sides, source tokens and obstruction as the full section.
   `queryInheritedTellings(frame, selection, page)` selects optional token,
   predicate, object and FOUR reading with a bounded 1–128-row page. Missing
-  claims remain absent; foreign tokens refuse. Its `sourceCells` identifies
+  claims remain absent; foreign tokens refuse. A `cellNi` selection must be a
+  canonical RFC 6920 SHA-256 NI name, admitted through the original URI
+  Services `isNiUri` contract: nonzero final Base64url pad bits refuse rather
+  than masquerading as an absent Cell. This syntactic test neither proves the
+  digest matches a source nor grants the reader access to the named Cell. Its `sourceCells` identifies
   the evidence-bearing source cut, while `snapshot` also binds the actual
   specialization predicate. A changed interpretation cannot reuse the old
   page identity. Mutable transported frames are read into an owned cut;
@@ -267,8 +359,105 @@ receiving establishes parity and then a measured improvement.
   and each edge's unweighted residual and energy (no factor of 1/2). Both use the same Cholesky
   whitening Cᵀ where W = CCᵀ and the existing coboundary, so non-identity restrictions and self-edges
   retain their meaning and ker L = H⁰. Metrics are validated without adding a ridge; only relative
-  floating-point symmetry round-off is averaged. Exact cohomology remains the separate rational
-  operation. For inverse-covariance metrics these describe calibrated disagreement; they do not
+  floating-point symmetry round-off is averaged. **The original weighted-source
+  boundary** now uses the same `sheafSourceArray` and `sheafSourceScalar`
+  admission as the original sheaf's restriction matrices. Every supplied
+  metric collection, edge matrix, coordinate row and rational scalar is
+  inspected as inert own data *before* Cholesky or energy evaluation. The
+  original `weightedSheafDirichlet` also uses one detached, finite numeric
+  vertex 0-cochain snapshot for both its validation and coboundary
+  calculation. Ordinary arrays use source descriptors; the existing
+  numeric TypedArray input form uses its intrinsic length and indexed
+  data rather than any caller-supplied iterator, length or map callback.
+  DataViews, arbitrary iterables and nonfinite numeric coordinates refuse.
+  A decorated input method, getter, inherited element or an actual negative
+  definite metric cannot manufacture a positive energy receipt. The
+  weighted-metric work envelope refuses before materializing more than
+  1,048,576 edge-metric coefficient slots; this is a host resource limit,
+  not an algebraic bound on sheaves or a limit on Exact Number bit complexity.
+  The original Keratin test consumer explicitly receives one
+  witness-qualified vertex 0-cochain into these same two weighted operators
+  and checks the quadratic energy law, with unopposed and opposed testimony
+  distinguished. These are **conditional host-double mathematical
+  computations**, not attested material energy. As W3C
+  [PROV-O](https://www.w3.org/TR/prov-o/) distinguishes entities,
+  activities and agents, a sourceRecord locator and an inert matrix do
+  not independently certify who measured it, when or with what authority.
+  Exact cohomology remains the separate rational operation. **One mathematical chart custody boundary:** `cellularSheaf` constructs
+  an issued structural chart; `admitCellularSheaf` checks in-process
+  identity or reconstructs and compares a transported chart. The existing
+  numerical cochain, coboundary, Laplacian, weighted, heat-flow, Hodge and
+  normal-solver operations all admit that original chart before reading its
+  dimensions or incidences. A forged coordinate index cannot issue a zero,
+  false harmonic section or solved-load certificate.
+
+  **One finite numeric source cut:** the original sparse forward/transpose
+  operators (`apply`, `applyTranspose`), weighted Dirichlet, `diffuse`
+  and `solveNormal` share the same descriptor-admitted numeric-array or
+  intrinsic TypedArray value snapshot. The transpose now uses the forward
+  operator's original guarded `numericProduct` and finite-accumulation
+  law; neither a nonzero subnormal product becoming zero nor a host-float
+  overflow can be accepted as a load, and no caller-supplied **vector**
+  getter may silently change either side of the duality
+  `⟨δx,y⟩ = ⟨x,δᵀy⟩`. The sparse matrix itself is the original
+  `coboundary`-issued source operator: this numeric vector contract does
+  not authenticate an independently supplied arbitrary matrix object.
+  Executable getters, overridden array methods, source iterators and
+  inherited values cannot fabricate numeric inputs. This is a
+  **conditional finite host-arithmetic identity**, not an authentication of
+  observation or physical load. The two iterative readers use declared
+  inert option records;
+  `diffuse` additionally admits exact `{vertex,value}` pinned records and
+  finite stalk coordinates. Such pins are caller-supplied boundary
+  conditions, **not independently authenticated evidence**. Both iterative
+  readers cap `maxSteps` at 1,000,000; `solveNormal` computes its default
+  after source readmission. A single scale-resistant finite norm follows
+  the established scaled-sum-of-squares principle used by
+  [LAPACK DLASSQ](https://netlib.org/lapack/explore-html/d8/d76/group__lassq_gae8f40b0a34771b4f2d9c863de3af7be5.html)
+  (not a claim of algorithmic or binary equivalence). It prevents nonzero
+  subnormal residuals from becoming zero and refuses unrepresentable
+  magnitudes. In particular, `solveNormal` does not impose an undeclared
+  `1e-300`
+  absolute consistency allowance when `floor:0`, although a caller may
+  explicitly supply a different numerical floor. These are bounded
+  host-double mathematical conditions, not unrestricted Hodge/physical
+  proofs. Issued charts are O(1) to recognize; transported charts undergo
+  original mathematical reconstruction, not a second model. Neither
+  operation authenticates the actor or source testimony. **Exact-rank custody and work bound:**
+  `cellularSheafCohomology` likewise
+  first receives the chart through the original `admitCellularSheaf` owner:
+  a caller's invented `exact`, `c0`, `c1` or copied derived indices
+  cannot issue a mathematical receipt. The original Exact Number rational
+  rank provider remains authoritative. `exactCohomologyRankWithinBudget`
+  imposes a **computational** cap of 65,536 dense differential coefficient
+  slots before materializing a matrix; an actual zero-row or zero-column
+  differential retains its exactly computable rank-zero result. Exceeding
+  the budget means **not evaluated**, never H1=0. This is no algebraic
+  restriction on the existence of H0/H1 and grants no source authority.
+
+  **A single rational-rank status across consumers:** the original owner
+  now exports `cellularSheafCohomologyStatus(sheaf)`; it re-admits the
+  chart and returns exactly `"exact"`,
+  `"not-evaluated: nonexact source restrictions"`, or
+  `"not-evaluated: rational rank work budget exceeded"`. Keratin consumes
+  this original status instead of maintaining a second rank-budget
+  decision. The existing `hodgeCheck` also exposes `cohomologyStatus`
+  while reporting the independently testable *numeric degree-zero*
+  `harmonic` result. Its `h1` stays the original exact number only
+  when that rank was evaluated; an otherwise exact, over-budget chart has
+  `h1: null` (NOT zero), while a nonexact numerical chart preserves the
+  historical `h1: undefined`. A valid 257-vertex, 256-edge constant
+  sheaf has a directly checkable zero harmonic section although the
+  original dense rational rank has 65,792 slots and is unassayed. Numeric
+  harmonicity is not a Lean proof of global descent, independently
+  measured material activity, or a substitute for the separate H¹ rank.
+
+  JSON Schema describes JSON structure, not executable JavaScript input
+  admission, while W3C PROV-O's Entity/Activity/Agent provenance remains
+  with its proper producer. Both source and consumer changes need a new
+  immutable versioned package edition, frozen dependency execution, and
+  independent receiving before publication; do not overwrite existing
+  published bytes. For inverse-covariance metrics these describe calibrated disagreement; they do not
   establish a probabilistic forecast or trading edge.
   `compareFixedCountRigidity({before, after, dimension})` composes the
   existing exact rational `rigidityReceipt` for two simple embedded
@@ -278,6 +467,46 @@ receiving establishes parity and then a measured improvement.
   rigidity. Use `@red-cup-engineering/signgraph/cellular-sheaf`.
   It does not assert that a chemical associative exchange realizes a
   candidate graph or that crystallinity or mechanical strength is measured.
+
+  **Constant-sheaf source admission and cost law:** the existing
+  `constantSheaf(vertexIds, edgeList, dim)` convenience constructor now uses
+  the original `sheafSourceArray` and `sourceCoverRecord` readers *before*
+  issuing any graph incidence or building identity restrictions. Both
+  top-level lists must be ordinary dense undecorated source arrays; an edge
+  must be an exact two-endpoint data array or a plain inert
+  `{from,to,id?}` record, with no hidden/source-executing extra fields.
+  A missing `id` retains the original list-index identity. Caller-supplied
+  iterator, `map`, getter, prototype and ignored tuple-role tricks cannot
+  invent an original vertex or edge. Null-prototype inert records remain
+  admissible. Dimensions must be nonnegative safe integers; preflight bounds
+  each input list to 65,536 entries and the constant constructor's
+  *materialized identity and restriction data* to 1,048,576 numeric slots.
+  An edgeless source does not allocate a quadratic identity matrix. The
+  underlying `cellularSheaf` owner additionally refuses aggregate vertex
+  or edge coordinate offsets outside JavaScript safe-integer indexing.
+  Exceeding these **implementation** budgets refuses construction, not the
+  mathematical existence of a constant sheaf. A source-readable graph is
+  not independently PROV-O authenticated, an empirical observation or a
+  physical transport. This fixes the native JavaScript source boundary
+  that JSON Schema's JSON-instance validation does not govern
+  ([JSON Schema 2020-12](https://json-schema.org/specification));
+  a published version requires a distinct immutable
+  [SemVer](https://semver.org/spec/v2.0.0.html) edition and native
+  dependency/consumer receiving, not a source-only assertion.
+
+  **Manual native receiving gate:** the original
+  `.github/workflows/holonomy-qualification.yml` is deliberately
+  `workflow_dispatch`-only until runner allocation is independently verified.
+  It now reads the source-owned `packageManager: pnpm@11.28.5`, activates
+  that exact Corepack version under Node 24.19, and runs
+  `pnpm install --frozen-lockfile --ignore-scripts` against the original
+  `pnpm-lock.yaml` (v9.0). It then exercises the declared
+  `test:foundations:interop`, `check:keratin`, `test:keratin`,
+  holonomy, full native and original packed-receiving scripts.
+  The original packaged `test/receiving-script-package-contract.test.mjs`
+  includes a non-skipping manifest/toolchain/source-enrollment assertion.
+  A source edit to these files, or a workflow with no assigned runner,
+  is **not** a native test, registry-edition qualification or publication.
 - `hierarchical-circuit` — the established pure typed relation model
   for SEN circuit-shaped diagrams and finite FOUR-valued semantics.
   `planCombinationalCircuit` remains a pure graph-order projection for
@@ -736,7 +965,22 @@ result retains the source rows, patch identities, cover and local residuals.
 `tensorCellularSheaves(factors)` aligns the original vertex and oriented edge
 identities of two to four factors and forms exact Kronecker restriction
 matrices. Differently ordered presentations of the same cells align by their
-actual identities. The dimension bound is checked before allocation.
+actual identities. The dimension bound is checked before allocation. The
+source factor array and each `{sourceRef,sheaf}` entry must first pass the
+original inert-source guards; an inherited factor, accessor-backed witness,
+hidden extra field or executable iterator cannot become source geometry.
+Each factor's chart is readmitted by the ORIGINAL `admitCellularSheaf`
+contract, not a tensor-specific stand-in solver.
+
+The exact tensor producer now registers its frozen augmented result as an
+**issued in-process cellular chart**. Therefore the SAME original
+`extendCellularSheafSection` and `glueCellularSheafPatches` accept that
+result: a tensor is not a dead-end display object. The input source references
+remain ordered in its tensor metadata. Copying or serializing this augmented
+object does NOT transfer in-process admission or authenticate those references;
+a separately specified, verified tensor transport would be required. Native
+packaged and independent consumer receiving remain distinct from source
+construction and registered tests.
 
 `pullbackCellularSheaf(original, {base, map})` forms the inverse image along
 an explicit oriented cellular map. Every base vertex and edge selects an
@@ -912,7 +1156,17 @@ a foreign changed tally, missing address or invented evidence refuses.
 
 The `test/source-record-tower-flow.test.mjs`, `test/cell-graph.test.mjs`
 and `test/cohomology-canonical-incidence.test.mjs` are enrolled in
-package receiving. An independent receiving run must use a pinned
+package receiving. The original source-record tower test now includes a
+**strict non-skipping installed-supplier assay** importing the actual
+`@red-cup-engineering/signcell/charge-spin#chargeRecordTowerOfCell`
+rather than its historical local `towerFixture`. It checks original
+parallel source presentations, opposing witnesses, Record surplus,
+two distinct FOUR readouts and absence of invented physical charge/spin.
+An old pinned SignCell lacking this export must FAIL the strict assay;
+the fixture's earlier successful cases alone are not supplier receiving.
+This is one of original SignCell [CS-6](https://github.com/red-cup-engineering/signcell/issues/14)
+Work `smSUHKCw`'s outstanding independent acceptance gates, not a
+replacement Work identity. An independent receiving run must use a pinned
 published SignCell producer, the native Metrologic/Exact Number packages,
 and an actual authorized downstream consumer before publication. Raw
 Record counts are not a universal invertible FOUR regime tower,

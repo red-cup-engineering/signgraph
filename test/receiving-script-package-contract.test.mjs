@@ -56,6 +56,22 @@ test("explicit named native test scripts have the same packed receiving sources"
   }
 });
 
+test("native and packed foundations receiving retain their source-declared frozen toolchain",()=>{
+  // This test runs both in the native tree and inside the published archive.
+  // The workflow itself is NOT shipped in that archive; the manifest's
+  // required manager and named suites are the consumer-visible contract.
+  assert.equal(manifest.packageManager,"pnpm@11.28.5");
+  assert.equal(manifest.engines.node,">=24.2.0");
+  for(const name of ["test:foundations:interop","test:keratin",
+    "test:holonomy","test:packed-receiving"]){
+    assert.equal(typeof manifest.scripts[name],"string",
+      "packed native receiving lacks required script: "+name);
+  }
+  assert.ok(manifest.receivingTests.includes("test/cellular-sheaf.test.mjs"));
+  assert.ok(manifest.receivingTests.includes("test/keratin-graph.test.mjs"));
+  assert.ok(manifest.receivingTests.includes("test/source-record-tower-flow.test.mjs"));
+});
+
 test("missing receiver enrollment refuses before a published artifact is accepted", () => {
   const prior = {
     ...manifest,

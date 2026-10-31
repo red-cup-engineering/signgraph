@@ -13,9 +13,9 @@
  * existing SignGraph cohomology engine. A declared candidate boundary is
  * NEVER inserted as a face in the actual complex.
  */
-import { featherGraphOfPredications } from './feather-graph.mjs';
+import { featherGraphOfPredications, featherSourceFields, featherSourceArray } from './feather-graph.mjs';
 import { cellular2Complex } from './cohomology.mjs';
-import { apply, coboundary, cochain, cellularSheaf, cellularSheafCohomology } from './cellular-sheaf.mjs';
+import { apply, coboundary, cochain, cellularSheaf, cellularSheafCohomology, cellularSheafCohomologyStatus } from './cellular-sheaf.mjs';
 import { readingOfSides } from '@red-cup-engineering/computer-data-engineering-services-section/four';
 
 const freeze = Object.freeze;
@@ -32,35 +32,13 @@ const MAX_STATES = 16, MAX_ALLOWED_PAIRS = 256;
 const DEFAULT_ASSIGNMENT_BUDGET = 250000;
 
 const fail = message => { throw new TypeError(`keratin graph: ${message}`); };
-function fields(record, keys, context) {
-  if (!isRecord(record) ||
-      ![Object.prototype,null].includes(Object.getPrototypeOf(record)))
-    fail(`${context}: undeclared fields or invalid object; requires plain source record`);
-  const descriptors=Object.getOwnPropertyDescriptors(record);
-  if(Reflect.ownKeys(descriptors).some(key => typeof key !== "string" ||
-      !keys.includes(key) || !descriptors[key].enumerable ||
-      !Object.hasOwn(descriptors[key],"value")))
-    fail(`${context}: undeclared fields or invalid object; requires inert own data`);
-}
-/** Reject accessor-backed, sparse, symbol-decorated or executable arrays
- * BEFORE the original finite source loop can read their values.
- * This does not authenticate external source witnesses; it is not a new
- * canonical Cell codec. Host Proxy traps still require process isolation.
- */
-function sourceArray(values, context, maximum = 256) {
-  if (!Array.isArray(values) || Object.getPrototypeOf(values)!==Array.prototype ||
-      values.length>maximum)
-    fail(`${context}: list exceeds work limit ${maximum}`);
-  const descriptors=Object.getOwnPropertyDescriptors(values);
-  if(Reflect.ownKeys(descriptors).length!==values.length+1)
-    fail(`${context}: array must be dense, undecorated inert data`);
-  for(let i=0;i<values.length;i++){
-    const field=descriptors[String(i)];
-    if(!field || !field.enumerable || !Object.hasOwn(field,"value"))
-      fail(`${context}: array slots must be inert data`);
-  }
-  return values;
-}
+// Feather is the earliest lawful source-position reader. Reuse that SAME
+// inert-record and dense-array admission in its downstream Keratin workbench
+// while preserving existing Keratin-specific error reports and resource caps.
+const fields = (record, keys, context) =>
+  featherSourceFields(record, keys, context, 'keratin graph');
+const sourceArray = (values, context, maximum = 256) =>
+  featherSourceArray(values, context, maximum, 'keratin graph');
 function unique(xs, context) {
   const set = new Set(xs);
   if (set.size !== xs.length) fail(`${context}: duplicate identity`);
@@ -70,11 +48,11 @@ const requireName = (x, context) => { if (!named(x)) fail(`${context}: nonempty 
 const nameList = (xs, context, max = 256, {allowEmpty = false} = {}) => {
   if (!Array.isArray(xs) || xs.length > max || (!allowEmpty && xs.length === 0))
     fail(`${context}: invalid named list or exceeded work limit`);
-  sourceArray(xs, context, max);
-  if(!xs.every(named))
+  const received=sourceArray(xs, context, max);
+  if(!received.every(named))
     fail(`${context}: invalid named list or exceeded work limit`);
-  unique(xs, context);
-  return frozen(xs);
+  unique(received, context);
+  return received;
 };
 
 /** The exact SourcePosition key already used by SignGraph's feather reader. */
@@ -87,9 +65,9 @@ export function keratinPositionKey(performed, side = 'token') {
 function boundaryWalk(raw, byOccurrence, label) {
   if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_RELATIONS)
     fail(`${label}: requires a bounded nonempty list of oriented source occurrences`);
-  sourceArray(raw, label, MAX_RELATIONS);
-  const steps = raw.map((step, i) => {
-    fields(step,['occurrence','direction'],`${label} step ${i}`);
+  const received=sourceArray(raw, label, MAX_RELATIONS);
+  const steps = received.map((sourceStep, i) => {
+    const step=fields(sourceStep,['occurrence','direction'],`${label} step ${i}`);
     if (!byOccurrence.has(step.occurrence) || ![1,-1].includes(step.direction))
       fail(`${label}: each oriented step must reference an original occurrence with sign +/-1`);
     return freeze({edge: step.occurrence, direction: step.direction});
@@ -99,7 +77,7 @@ function boundaryWalk(raw, byOccurrence, label) {
 
 function limit(value, maximum, label) {
   if (!Array.isArray(value) || value.length > maximum) fail(`${label}: list exceeds work limit ${maximum}`);
-  sourceArray(value, label, maximum);
+  return sourceArray(value, label, maximum);
 }
 
 /**
@@ -108,47 +86,49 @@ function limit(value, maximum, label) {
  * Every source relation must receive an explicit ordered allowed-pairs table.
  */
 export function keratinGraphOfPredications(input = {}) {
-  fields(input,['source','selectors','stalks','contacts','faces','holes','locks','observers'],'graph input');
-  const {source, selectors, stalks, contacts, faces = [], holes = [], locks = [], observers = []}=input;
+  const given=fields(input,['source','selectors','stalks','contacts','faces','holes','locks','observers'],'graph input');
+  const {source, selectors, stalks, contacts, faces = [], holes = [], locks = [], observers = []}=given;
   const feather = featherGraphOfPredications(source, selectors);
   if (feather.positions.length > MAX_POSITIONS || feather.predications.length > MAX_RELATIONS)
     fail('source positions/relations exceed keratin graph resource budget');
-  limit(stalks, MAX_POSITIONS, 'stalks');
-  limit(contacts, MAX_RELATIONS, 'contacts');
-  limit(faces, MAX_FACES, 'faces'); limit(holes, MAX_HOLES, 'holes');
-  limit(locks, MAX_LOCKS, 'locks'); limit(observers, MAX_OBSERVERS, 'observers');
+  const receivedStalks=limit(stalks, MAX_POSITIONS, 'stalks');
+  const receivedContacts=limit(contacts, MAX_RELATIONS, 'contacts');
+  const receivedFaces=limit(faces, MAX_FACES, 'faces');
+  const receivedHoles=limit(holes, MAX_HOLES, 'holes');
+  const receivedLocks=limit(locks, MAX_LOCKS, 'locks');
+  const receivedObservers=limit(observers, MAX_OBSERVERS, 'observers');
 
   const positions = new Map(feather.positions.map(p => [p.key,p]));
   const occurrences = new Map(feather.predications.map(e => [e.occurrence,e]));
   const stalkMap = new Map();
-  for (const s of stalks) {
-    fields(s,['position','states'],'stalk');
+  for (const sourceStalk of receivedStalks) {
+    const s=fields(sourceStalk,['position','states'],'stalk');
     if (!positions.has(s.position) || stalkMap.has(s.position)) fail('stalk refers to unknown or repeated original position');
     stalkMap.set(s.position,freeze({position:s.position,states:nameList(s.states,'stalk states',MAX_STATES)}));
   }
   if (stalkMap.size !== positions.size) fail('every original position must have exactly one stalk');
 
   const contactMap = new Map();
-  for (const c of contacts) {
-    fields(c,['occurrence','allowed'],'contact');
+  for (const sourceContact of receivedContacts) {
+    const c=fields(sourceContact,['occurrence','allowed'],'contact');
     const edge = occurrences.get(c.occurrence);
     if (!edge || contactMap.has(c.occurrence)) fail('contact must identify one unique original source predication');
     if (!Array.isArray(c.allowed) || c.allowed.length > MAX_ALLOWED_PAIRS)
       fail('contact admissibility must be a bounded array of ordered state pairs');
-    sourceArray(c.allowed, 'contact admissibility', MAX_ALLOWED_PAIRS);
+    const receivedAllowed=sourceArray(c.allowed, 'contact admissibility', MAX_ALLOWED_PAIRS);
     const a = new Set(stalkMap.get(edge.subject).states);
     const b = new Set(stalkMap.get(edge.object).states);
     const seen = new Set();
-    const pairs = c.allowed.map(pair => {
-      if (!Array.isArray(pair) || pair.length !== 2)
+    const pairs = receivedAllowed.map(sourcePair => {
+      if (!Array.isArray(sourcePair) || sourcePair.length !== 2)
         fail(`contact ${c.occurrence}: pair must belong to ordered endpoint stalks`);
-      sourceArray(pair, 'directed contact pair', 2);
+      const pair=sourceArray(sourcePair, 'directed contact pair', 2);
       if (!a.has(pair[0]) || !b.has(pair[1]))
         fail(`contact ${c.occurrence}: pair must belong to ordered endpoint stalks`);
       const key = JSON.stringify(pair);
       if (seen.has(key)) fail('duplicate directed admissibility pair');
       seen.add(key);
-      return frozen(pair);
+      return pair;
     });
     contactMap.set(c.occurrence, freeze({occurrence:c.occurrence,sourceRecord:edge.sourceRecord,
       from:edge.subject,to:edge.object,allowed:frozen(pairs)}));
@@ -156,8 +136,8 @@ export function keratinGraphOfPredications(input = {}) {
   if (contactMap.size !== occurrences.size) fail('every original relation needs an explicit compatibility table');
 
   const seenEventIds = new Set();
-  const lockLog = locks.map((lock,i) => {
-    fields(lock,['id','position','sourceRecord','excludes'],'lock');
+  const lockLog = receivedLocks.map((sourceLock,i) => {
+    const lock=fields(sourceLock,['id','position','sourceRecord','excludes'],'lock');
     const {id,position,sourceRecord} = lock;
     requireName(id,'lock id'); requireName(sourceRecord,'lock sourceRecord');
     if (!positions.has(position)) fail('lock cannot introduce a new source position');
@@ -172,8 +152,8 @@ export function keratinGraphOfPredications(input = {}) {
   const edges = feather.predications.map(e => freeze({id:e.occurrence,from:e.subject,to:e.object}));
   const vertices = feather.positions.map(p => p.key);
   const faceIds = new Set(), faceRecords=[];
-  for (const face of faces) {
-    fields(face,['id','sourceRecord','boundary'],'face');
+  for (const sourceFace of receivedFaces) {
+    const face=fields(sourceFace,['id','sourceRecord','boundary'],'face');
     requireName(face.id,'face id'); requireName(face.sourceRecord,'face sourceRecord');
     if (faceIds.has(face.id)) fail('duplicate filled face');
     faceIds.add(face.id);
@@ -183,8 +163,8 @@ export function keratinGraphOfPredications(input = {}) {
   const topology = cellular2Complex({vertices,edges,faces:faceRecords});
   const holeRecords=[];
   const holeIds = new Set();
-  for (const hole of holes) {
-    fields(hole,['id','sourceRecord','boundary'],'hole candidate');
+  for (const sourceHole of receivedHoles) {
+    const hole=fields(sourceHole,['id','sourceRecord','boundary'],'hole candidate');
     requireName(hole.id,'hole id'); requireName(hole.sourceRecord,'hole sourceRecord');
     if (faceIds.has(hole.id) || holeIds.has(hole.id)) fail('candidate hole IDs must be distinct from actual faces');
     holeIds.add(hole.id);
@@ -199,14 +179,14 @@ export function keratinGraphOfPredications(input = {}) {
       reading:rankContribution ? 'candidate-unfilled-nontrivial-cycle' : 'homologically-redundant-boundary',
     }));
   }
-  const withHypotheticalFills = holes.length ? cellular2Complex({
+  const withHypotheticalFills = receivedHoles.length ? cellular2Complex({
     vertices,edges,faces:[...faceRecords,...holeRecords.map(h=>({id:h.id,boundary:h.boundary}))],
   }) : topology;
   const aggregateIndependentBoundaries = topology.betti.h1 - withHypotheticalFills.betti.h1;
 
   const observerIds = new Set();
-  const observerRecords=observers.map(observer => {
-    fields(observer,['id','visiblePositions','visibleOccurrences'],'observer');
+  const observerRecords=receivedObservers.map(sourceObserver => {
+    const observer=fields(sourceObserver,['id','visiblePositions','visibleOccurrences'],'observer');
     requireName(observer.id,'observer id');
     if (observerIds.has(observer.id)) fail('duplicate observer');
     observerIds.add(observer.id);
@@ -249,13 +229,21 @@ export function keratinGraphOfPredications(input = {}) {
  * a filled two-complex: 2-cell sheaf extension remains the existing open
  * SignGraph #17/Obsmetrologia receiving obligation, not a hidden inference.
  */
-export function keratinLinearSheaf(graph, {vertexStalks,relationStalks} = {}) {
+export function keratinLinearSheaf(graph, options = {}) {
   if(!admitted.has(graph))fail('linear sheaf requires original in-process graph');
+  // Read source options before destructuring. Getter-backed properties must not
+  // execute in order to propose a stalk or restriction matrix.
+  const qualified=fields(options,['vertexStalks','relationStalks'],'linear sheaf options');
+  const {vertexStalks,relationStalks}=qualified;
   if(!Array.isArray(vertexStalks)||!Array.isArray(relationStalks))
     fail('linear sheaf requires vertexStalks and relationStalks');
+  // These are source assertions, not an invitation to iterate arbitrary
+  // Array subclasses, getters, decorated arrays, or unlimited dimensions.
+  const receivedVertices=sourceArray(vertexStalks,'linear vertex stalks',MAX_POSITIONS);
+  const receivedRelations=sourceArray(relationStalks,'linear relation stalks',MAX_RELATIONS);
   const vertices=new Map(graph.feather.positions.map(p=>[p.key,null]));
-  for(const v of vertexStalks){
-    fields(v,['position','dim'],'linear vertex stalk');
+  for(const sourceVertex of receivedVertices){
+    const v=fields(sourceVertex,['position','dim'],'linear vertex stalk');
     if(!vertices.has(v.position)||vertices.get(v.position)!==null)fail('linear vertex stalk must occur once on an original position');
     if(!Number.isSafeInteger(v.dim)||v.dim<1||v.dim>16)fail('linear stalk dimension must be 1..16');
     vertices.set(v.position,freeze({id:v.position,dim:v.dim}));
@@ -263,21 +251,30 @@ export function keratinLinearSheaf(graph, {vertexStalks,relationStalks} = {}) {
   if([...vertices.values()].some(x=>x===null))fail('linear sheaf missing original vertex stalk');
   const pred=new Map(graph.feather.predications.map(e=>[e.occurrence,e]));
   const edges=new Map();
-  for(const c of relationStalks) {
-    fields(c,['occurrence','dim','restrict'],'linear edge stalk');
+  for(const sourceContact of receivedRelations) {
+    const c=fields(sourceContact,['occurrence','dim','restrict'],'linear edge stalk');
     if(!pred.has(c.occurrence)||edges.has(c.occurrence))fail('linear contact must be one original predication');
     if(!Number.isSafeInteger(c.dim)||c.dim<1||c.dim>16)fail('linear edge dimension must be 1..16');
-    fields(c.restrict,['from','to'],'linear restriction matrices');
+    const restrict=fields(c.restrict,['from','to'],'linear restriction matrices');
     const original=pred.get(c.occurrence);
     edges.set(c.occurrence,{id:c.occurrence,from:original.subject,to:original.object,
-      dim:c.dim,restrict:c.restrict});
+      dim:c.dim,restrict});
   }
   if(edges.size!==pred.size)fail('linear sheaf missing original directed relation');
   const sheaf=cellularSheaf({vertices:[...vertices.values()],edges:[...edges.values()]});
+  // Exact rational H0/H1 must be issued by the original cellular-sheaf
+  // kernel, not guessed from absent rank results. For finite but too-wide
+  // source charts, retain the ADMITTED sheaf and its original occurrences
+  // with an explicit "not evaluated" status; no fabricated zero H1.
+  // The original cellular-sheaf owner is the SINGLE authority for
+  // whether its rational rank was actually evaluated. No Keratin-local
+  // replica of the budget or status policy is maintained.
+  const cohomologyStatus=cellularSheafCohomologyStatus(sheaf);
   const reading=freeze({kind:'signgraph.keratinGraph.linearSheafReading.v1',
-    sheaf,cohomology:sheaf.exact?cellularSheafCohomology(sheaf):null,
+    sheaf,cohomology:cohomologyStatus==='exact'?cellularSheafCohomology(sheaf):null,
+    cohomologyStatus,
     sourceOccurrences:frozen([...pred.values()].map(p=>freeze({occurrence:p.occurrence,sourceRecord:p.sourceRecord}))),
-    qualification:'original edge identities retained; linear restrictions supplied; exact H1 belongs to graph sheaf only, not a filled surface or physical keratin',
+    qualification:'original edge identities retained; linear restrictions supplied; exact H1 only when cohomologyStatus is exact; graph sheaf, not a filled surface or physical keratin',
   });
   linearOwners.set(reading,graph);
   return reading;
@@ -303,30 +300,27 @@ export function keratinLinearSheaf(graph, {vertexStalks,relationStalks} = {}) {
 export function assessKeratinLinearObservations(reading, observations, options={}) {
   if(!linearOwners.has(reading))
     fail('linear observations require the original in-process Keratin linear reading');
-  fields(options,['tolerance'],'linear observation options');
-  const {tolerance=0}=options;
+  const qualified=fields(options,['tolerance'],'linear observation options');
+  const {tolerance=0}=qualified;
   if(typeof tolerance!=='number'||!Number.isFinite(tolerance)||tolerance<0)
     fail('linear observation tolerance must be a finite nonnegative number');
   if(!Array.isArray(observations)||observations.length>MAX_POSITIONS*8)
     fail('linear observations must be a bounded list of source-named values');
+  const receivedObservations=sourceArray(observations,'linear observations',MAX_POSITIONS*8);
   const witnessLane=(values,side)=>{
     if(!Array.isArray(values)||values.length>64)
       fail('linear observation '+side+' testimony must be a bounded witness list');
-    const names=[];
-    for(let i=0;i<values.length;i++){
-      const slot=Object.getOwnPropertyDescriptor(values,String(i));
-      if(!slot||!Object.hasOwn(slot,'value')||!named(slot.value))
-        fail('linear observation '+side+' testimony requires material source identities');
-      names.push(slot.value);
-    }
+    const names=sourceArray(values,'linear observation '+side+' testimony requires material source identities',64);
+    if(!names.every(named))
+      fail('linear observation '+side+' testimony requires material source identities');
     unique(names,'linear observation '+side+' testimony');
-    return frozen(names);
+    return names;
   };
 
   const sheaf=reading.sheaf;
   const byPosition=new Map(sheaf.vertices.map(vertex=>[vertex.id,[]]));
-  for(const observation of observations) {
-    fields(observation,['position','value','sourceRecord','evidence'],'linear observation');
+  for(const sourceObservation of receivedObservations) {
+    const observation=fields(sourceObservation,['position','value','sourceRecord','evidence'],'linear observation');
     // Neither source identifiers nor values may execute getters. Sample each
     // caller-supplied source record once, before numerical interpretation.
     const own=key=>{
@@ -336,8 +330,7 @@ export function assessKeratinLinearObservations(reading, observations, options={
     };
     const position=own('position'),sourceRecord=own('sourceRecord');
     requireName(sourceRecord,'linear observation sourceRecord');
-    const evidence=own('evidence');
-    fields(evidence,['for','against'],'linear evidence');
+    const evidence=fields(own('evidence'),['for','against'],'linear evidence');
     const side=key=>{
       const slot=Object.getOwnPropertyDescriptor(evidence,key);
       if(!slot||!Object.hasOwn(slot,'value'))
@@ -351,13 +344,11 @@ export function assessKeratinLinearObservations(reading, observations, options={
     if(rows===undefined||vertex===undefined)
       fail('linear observation names no original sheaf position');
     const value=own('value');
+    // A sparse million-slot source is refused BEFORE Array.from allocates or
+    // reads a source position. The original linear stalks are at most 16D.
     const values=Array.isArray(value)
-      ?Array.from({length:value.length},(_,i)=>{
-        const slot=Object.getOwnPropertyDescriptor(value,String(i));
-        if(!slot||!Object.hasOwn(slot,'value'))
-          fail('linear observation values require dense own data slots');
-        return slot.value;
-      }):[value];
+      ?sourceArray(value,'linear observation values require dense own data slots',16)
+      :[value];
     if(values.length!==vertex.dim||values.some(v=>typeof v!=='number'||!Number.isFinite(v)))
       fail('linear observation needs complete finite numeric stalk coordinates');
     rows.push(freeze({sourceRecord,value:frozen(values),
@@ -461,8 +452,8 @@ function solveSectionScopes(domains, constraints, {limit=DEFAULT_ASSIGNMENT_BUDG
  * explicit and cannot silently acquire a causal-cone interpretation.
  */
 export function analyzeKeratinGraph(graph, options={}) {
-  fields(options,['maxAssignments'],'analysis options');
-  const {maxAssignments=DEFAULT_ASSIGNMENT_BUDGET}=options;
+  const qualified=fields(options,['maxAssignments'],'analysis options');
+  const {maxAssignments=DEFAULT_ASSIGNMENT_BUDGET}=qualified;
   if(!admitted.has(graph))fail('analysis requires the original in-process generated reading');
   if(!Number.isSafeInteger(maxAssignments)||maxAssignments<1||maxAssignments>2000000)
     fail('analysis maxAssignments must be a positive safe number <= 2000000');
