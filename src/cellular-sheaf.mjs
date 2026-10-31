@@ -278,6 +278,16 @@ export function constantSheaf(vertexIds, edgeList, dim = 1) {
   });
 }
 
+/** A source-bearing cellular chart must be issued by this module or fully
+ * reconstructed by admitCellularSheaf before ANY downstream cochain,
+ * coboundary, Laplacian, metric, diffusion or normal-solver math. Otherwise
+ * an invented coordinate count can masquerade as a measured zero or as a
+ * zero residual. Issued charts enter in O(1), imported charts undergo
+ * complete reconstruction; neither route authenticates an external witness.
+ *
+ * This is one source-owned mathematical admission boundary, not a
+ * duplicate solver, extra schema, or alternative graph representation.
+ */
 /** A finite numeric 0-cochain over vertex stalks, in vertex order.
  * The historical default mathematically extends absent values by zero;
  * no observer may interpret that default as a measured zero.
@@ -287,6 +297,7 @@ export function constantSheaf(vertexIds, edgeList, dim = 1) {
  * Witnesses, source authority and FOUR remain with their original owners.
  */
 export function cochain(sheaf, entries, options = {}) {
+  sheaf = admitCellularSheaf(sheaf);
   const missing = sheafSourceField(options,"missing",true) ?? "zero";
   if (!["zero", "refuse"].includes(missing))
     throw new TypeError("cochain: missing policy must be zero or refuse");
@@ -331,6 +342,7 @@ const rowOf = (map) => [...map.entries()].sort((a, b) => a[0] - b[0]);
 
 /** The coboundary δ⁰ : C⁰ → C¹ as a sparse block matrix. */
 export function coboundary(sheaf) {
+  sheaf = admitCellularSheaf(sheaf);
   const entries = [];
   sheaf.edges.forEach((edge, e) => {
     const f = sheaf.fromIndex[e], t = sheaf.toIndex[e];
@@ -375,6 +387,7 @@ const gramLaplacian = (sheaf, entries) => {
 
 /** The sheaf Laplacian L = δᵀδ on C⁰, sparse and symmetric. */
 export function sheafLaplacian(sheaf) {
+  sheaf = admitCellularSheaf(sheaf);
   return gramLaplacian(sheaf, coboundary(sheaf).entries);
 }
 
@@ -420,6 +433,7 @@ const edgeMetricFactors = (sheaf, metrics) => {
  * Uses (Cᵀδ)ᵀ(Cᵀδ) where W = CCᵀ; the existing coboundary preserves self-edge cancellation and
  * non-identity restrictions. Sparse columns and all sums follow sheaf edge/stalk order. */
 export function weightedSheafLaplacian(sheaf, metrics) {
+  sheaf = admitCellularSheaf(sheaf);
   const factors = edgeMetricFactors(sheaf, metrics), delta = coboundary(sheaf);
   const entries = [];
   sheaf.edges.forEach((edge, e) => {
@@ -442,6 +456,7 @@ export function weightedSheafLaplacian(sheaf, metrics) {
  * Returns the unweighted edge residual and its metric energy for attribution; these are numeric
  * energies, not probabilities. SPD weights preserve ker L = ker δ = H⁰. */
 export function weightedSheafDirichlet(sheaf, metrics, x) {
+  sheaf = admitCellularSheaf(sheaf);
   if (x?.length !== sheaf.c0 || Array.from(x).some((value) => typeof value !== "number" || !Number.isFinite(value))) {
     throw new RangeError("weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required");
   }
@@ -921,6 +936,7 @@ export function gershgorinBound(laplacian) {
  *  { section, residual: ‖δx‖, gradient, steps, converged, firings, crossings }: `firings` are the steps at which
  *  some edge's residual ‖(δx)_e‖ crossed `tolerance`; `crossings` names those edges and directions. */
 export function diffuse(sheaf, x0, { step, tolerance = 1e-12, maxSteps = 100000, fixed = [] } = {}) {
+  sheaf = admitCellularSheaf(sheaf);
   if (x0?.length !== sheaf.c0) throw new RangeError("diffuse: x0 has the wrong length");
   if (Array.from(x0).some((v) => typeof v !== "number" || !Number.isFinite(v))) {
     throw new RangeError("diffuse: initial stalk values must be finite numbers");
@@ -1012,6 +1028,7 @@ export const harmonicProjection = (sheaf, x0, options = {}) => diffuse(sheaf, x0
  *  Numerically this reports residual-based approximate harmonicity, not a
  *  machine-checked proof of exact gluing. */
 export function hodgeCheck(sheaf, x0, options = {}) {
+  sheaf = admitCellularSheaf(sheaf);
   const tolerance = options.tolerance ?? 1e-12;
   const limit = diffuse(sheaf, x0, { ...options, fixed: [] });
   const laplacianResidual = norm(applyLaplacian(sheaf, limit.section));
@@ -1220,7 +1237,10 @@ export function applyTranspose(matrix, y) {
  *  carry — the system is inconsistent and the unresolvable part is returned as `obstruction` (= rhs − δᵀ f,
  *  a 0-cochain in ker δ), never NaN. Returns { section: f, obstruction, residual: ‖obstruction‖, rhsNorm,
  *  steps, converged, consistent }. The option "floor" is a load scale below which a residual is round-off, not obstruction. */
-export function solveNormal(sheaf, rhs, { tolerance = 1e-12, consistency = 1e-9, floor = 0, maxSteps = 4 * (sheaf.c0 + sheaf.c1) + 16 } = {}) {
+export function solveNormal(sheaf, rhs, { tolerance = 1e-12, consistency = 1e-9, floor = 0, maxSteps } = {}) {
+  sheaf = admitCellularSheaf(sheaf);
+  // A default work bound must not inspect an unadmitted caller chart.
+  if (maxSteps === undefined) maxSteps = 4 * (sheaf.c0 + sheaf.c1) + 16;
   if (rhs.length !== sheaf.c0) throw new RangeError("solveNormal: rhs has the wrong length");
   const delta = coboundary(sheaf);
   const dot = (a, b) => { let sum = 0; for (let i = 0; i < a.length; i += 1) sum += a[i] * b[i]; return sum; };
