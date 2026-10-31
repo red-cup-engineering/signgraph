@@ -65,6 +65,32 @@ export function sheafSourceArray(value, label) {
   }));
 }
 
+/** One data-only numeric source cut for all downstream numerical
+ * evaluations. Ordinary arrays use our existing source descriptor reader;
+ * numeric typed arrays use the intrinsic typed-array length and indexed
+ * elements, never caller-provided iterators, map, species or length getters.
+ * This is a mathematical finite-vector admission, not witness provenance. */
+const typedArrayLength = Object.getOwnPropertyDescriptor(
+  Object.getPrototypeOf(Uint8Array.prototype), "length").get;
+const finiteNumericVectorSource = (source, dimension, label, shapeError, finiteError) => {
+  let vector;
+  if (Array.isArray(source)) {
+    if (source.length !== dimension) throw new RangeError(shapeError);
+    vector = sheafSourceArray(source, label);
+  } else if (ArrayBuffer.isView(source)) {
+    let count;
+    try { count = typedArrayLength.call(source); }
+    catch { throw new RangeError(shapeError); }
+    if (count !== dimension) throw new RangeError(shapeError);
+    vector = Object.freeze(Array.from({length:count}, (_, i) => source[i]));
+  } else {
+    throw new RangeError(shapeError);
+  }
+  if (vector.some(value => typeof value !== "number" || !Number.isFinite(value)))
+    throw new RangeError(finiteError);
+  return vector;
+};
+
 
 /** Source-inert exact scalar retention. Does not redefine the original
  * Exact Number rationals or authorize an observer's reported coefficient.
@@ -475,30 +501,10 @@ export function weightedSheafLaplacian(sheaf, metrics) {
  * energies, not probabilities. SPD weights preserve ker L = ker δ = H⁰. */
 export function weightedSheafDirichlet(sheaf, metrics, x) {
   sheaf = admitCellularSheaf(sheaf);
-  // Ordinary arrays use native descriptor-only source cuts. Preserve the
-  // pre-existing numeric TypedArray input contract through the intrinsic
-  // typed-array length getter and indexed slots: no caller iterator, map,
-  // species constructor or overridden "length" getter participates.
-  // DataView and arbitrary iterables are not cochain vectors.
-  const bad = () => new RangeError(
+  const vector = finiteNumericVectorSource(x, sheaf.c0,
+    "weighted source cochain",
+    "weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required",
     "weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required");
-  let vector;
-  if (Array.isArray(x)) {
-    if (x.length !== sheaf.c0) throw bad();
-    vector = sheafSourceArray(x, "weighted source cochain");
-  } else if (ArrayBuffer.isView(x)) {
-    const lengthGetter = Object.getOwnPropertyDescriptor(
-      Object.getPrototypeOf(Uint8Array.prototype), "length").get;
-    let length;
-    try { length = lengthGetter.call(x); }
-    catch { throw bad(); }
-    if (length !== sheaf.c0) throw bad();
-    vector = Object.freeze(Array.from({length}, (_,i) => x[i]));
-  } else {
-    throw bad();
-  }
-  if (vector.some(value => typeof value !== "number" || !Number.isFinite(value)))
-    throw new RangeError("weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required");
   const factors = edgeMetricFactors(sheaf, metrics), deltaX = apply(coboundary(sheaf), vector);
   let energy = 0;
   const perEdge = sheaf.edges.map((edge, e) => {
@@ -718,6 +724,18 @@ const sourceCoverRecord=(source, fields, label) => {
     throw new TypeError(label+": requires exact inert own source fields");
   return Object.freeze(Object.fromEntries(
     fields.map(key=>[key,descriptors[key].value])));
+};
+
+/** A subset of explicitly declared pure numerical options, admitted by the
+ * SAME original source record reader as mathematical charts and covers. */
+const numericalSourceOptions=(source, allowed, label) => {
+  if (!source || typeof source !== "object" || Array.isArray(source) ||
+      ![Object.prototype,null].includes(Object.getPrototypeOf(source)))
+    throw new TypeError(label+": requires a plain original source record");
+  const keys = Object.keys(source);
+  if (keys.some(key => !allowed.includes(key)))
+    throw new TypeError(label+": undeclared numerical option");
+  return sourceCoverRecord(source, keys, label);
 };
 
 /** Evaluate an explicitly source-qualified finite local cover and construct
@@ -974,19 +992,22 @@ export function gershgorinBound(laplacian) {
  *  ‖L x‖ falls to `tolerance`, or after `maxSteps`. Returns
  *  { section, residual: ‖δx‖, gradient, steps, converged, firings, crossings }: `firings` are the steps at which
  *  some edge's residual ‖(δx)_e‖ crossed `tolerance`; `crossings` names those edges and directions. */
-export function diffuse(sheaf, x0, { step, tolerance = 1e-12, maxSteps = 100000, fixed = [] } = {}) {
+export function diffuse(sheaf, x0, options = {}) {
   sheaf = admitCellularSheaf(sheaf);
-  if (x0?.length !== sheaf.c0) throw new RangeError("diffuse: x0 has the wrong length");
-  if (Array.from(x0).some((v) => typeof v !== "number" || !Number.isFinite(v))) {
-    throw new RangeError("diffuse: initial stalk values must be finite numbers");
-  }
-  if (typeof tolerance !== "number" || !Number.isFinite(tolerance) || tolerance < 0) {
+  const qualified=numericalSourceOptions(options,
+    ["step","tolerance","maxSteps","fixed"], "diffuse options");
+  const {step,tolerance=1e-12,maxSteps=100000,fixed=[]}=qualified;
+  const initial=finiteNumericVectorSource(x0,sheaf.c0,"diffuse initial 0-cochain",
+    "diffuse: x0 has the wrong length",
+    "diffuse: initial stalk values must be finite numbers");
+  if (typeof tolerance !== "number" || !Number.isFinite(tolerance) || tolerance < 0)
     throw new RangeError("diffuse: tolerance must be finite and non-negative");
-  }
-  if (!Number.isSafeInteger(maxSteps) || maxSteps < 0) {
-    throw new RangeError("diffuse: maxSteps must be a non-negative safe integer");
-  }
-  if (!Array.isArray(fixed)) throw new TypeError("diffuse: fixed must be an array of vertex readings");
+  if (!Number.isSafeInteger(maxSteps) || maxSteps < 0 || maxSteps > 1_000_000)
+    throw new RangeError("diffuse: maxSteps must be an integer from 0 to 1000000");
+  if (!Array.isArray(fixed))
+    throw new TypeError("diffuse: fixed must be an array of vertex readings");
+  const sourceFixed=sheafSourceArray(fixed,"diffuse fixed readings").map(reading=>
+    sourceCoverRecord(reading,["vertex","value"],"diffuse fixed reading"));
   const delta = coboundary(sheaf), laplacian = sheafLaplacian(sheaf);
   const bound = gershgorinBound(laplacian);
   if (!Number.isFinite(bound)) throw new RangeError("diffuse: Laplacian bound is not finite");
@@ -999,12 +1020,14 @@ export function diffuse(sheaf, x0, { step, tolerance = 1e-12, maxSteps = 100000,
   }
   const pinned = new Array(sheaf.c0).fill(false);
   const seen = new Map();
-  const x = [...x0];
-  for (const { vertex, value } of fixed) {
+  const x = [...initial];
+  for (const { vertex, value } of sourceFixed) {
     const index = sheaf.vertices.findIndex((candidate) => coincidenceKey(candidate.id) === coincidenceKey(vertex));
     if (index < 0) throw new RangeError("diffuse: unknown pinned vertex");
-    const values = Array.isArray(value) ? value : [value];
-    if (values.length !== sheaf.vertices[index].dim) throw new RangeError("diffuse: pinned value has the wrong dimension");
+    const values = Array.isArray(value)
+      ? sheafSourceArray(value,"diffuse pinned coordinates") : [value];
+    if (values.length !== sheaf.vertices[index].dim)
+      throw new RangeError("diffuse: pinned value has the wrong dimension");
     if (values.some((v) => typeof v !== "number" || !Number.isFinite(v))) {
       throw new RangeError("diffuse: pinned stalk values must be finite numbers");
     }
@@ -1068,8 +1091,12 @@ export const harmonicProjection = (sheaf, x0, options = {}) => diffuse(sheaf, x0
  *  machine-checked proof of exact gluing. */
 export function hodgeCheck(sheaf, x0, options = {}) {
   sheaf = admitCellularSheaf(sheaf);
-  const tolerance = options.tolerance ?? 1e-12;
-  const limit = diffuse(sheaf, x0, { ...options, fixed: [] });
+  const qualified=numericalSourceOptions(options,
+    ["step","tolerance","maxSteps","fixed"],"hodgeCheck options");
+  const tolerance = qualified.tolerance ?? 1e-12;
+  // Hodge's free projection intentionally discards supplied fixed conditions,
+  // but MUST NOT execute a caller's getter while performing that discard.
+  const limit = diffuse(sheaf, x0, { ...qualified, fixed: [] });
   const laplacianResidual = norm(applyLaplacian(sheaf, limit.section));
   return Object.freeze({
     kind: "signgraph.hodgeCheck",
@@ -1276,16 +1303,52 @@ export function applyTranspose(matrix, y) {
  *  carry — the system is inconsistent and the unresolvable part is returned as `obstruction` (= rhs − δᵀ f,
  *  a 0-cochain in ker δ), never NaN. Returns { section: f, obstruction, residual: ‖obstruction‖, rhsNorm,
  *  steps, converged, consistent }. The option "floor" is a load scale below which a residual is round-off, not obstruction. */
-export function solveNormal(sheaf, rhs, { tolerance = 1e-12, consistency = 1e-9, floor = 0, maxSteps } = {}) {
+export function solveNormal(sheaf, rhs, options = {}) {
   sheaf = admitCellularSheaf(sheaf);
-  // A default work bound must not inspect an unadmitted caller chart.
-  if (maxSteps === undefined) maxSteps = 4 * (sheaf.c0 + sheaf.c1) + 16;
-  if (rhs.length !== sheaf.c0) throw new RangeError("solveNormal: rhs has the wrong length");
+  const qualified=numericalSourceOptions(options,
+    ["tolerance","consistency","floor","maxSteps"],"solveNormal options");
+  const {tolerance=1e-12,consistency=1e-9,floor=0} = qualified;
+  // Work allocation and every algebraic tolerance are source-owned numbers,
+  // never values supplied through executable source property getters.
+  const maxSteps=qualified.maxSteps ?? 4 * (sheaf.c0 + sheaf.c1) + 16;
+  if (!Number.isSafeInteger(maxSteps) || maxSteps < 0 || maxSteps > 1_000_000)
+    throw new RangeError("solveNormal: maxSteps must be an integer from 0 to 1000000");
+  for (const [name,value] of Object.entries({tolerance,consistency,floor}))
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
+      throw new RangeError("solveNormal: "+name+" must be finite and nonnegative");
+  const load=finiteNumericVectorSource(rhs,sheaf.c0,"solveNormal source load",
+    "solveNormal: rhs has the wrong length",
+    "solveNormal: rhs stalk values must be finite numbers");
   const delta = coboundary(sheaf);
-  const dot = (a, b) => { let sum = 0; for (let i = 0; i < a.length; i += 1) sum += a[i] * b[i]; return sum; };
+  const dot = (a, b) => {
+    let sum = 0;
+    for (let i = 0; i < a.length; i += 1) {
+      sum += numericProduct(a[i],b[i],"solveNormal");
+      if (!Number.isFinite(sum))
+        throw new RangeError("solveNormal: numerical dot sum exceeded finite host arithmetic");
+    }
+    return sum;
+  };
   const f = new Array(sheaf.c1).fill(0);
-  const r = [...rhs];
-  const rhsNorm = norm(rhs);
+  const r = [...load];
+  // Scale-resistant Euclidean norm; naive sum(v*v) could underflow a real
+  // nonzero obstruction to numerical zero and certify consistency falsely.
+  const finiteNorm=(values)=>{
+    let scale=0,ssq=1;
+    for(const value of values){
+      if(!Number.isFinite(value))
+        throw new RangeError("solveNormal: nonfinite numerical state");
+      const a=Math.abs(value);
+      if(a===0)continue;
+      if(scale<a){ssq=1+ssq*(scale/a)**2;scale=a;}
+      else ssq+=(a/scale)**2;
+    }
+    const result=scale*Math.sqrt(ssq);
+    if(!Number.isFinite(result))
+      throw new RangeError("solveNormal: numerical norm exceeded finite host arithmetic");
+    return result;
+  };
+  const rhsNorm = finiteNorm(load);
   let s = apply(delta, r), gamma = dot(s, s);
   const stop = (tolerance * Math.sqrt(gamma)) ** 2;
   let p = [...s], steps = 0, converged = gamma === 0;
@@ -1304,7 +1367,7 @@ export function solveNormal(sheaf, rhs, { tolerance = 1e-12, consistency = 1e-9,
     gamma = next;
     p = s.map((v, i) => v + beta * p[i]);
   }
-  const residual = norm(r);
+  const residual = finiteNorm(r);
   return Object.freeze({
     kind: "signgraph.normalSolution", section: Object.freeze(f), obstruction: Object.freeze(r), residual, rhsNorm,
     steps, converged, consistent: converged && residual <= consistency * Math.max(rhsNorm, floor, 1e-300),
