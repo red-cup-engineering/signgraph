@@ -591,6 +591,72 @@ test("huge but finite exact sheaf restrictions now project faithfully through Da
   assert.throws(() => coboundary(overflowing), /exceeds finite binary64 range/);
 });
 
+test("weighted metrics and observed numeric cochains cannot execute source arrays or replace a negative metric",()=>{
+  const s=constantSheaf(["a","b"],[["a","b"]]);
+  let executed=0;
+  // Original source declared a NEGATIVE scalar, then supplied methods
+  // which replaced that scalar with +1 during the old Cholesky evaluation.
+  const fake=[[-1]];
+  Object.defineProperty(fake,"every",{value(){executed++;return true;}});
+  Object.defineProperty(fake,"map",{value(){executed++;return [[1]];}});
+  assert.throws(()=>weightedSheafDirichlet(s,[fake],[0,2]),
+    /weighted edge metric cannot be sparse or decorated/);
+  assert.throws(()=>weightedSheafLaplacian(s,[fake]),
+    /weighted edge metric cannot be sparse or decorated/);
+  assert.throws(()=>weightedSheafDirichlet(s,[[[-1]]],[0,2]),
+    /not positive definite/);
+  const row=[1];
+  Object.defineProperty(row,"0",{enumerable:true,get(){
+    executed++;throw Error("called hostile metric scalar getter");
+  }});
+  assert.throws(()=>weightedSheafDirichlet(s,[[row]],[0,2]),
+    /weighted metric row array slots must be inert own data/);
+  const metrics=[[[1]]];
+  Object.defineProperty(metrics[0],"0",{enumerable:true,get(){
+    executed++;throw Error("called hostile metric-row getter");
+  }});
+  assert.throws(()=>weightedSheafLaplacian(s,metrics),
+    /weighted edge metric array slots must be inert own data/);
+  const witness=[0,2];
+  Object.defineProperty(witness,"0",{enumerable:true,get(){
+    executed++;throw Error("called hostile numeric source getter");
+  }});
+  assert.throws(()=>weightedSheafDirichlet(s,[[[1]]],witness),
+    /weighted source cochain array slots must be inert own data/);
+  const decorated=[[[1]]];
+  Object.defineProperty(decorated,Symbol("unadmitted"),{value:true});
+  assert.throws(()=>weightedSheafDirichlet(s,decorated,[0,2]),
+    /weighted source metrics cannot be sparse or decorated/);
+  const vector=[0,2];
+  Object.defineProperty(vector,Symbol("unadmitted"),{value:true});
+  assert.throws(()=>weightedSheafDirichlet(s,[[[1]]],vector),
+    /weighted source cochain cannot be sparse or decorated/);
+  assert.equal(executed,0,"metric and observed-value source callbacks must not execute");
+  assert.equal(weightedSheafDirichlet(s,[[[1]]],[0,2]).energy,4,
+    "the original lawful unit metric still has its expected energy");
+});
+
+test("native weighted Dirichlet equals quadratic Laplacian energy under incidence reversal and metric scaling",()=>{
+  const chart=constantSheaf(["a","b"],[["a","b"]],2);
+  const reverse=constantSheaf(["a","b"],[["b","a"]],2);
+  const W=[[[2,1],[1,3]]];
+  const x=[2,3,4,5];
+  const sourceEnergy=weightedSheafDirichlet(chart,W,x);
+  const L=weightedSheafLaplacian(chart,W);
+  const Lx=apply(L,x);
+  const quadratic=x.reduce((sum,v,i)=>sum+v*Lx[i],0);
+  near(sourceEnergy.energy,28,1e-12);
+  near(quadratic,sourceEnergy.energy,1e-12);
+  near(weightedSheafDirichlet(reverse,W,x).energy,sourceEnergy.energy,1e-12,
+    "an oriented edge reversal reverses the residual but preserves quadratic energy");
+  const doubled=[[[4,2],[2,6]]];
+  near(weightedSheafDirichlet(chart,doubled,x).energy,2*sourceEnergy.energy,1e-12);
+  const sourceCarried=[[[ "2","1" ],[ "1","3" ]]];
+  near(weightedSheafDirichlet(chart,sourceCarried,x).energy,sourceEnergy.energy,1e-12);
+  assert.equal(sourceEnergy.perEdge[0].id,0,
+    "numerical energy still retains the original source-indexed edge identity");
+});
+
 test("numeric sheaf and weighted Dirichlet receipts reject overflow instead of fabricating Infinity", () => {
   const high = cellularSheaf({
     vertices: [{ id: "a", dim: 1 }, { id: "b", dim: 1 }],
