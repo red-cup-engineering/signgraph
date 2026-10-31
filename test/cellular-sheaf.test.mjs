@@ -631,6 +631,12 @@ test("weighted metrics and observed numeric cochains cannot execute source array
   Object.defineProperty(vector,Symbol("unadmitted"),{value:true});
   assert.throws(()=>weightedSheafDirichlet(s,[[[1]]],vector),
     /weighted source cochain cannot be sparse or decorated/);
+  const rational={kind:"exactNumber.rational",den:"1"};
+  Object.defineProperty(rational,"num",{enumerable:true,get(){
+    executed++;throw Error("called hostile rational metric getter");
+  }});
+  assert.throws(()=>weightedSheafDirichlet(s,[[[rational]]],[0,2]),
+    /exact source scalar cannot contain accessors or hidden data/);
   assert.equal(executed,0,"metric and observed-value source callbacks must not execute");
   assert.equal(weightedSheafDirichlet(s,[[[1]]],[0,2]).energy,4,
     "the original lawful unit metric still has its expected energy");
@@ -653,6 +659,22 @@ test("native weighted Dirichlet equals quadratic Laplacian energy under incidenc
   near(weightedSheafDirichlet(chart,doubled,x).energy,2*sourceEnergy.energy,1e-12);
   const sourceCarried=[[[ "2","1" ],[ "1","3" ]]];
   near(weightedSheafDirichlet(chart,sourceCarried,x).energy,sourceEnergy.energy,1e-12);
+  let positiveMatrices=0;
+  for(let a=1;a<=4;a++)for(let b=-2;b<=2;b++)for(let c=1;c<=5;c++){
+    if(a*c<=b*b)continue; // Sylvester's criterion on 2×2 symmetric W
+    const matrix=[[[a,b],[b,c]]];
+    const e=weightedSheafDirichlet(chart,matrix,x).energy;
+    const applied=apply(weightedSheafLaplacian(chart,matrix),x);
+    const q=x.reduce((sum,v,i)=>sum+v*applied[i],0);
+    const rev=weightedSheafDirichlet(reverse,matrix,x).energy;
+    assert.ok(Math.abs(e-q)<1e-9*Math.max(1,Math.abs(e)),
+      "finite SPD Dirichlet/Laplacian agreement at "+a+","+b+","+c);
+    assert.ok(Math.abs(e-rev)<1e-9*Math.max(1,Math.abs(e)),
+      "finite SPD orientation reversal at "+a+","+b+","+c);
+    positiveMatrices++;
+  }
+  assert.ok(positiveMatrices>=50,
+    "finite law assay must actually exercise many strictly positive matrices");
   assert.equal(sourceEnergy.perEdge[0].id,0,
     "numerical energy still retains the original source-indexed edge identity");
 });
