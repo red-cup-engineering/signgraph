@@ -360,8 +360,8 @@ receiving establishes parity and then a measured improvement.
   1,048,576 edge-metric coefficient slots; this is a host resource limit,
   not an algebraic bound on sheaves or a limit on Exact Number bit complexity.
   The original Keratin test consumer explicitly receives one
-  witness-qualified 1-cochain into these same two weighted operators and
-  checks the quadratic energy law, with unopposed and opposed testimony
+  witness-qualified vertex 0-cochain into these same two weighted operators
+  and checks the quadratic energy law, with unopposed and opposed testimony
   distinguished. These are **conditional host-double mathematical
   computations**, not attested material energy. As W3C
   [PROV-O](https://www.w3.org/TR/prov-o/) distinguishes entities,
