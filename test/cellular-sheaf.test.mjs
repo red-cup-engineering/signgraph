@@ -223,6 +223,33 @@ test("original sparse duality uses one finite source vector and refuses false ze
   assert.throws(()=>applyTranspose(coboundary(stacked),[1,1]),
     /applyTranspose: numerical sum overflowed host arithmetic/,
     "two individually finite terms must not accumulate an unreported Infinity");
+  // Differential finite conformance over all 2^9 subsets of a
+  // three-position directed 1-skeleton, including original self-loops.
+  // This is exhaustive for this fixture, not a general proof of adjoints.
+  const positions=["witness:a","witness:b","witness:c"];
+  const possible=positions.flatMap((from,i)=>positions.map((to,j)=>({
+    id:"occurrence:"+i+":"+j,from,to,
+  })));
+  const observations=[2,-3,5];
+  let verified=0;
+  for(let mask=0;mask<512;mask++){
+    const contacts=possible.filter((_,i)=>(mask&(1<<i))!==0);
+    const sheaf=constantSheaf(positions,contacts);
+    const d=coboundary(sheaf);
+    const edgeValues=contacts.map((_,i)=>i%2===0?i+1:-(i+1));
+    const forward=apply(d,observations);
+    const backward=applyTranspose(d,edgeValues);
+    const lhs=forward.reduce((sum,v,i)=>sum+v*edgeValues[i],0);
+    const rhs=backward.reduce((sum,v,i)=>sum+v*observations[i],0);
+    assert.equal(lhs,rhs,"original sparse dual pairing at mask "+mask);
+    const reversed=constantSheaf(positions,contacts.map(c=>({
+      id:c.id,from:c.to,to:c.from,
+    })));
+    assert.deepEqual(applyTranspose(coboundary(reversed),edgeValues),
+      backward.map(v=>-v),"directed reversal must negate the same original dual at "+mask);
+    verified++;
+  }
+  assert.equal(verified,512);
   assert.deepEqual(applyTranspose(delta,[4]),dty,
     "negative controls do not change ordinary source-indexed linear algebra");
 });
