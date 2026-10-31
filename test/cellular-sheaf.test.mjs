@@ -1117,6 +1117,60 @@ test("source-admitted exact sheaf chart survives JSON transport without changing
     "source-local gluing cannot depend on in-process identity of the same valid original chart");
 });
 
+test("mathematical sheaf consumers refuse counterfeit charts before numerical readout",()=>{
+  const issued=constantSheaf(["source:a","source:b"],
+    [{id:"e",from:"source:a",to:"source:b"}],1);
+  const copy=()=>JSON.parse(JSON.stringify(issued));
+  const forged={...copy(),c0:17};
+  const numerical=[
+    ["cochain",s=>cochain(s,[])],
+    ["coboundary",s=>coboundary(s)],
+    ["Laplacian",s=>sheafLaplacian(s)],
+    ["metric Laplacian",s=>weightedSheafLaplacian(s,[[[1]]])],
+    ["Dirichlet",s=>weightedSheafDirichlet(s,[[[1]]],[0,0])],
+    ["diffusion",s=>diffuse(s,[0,0],{maxSteps:0})],
+    ["Hodge",s=>hodgeCheck(s,[0,0],{maxSteps:0})],
+    ["normal solver",s=>solveNormal(s,[0,0])],
+  ];
+  for(const [name,read] of numerical)
+    assert.throws(()=>read(forged),/cellularSheaf chart:/u,
+      name+" cannot accept caller-forged cellular coordinates");
+  let getterCalls=0;
+  const accessor=copy();
+  Object.defineProperty(accessor,"c0",{enumerable:true,get(){
+    getterCalls++;
+    throw Error("unadmitted source getter executed");
+  }});
+  for(const [name,read] of numerical)
+    assert.throws(()=>read(accessor),/cellularSheaf chart:.*inert own source fields/u,
+      name+" must reject a getter before numerical interpretation");
+  assert.equal(getterCalls,0);
+});
+
+test("verified transported charts retain the original cochain and numerical sheaf semantics",()=>{
+  const issued=constantSheaf(["a","b"],[{id:"e",from:"a",to:"b"}],1);
+  const transported=JSON.parse(JSON.stringify(issued));
+  const admitted=admitCellularSheaf(transported);
+  assert.deepEqual(admitted,issued);
+  assert.notEqual(admitted,transported);
+  const reports=[{vertex:"a",value:2},{vertex:"b",value:4}];
+  const numerical=[
+    ["cochain",s=>cochain(s,reports,{missing:"refuse"})],
+    ["coboundary",s=>coboundary(s)],
+    ["Laplacian",s=>sheafLaplacian(s)],
+    ["weighted Laplacian",s=>weightedSheafLaplacian(s,[[[2]]])],
+    ["Dirichlet",s=>weightedSheafDirichlet(s,[[[2]]],[2,4])],
+    ["diffusion",s=>diffuse(s,[2,4],{maxSteps:5})],
+    ["Hodge",s=>hodgeCheck(s,[2,4],{maxSteps:5})],
+    ["normal solver",s=>solveNormal(s,[-1,1])],
+  ];
+  for(const [name,read] of numerical)
+    assert.deepEqual(read(transported),read(issued),
+      name+" must preserve exact source geometry and bounded computation");
+  assert.deepEqual(apply(coboundary(transported),[2,4]),[2]);
+  assert.equal(weightedSheafDirichlet(transported,[[[2]]],[2,4]).energy,8);
+});
+
 test("derived sheaf indices and declared exactness cannot be forged into source-valid mathematical claims",()=>{
   const source=constantSheaf(["a","b"],[{id:"e",from:"a",to:"b"}],1);
   const copy=()=>JSON.parse(JSON.stringify(source));
