@@ -196,6 +196,10 @@ test('witness-qualified Keratin linear observations retain genuine source-indexe
   assert.equal(report.positions.length,3);
   const weights=linear.sheaf.edges.map(()=>[[2]]);
   const energy=weightedSheafDirichlet(linear.sheaf,weights,report.vector);
+  const typedEnergy=weightedSheafDirichlet(linear.sheaf,weights,
+    Float64Array.from(report.vector));
+  assert.ok(Math.abs(typedEnergy.energy-energy.energy)<1e-12,
+    'the original numeric TypedArray consumer retains the same source-qualified geometry');
   assert.ok(Math.abs(energy.energy-12)<1e-12,
     'all three original directed source contacts retain the triangle energy');
   const laplacian=weightedSheafLaplacian(linear.sheaf,weights);
