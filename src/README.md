@@ -388,9 +388,13 @@ receiving establishes parity and then a measured improvement.
   finite stalk coordinates. Such pins are caller-supplied boundary
   conditions, **not independently authenticated evidence**. Both iterative
   readers cap `maxSteps` at 1,000,000; `solveNormal` computes its default
-  after source readmission. A single scale-resistant finite norm prevents
-  nonzero subnormal residuals from becoming zero and refuses unrepresentable
-  magnitudes; `solveNormal` does not impose an undeclared `1e-300`
+  after source readmission. A single scale-resistant finite norm follows
+  the established scaled-sum-of-squares principle used by
+  [LAPACK DLASSQ](https://netlib.org/lapack/explore-html/d8/d76/group__lassq_gae8f40b0a34771b4f2d9c863de3af7be5.html)
+  (not a claim of algorithmic or binary equivalence). It prevents nonzero
+  subnormal residuals from becoming zero and refuses unrepresentable
+  magnitudes. In particular, `solveNormal` does not impose an undeclared
+  `1e-300`
   absolute consistency allowance when `floor:0`, although a caller may
   explicitly supply a different numerical floor. These are bounded
   host-double mathematical conditions, not unrestricted Hodge/physical
