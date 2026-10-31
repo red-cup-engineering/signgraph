@@ -373,6 +373,32 @@ receiving establishes parity and then a measured improvement.
   rigidity. Use `@red-cup-engineering/signgraph/cellular-sheaf`.
   It does not assert that a chemical associative exchange realizes a
   candidate graph or that crystallinity or mechanical strength is measured.
+
+  **Constant-sheaf source admission and cost law:** the existing
+  `constantSheaf(vertexIds, edgeList, dim)` convenience constructor now uses
+  the original `sheafSourceArray` and `sourceCoverRecord` readers *before*
+  issuing any graph incidence or building identity restrictions. Both
+  top-level lists must be ordinary dense undecorated source arrays; an edge
+  must be an exact two-endpoint data array or a plain inert
+  `{from,to,id?}` record, with no hidden/source-executing extra fields.
+  A missing `id` retains the original list-index identity. Caller-supplied
+  iterator, `map`, getter, prototype and ignored tuple-role tricks cannot
+  invent an original vertex or edge. Null-prototype inert records remain
+  admissible. Dimensions must be nonnegative safe integers; preflight bounds
+  each input list to 65,536 entries and the constant constructor's
+  *materialized identity and restriction data* to 1,048,576 numeric slots.
+  An edgeless source does not allocate a quadratic identity matrix. The
+  underlying `cellularSheaf` owner additionally refuses aggregate vertex
+  or edge coordinate offsets outside JavaScript safe-integer indexing.
+  Exceeding these **implementation** budgets refuses construction, not the
+  mathematical existence of a constant sheaf. A source-readable graph is
+  not independently PROV-O authenticated, an empirical observation or a
+  physical transport. This fixes the native JavaScript source boundary
+  that JSON Schema's JSON-instance validation does not govern
+  ([JSON Schema 2020-12](https://json-schema.org/specification));
+  a published version requires a distinct immutable
+  [SemVer](https://semver.org/spec/v2.0.0.html) edition and native
+  dependency/consumer receiving, not a source-only assertion.
 - `hierarchical-circuit` — the established pure typed relation model
   for SEN circuit-shaped diagrams and finite FOUR-valued semantics.
   `planCombinationalCircuit` remains a pure graph-order projection for
