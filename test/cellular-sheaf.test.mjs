@@ -152,6 +152,81 @@ test("coboundary and Laplacian: (δx)_e = F_to x_to − F_from x_from, L = δᵀ
   assert.deepEqual(L.entries.map((row) => row.map(([, v]) => v)), [[1, -1], [-1, 2, -1], [-1, 1]]);
 });
 
+test("original sparse duality uses one finite source vector and refuses false zero/overflow load certificates",()=>{
+  const s=constantSheaf(["a","b"],[["a","b"]]);
+  const delta=coboundary(s);
+  const x=[2,3],y=[4];
+  const dx=apply(delta,x),dty=applyTranspose(delta,y);
+  assert.deepEqual(dx,[1]);
+  assert.deepEqual(dty,[-4,4]);
+  assert.equal(dx[0]*y[0],x.reduce((sum,entry,i)=>sum+entry*dty[i],0),
+    "the original finite adjoint identity holds in both directions");
+  assert.deepEqual(apply(delta,Float64Array.from(x)),dx);
+  assert.deepEqual(applyTranspose(delta,Float64Array.from(y)),dty);
+
+  const reverse=coboundary(constantSheaf(["a","b"],[["b","a"]]));
+  assert.deepEqual(apply(reverse,x),[-dx[0]]);
+  assert.deepEqual(applyTranspose(reverse,y),dty.map(v=>-v));
+
+  let executed=0;
+  const getter=[4];
+  Object.defineProperty(getter,"0",{enumerable:true,get(){
+    executed++;return 0;
+  }});
+  assert.throws(()=>applyTranspose(delta,getter),
+    /applyTranspose source vector array slots must be inert own data/);
+  const hostile=[4];
+  Object.defineProperty(hostile,Symbol.iterator,{value(){
+    executed++;return [0][Symbol.iterator]();
+  }});
+  assert.throws(()=>applyTranspose(delta,hostile),
+    /applyTranspose source vector cannot be sparse or decorated/);
+  const forward=[2,3];
+  Object.defineProperty(forward,"0",{enumerable:true,get(){
+    executed++;return 0;
+  }});
+  assert.throws(()=>apply(delta,forward),
+    /apply source vector array slots must be inert own data/);
+  assert.equal(executed,0);
+
+  const typed=new Float64Array([4]);
+  Object.defineProperty(typed,"length",{get(){
+    executed++;throw Error("typed vector length getter executed");
+  }});
+  Object.defineProperty(typed,Symbol.iterator,{value(){
+    executed++;throw Error("typed vector iterator executed");
+  }});
+  assert.deepEqual(applyTranspose(delta,typed),dty);
+  assert.equal(executed,0);
+
+  const high=cellularSheaf({
+    vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+    edges:[{id:"e",from:"a",to:"b",dim:1,
+      restrict:{from:[[1e200]],to:[[0]]}}],
+  });
+  assert.throws(()=>applyTranspose(coboundary(high),[1e200]),
+    /applyTranspose: numerical product overflowed or underflowed host arithmetic/);
+  const tiny=cellularSheaf({
+    vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+    edges:[{id:"e",from:"a",to:"b",dim:1,
+      restrict:{from:[[1e-200]],to:[[0]]}}],
+  });
+  assert.throws(()=>applyTranspose(coboundary(tiny),[1e-200]),
+    /applyTranspose: numerical product overflowed or underflowed host arithmetic/,
+    "a source-bearing tiny nonzero load cannot become fabricated zero");
+
+  const stacked=cellularSheaf({
+    vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+    edges:["one","two"].map(id=>({id,from:"a",to:"b",dim:1,
+      restrict:{from:[[1e308]],to:[[0]]}})),
+  });
+  assert.throws(()=>applyTranspose(coboundary(stacked),[1,1]),
+    /applyTranspose: numerical sum overflowed host arithmetic/,
+    "two individually finite terms must not accumulate an unreported Infinity");
+  assert.deepEqual(applyTranspose(delta,[4]),dty,
+    "negative controls do not change ordinary source-indexed linear algebra");
+});
+
 test("exact cohomology: agrees with cohomologyOfCells on the integer incidence", () => {
   const graphs = [
     { nodes: ["a", "b", "c"], edges: [["a", "b"], ["b", "c"], ["c", "a"]] },
