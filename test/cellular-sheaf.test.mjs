@@ -43,6 +43,106 @@ test("cellularSheaf: validates shapes, ids and endpoints", () => {
   assert.ok(Object.isFrozen(cellularSheaf({ vertices: v, edges: [ok] })));
 });
 
+test("constant sheaf source ownership excludes foreign array methods, accessor edges and undeclared incidence", () => {
+  const vertices=["alpha","beta"];
+  const existing=constantSheaf(vertices,[["alpha","beta"]]);
+  assert.equal(existing.vertices.length,2);
+  assert.equal(existing.edges.length,1);
+  assert.equal(existing.edges[0].id,0);
+  assert.equal(cellularSheafCohomology(existing).h0,1);
+  assert.deepEqual(cochain(existing,[
+    {vertex:"alpha",value:3},{vertex:"beta",value:3},
+  ],{missing:"refuse"}),[3,3],
+    "the original cochain consumer receives the repaired constant chart");
+  const withOwnId=constantSheaf(vertices,[{id:"claim:e",from:"alpha",to:"beta"}]);
+  assert.equal(withOwnId.edges[0].id,"claim:e");
+  const withoutId=constantSheaf(vertices,[{from:"alpha",to:"beta"}]);
+  assert.equal(withoutId.edges[0].id,0);
+  const nullProto=Object.assign(Object.create(null),{
+    id:"source:null-prototype",from:"alpha",to:"beta",
+  });
+  assert.equal(constantSheaf(vertices,[nullProto]).edges[0].id,
+    "source:null-prototype");
+
+  let executable=0;
+  const hostileVertices=[...vertices];
+  Object.defineProperty(hostileVertices,"map",{enumerable:true,get(){
+    executable++;throw Error("a foreign source map was invoked");
+  }});
+  assert.throws(()=>constantSheaf(hostileVertices,[["alpha","beta"]]),
+    /constantSheaf vertices.*sparse or decorated/);
+  const hostileEdges=[["alpha","beta"]];
+  Object.defineProperty(hostileEdges,"map",{enumerable:true,get(){
+    executable++;throw Error("a foreign edge list map was invoked");
+  }});
+  assert.throws(()=>constantSheaf(vertices,hostileEdges),
+    /constantSheaf edges.*sparse or decorated/);
+  const accessor={id:"claimed:e",to:"beta"};
+  Object.defineProperty(accessor,"from",{enumerable:true,get(){
+    executable++;throw Error("a foreign edge source getter was invoked");
+  }});
+  assert.throws(()=>constantSheaf(vertices,[accessor]),
+    /constantSheaf source edge.*inert own source fields/);
+  const inherited=Object.assign(Object.create({from:"alpha"}),{
+    id:"claim:e",to:"beta",
+  });
+  assert.throws(()=>constantSheaf(vertices,[inherited]),
+    /constantSheaf source edge.*plain original source record/);
+  const hidden={from:"alpha",to:"beta"};
+  Object.defineProperty(hidden,"authority",{value:"unearned"});
+  assert.throws(()=>constantSheaf(vertices,[hidden]),
+    /constantSheaf source edge.*exact inert own source fields/);
+  const decoratedTuple=["alpha","beta"];
+  Object.defineProperty(decoratedTuple,Symbol.iterator,{get(){
+    executable++;throw Error("tuple iterator invoked");
+  }});
+  assert.throws(()=>constantSheaf(vertices,[decoratedTuple]),
+    /constantSheaf edge pair.*sparse or decorated/);
+  assert.throws(()=>constantSheaf(vertices,[["alpha","beta","hidden"]]),
+    /exactly two endpoints/);
+  assert.equal(executable,0,
+    "source admission never executes caller array methods, getters or iterators");
+});
+
+test("constant sheaf construction checks work budgets and safe coordinate sums before allocating dense matrices",()=>{
+  const vertices=["a","b"];
+  assert.throws(()=>constantSheaf(vertices,[["a","b"]],2048),
+    /dense restriction construction not evaluated; coefficient slot budget exceeded/);
+  assert.throws(()=>constantSheaf(vertices,[["a","b"]],Number.MAX_SAFE_INTEGER),
+    /dense restriction construction not evaluated/);
+  for(const dim of [NaN,Infinity,-1,1.1,Number.MAX_SAFE_INTEGER+1])
+    assert.throws(()=>constantSheaf(vertices,[["a","b"]],dim),
+      /dimension must be a nonnegative safe integer/);
+  let accesses=0;
+  const oversized=Array(65537).fill("a");
+  Object.defineProperty(oversized,Symbol.iterator,{get(){
+    accesses++;throw Error("unbounded input visited");
+  }});
+  assert.throws(()=>constantSheaf(oversized,[]),
+    /source lists exceed finite admission budget/);
+  assert.throws(()=>constantSheaf(vertices,Array(65537).fill(["a","b"])),
+    /source lists exceed finite admission budget/);
+  assert.equal(accesses,0);
+  // No O(dim²) identity matrix is allocated for an edgeless source,
+  // while the underlying chart must still have representable coordinates.
+  const edgeless=constantSheaf(vertices,[],0);
+  assert.equal(edgeless.c0,0);
+  assert.equal(edgeless.c1,0);
+  assert.equal(cellularSheafCohomology(edgeless).h0,0);
+  assert.throws(()=>constantSheaf(vertices,[],Number.MAX_SAFE_INTEGER),
+    /vertex coordinate index exceeds safe integer range/);
+  assert.throws(()=>cellularSheaf({
+    vertices:[{id:"one",dim:Number.MAX_SAFE_INTEGER},{id:"two",dim:1}],
+    edges:[],
+  }),/vertex coordinate index exceeds safe integer range/,
+    "the original general chart owner also refuses rounded cochain coordinates");
+  const exact=constantSheaf(vertices,[["a","b"]],2);
+  assert.equal(exact.c0,4);
+  assert.equal(exact.c1,2);
+  assert.equal(cellularSheafCohomology(exact).h0,2);
+  assert.equal(cellularSheafCohomology(exact).h1,0);
+});
+
 test("coboundary and Laplacian: (δx)_e = F_to x_to − F_from x_from, L = δᵀδ", () => {
   const s = constantSheaf(["a", "b", "c"], [["a", "b"], ["b", "c"]]);
   assert.deepEqual(apply(coboundary(s), [1, 3, 6]), [2, 3]);
