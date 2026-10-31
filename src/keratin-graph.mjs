@@ -15,7 +15,7 @@
  */
 import { featherGraphOfPredications, featherSourceFields, featherSourceArray } from './feather-graph.mjs';
 import { cellular2Complex } from './cohomology.mjs';
-import { apply, coboundary, cochain, cellularSheaf, cellularSheafCohomology, exactCohomologyRankWithinBudget } from './cellular-sheaf.mjs';
+import { apply, coboundary, cochain, cellularSheaf, cellularSheafCohomology, cellularSheafCohomologyStatus } from './cellular-sheaf.mjs';
 import { readingOfSides } from '@red-cup-engineering/computer-data-engineering-services-section/four';
 
 const freeze = Object.freeze;
@@ -266,11 +266,10 @@ export function keratinLinearSheaf(graph, options = {}) {
   // kernel, not guessed from absent rank results. For finite but too-wide
   // source charts, retain the ADMITTED sheaf and its original occurrences
   // with an explicit "not evaluated" status; no fabricated zero H1.
-  const cohomologyStatus=!sheaf.exact
-    ?'not-evaluated: nonexact source restrictions'
-    :exactCohomologyRankWithinBudget(sheaf)
-      ?'exact'
-      :'not-evaluated: rational rank work budget exceeded';
+  // The original cellular-sheaf owner is the SINGLE authority for
+  // whether its rational rank was actually evaluated. No Keratin-local
+  // replica of the budget or status policy is maintained.
+  const cohomologyStatus=cellularSheafCohomologyStatus(sheaf);
   const reading=freeze({kind:'signgraph.keratinGraph.linearSheafReading.v1',
     sheaf,cohomology:cohomologyStatus==='exact'?cellularSheafCohomology(sheaf):null,
     cohomologyStatus,
