@@ -353,7 +353,11 @@ receiving establishes parity and then a measured improvement.
   metric collection, edge matrix, coordinate row and rational scalar is
   inspected as inert own data *before* Cholesky or energy evaluation. The
   original `weightedSheafDirichlet` also uses one detached, finite numeric
-  cochain snapshot for both its validation and coboundary calculation.
+  vertex 0-cochain snapshot for both its validation and coboundary
+  calculation. Ordinary arrays use source descriptors; the existing
+  numeric TypedArray input form uses its intrinsic length and indexed
+  data rather than any caller-supplied iterator, length or map callback.
+  DataViews, arbitrary iterables and nonfinite numeric coordinates refuse.
   A decorated input method, getter, inherited element or an actual negative
   definite metric cannot manufacture a positive energy receipt. The
   weighted-metric work envelope refuses before materializing more than
