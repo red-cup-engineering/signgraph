@@ -379,11 +379,19 @@ receiving establishes parity and then a measured improvement.
   dimensions or incidences. A forged coordinate index cannot issue a zero,
   false harmonic section or solved-load certificate.
 
-  **One finite numeric source cut:** weighted Dirichlet, `diffuse` and
-  `solveNormal` share the original descriptor-admitted numeric-array or
-  intrinsic TypedArray value snapshot. Executable getters, overridden array
-  methods, source iterators and inherited values cannot fabricate numeric
-  inputs. The two iterative readers use declared inert option records;
+  **One finite numeric source cut:** the original sparse forward/transpose
+  operators (`apply`, `applyTranspose`), weighted Dirichlet, `diffuse`
+  and `solveNormal` share the same descriptor-admitted numeric-array or
+  intrinsic TypedArray value snapshot. The transpose now uses the forward
+  operator's original guarded `numericProduct` and finite-accumulation
+  law; neither a nonzero subnormal product becoming zero nor a host-float
+  overflow can be accepted as a load, and no caller getter may silently
+  change either side of the duality `⟨δx,y⟩ = ⟨x,δᵀy⟩`.
+  Executable getters, overridden array methods, source iterators and
+  inherited values cannot fabricate numeric inputs. This is a
+  **conditional finite host-arithmetic identity**, not an authentication of
+  observation or physical load. The two iterative readers use declared
+  inert option records;
   `diffuse` additionally admits exact `{vertex,value}` pinned records and
   finite stalk coordinates. Such pins are caller-supplied boundary
   conditions, **not independently authenticated evidence**. Both iterative
