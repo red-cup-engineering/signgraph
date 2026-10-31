@@ -278,7 +278,24 @@ test('Keratin source-qualified numeric fibers receive heat flow and normal loads
   // representable. The normal solver returns a finite response and an
   // independently checkable δᵀf reading without inventing source authority.
   const delta=coboundary(linear.sheaf);
-  const load=applyTranspose(delta,[1,0,-1]);
+  const orientedEdgeTestimony=[1,0,-1];
+  const load=applyTranspose(delta,orientedEdgeTestimony);
+  // The SAME original Keratin source chart is received by both sides of
+  // the linear dual pairing, not a separately reconstructed load ledger.
+  const edgeResidual=apply(delta,observed.vector);
+  const lhs=edgeResidual.reduce((sum,value,i)=>sum+value*orientedEdgeTestimony[i],0);
+  const rhs=observed.vector.reduce((sum,value,i)=>sum+value*load[i],0);
+  assert.ok(Math.abs(lhs-rhs)<1e-12);
+  assert.deepEqual(applyTranspose(delta,Float64Array.from(orientedEdgeTestimony)),load);
+  let dualCalls=0;
+  const importedEdgeTestimony=[...orientedEdgeTestimony];
+  Object.defineProperty(importedEdgeTestimony,"0",{enumerable:true,get(){
+    dualCalls++;return 0;
+  }});
+  assert.throws(()=>applyTranspose(delta,importedEdgeTestimony),
+    /applyTranspose source vector array slots must be inert own data/);
+  assert.equal(dualCalls,0,
+    'a caller getter must not rewrite the original Keratin edge load');
   const balanced=solveNormal(linear.sheaf,load);
   assert.equal(balanced.consistent,true);
   const roundtrip=applyTranspose(delta,balanced.section);
