@@ -556,14 +556,29 @@ export function exactCohomologyRankWithinBudget(sheaf) {
     (c0 === 0 || c1 === 0 || c0 <= Math.floor(MAX_EXACT_COHOMOLOGY_RANK_SLOTS / c1));
 }
 
+/** Canonical source-owned cohomology evaluation status. The mathematical
+ * degrees exist independently of our finite solver budget: NOT evaluated
+ * is not a zero Betti number. Keratin and Hodge share this same policy.
+ * Transported charts are reconstructed through the original owner.
+ */
+export function cellularSheafCohomologyStatus(sheaf) {
+  sheaf = admitCellularSheaf(sheaf);
+  if (!sheaf.exact) return "not-evaluated: nonexact source restrictions";
+  return exactCohomologyRankWithinBudget(sheaf)
+    ? "exact"
+    : "not-evaluated: rational rank work budget exceeded";
+}
+
 /** Exact H⁰/H¹ over ℚ, only of an original issued or fully re-admitted
  * cellular chart, with resource-qualified rank evaluation. A transported
  * readout is reconstructed from actual restrictions, not trusted because
  * it carries matching 'exact' or degree labels. */
 export function cellularSheafCohomology(sheaf) {
   sheaf = admitCellularSheaf(sheaf);
-  if (!sheaf.exact) throw new RangeError("cellularSheafCohomology: restriction entries must be exact (integers, bigints, rational carriers or \"a/b\")");
-  if (!exactCohomologyRankWithinBudget(sheaf))
+  const status = cellularSheafCohomologyStatus(sheaf);
+  if (status === "not-evaluated: nonexact source restrictions")
+    throw new RangeError("cellularSheafCohomology: restriction entries must be exact (integers, bigints, rational carriers or \"a/b\")");
+  if (status !== "exact")
     throw new RangeError("cellularSheafCohomology: exact rational rank not evaluated; dense coefficient work budget exceeded");
   const rankValue = sheaf.c1 === 0 || sheaf.c0 === 0 ? 0 : ratRank(exactCoboundary(sheaf));
   const h0 = sheaf.c0 - rankValue, h1 = sheaf.c1 - rankValue;
@@ -1119,9 +1134,17 @@ export function hodgeCheck(sheaf, x0, options = {}) {
   // but MUST NOT execute a caller's getter while performing that discard.
   const limit = diffuse(sheaf, x0, { ...qualified, fixed: [] });
   const laplacianResidual = norm(applyLaplacian(sheaf, limit.section));
+  // Degree-zero numeric harmonicity is independently assessable when the
+  // unrelated exact degree-one rank is too expensive to materialize.
+  // Share the ORIGINAL rank policy with Keratin: do not invent h1=0 and
+  // do not confuse a nonexact restriction with a budget-exhausted one.
+  const cohomologyStatus = cellularSheafCohomologyStatus(sheaf);
+  const h1 = cohomologyStatus === "exact"
+    ? cellularSheafCohomology(sheaf).h1
+    : sheaf.exact ? null : undefined;
   return Object.freeze({
     kind: "signgraph.hodgeCheck",
-    h1: sheaf.exact ? cellularSheafCohomology(sheaf).h1 : undefined,
+    h1, cohomologyStatus,
     section: limit.section, sectionResidual: limit.residual, laplacianResidual, steps: limit.steps,
     harmonic: limit.converged && limit.residual <= tolerance * 1e3 && laplacianResidual <= tolerance,
   });
