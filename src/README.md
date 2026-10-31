@@ -348,7 +348,21 @@ receiving establishes parity and then a measured improvement.
   whitening Cᵀ where W = CCᵀ and the existing coboundary, so non-identity restrictions and self-edges
   retain their meaning and ker L = H⁰. Metrics are validated without adding a ridge; only relative
   floating-point symmetry round-off is averaged. Exact cohomology remains the separate rational
-  operation. **Exact-rank custody and work bound:** `cellularSheafCohomology`
+  operation. **One mathematical chart custody boundary:** `cellularSheaf` constructs
+  an issued exact source chart; `admitCellularSheaf` checks its in-process
+  issued identity or reconstructs and compares a transported chart.
+  `cochain`, `coboundary`, `sheafLaplacian`, weighted metric/Dirichlet,
+  `diffuse`, `hodgeCheck`, and `solveNormal` now all use this original
+  admission **before reading a supplied chart's dimensions, incidences
+  or restrictions**. A forged coordinate index cannot create a measured
+  zero, apparent numeric compatibility, false harmonic result or
+  zero-obstruction load certificate. `solveNormal` also calculates its
+  default work bound only after source readmission. Issued charts are
+  constant-time to recognize; transported charts receive original structural
+  reconstruction, not a second mathematical model. This is structural
+  mathematical custody, never authentication of the external observer or
+  provenance of a witness. **Exact-rank custody and work bound:**
+  `cellularSheafCohomology` likewise
   first receives the chart through the original `admitCellularSheaf` owner:
   a caller's invented `exact`, `c0`, `c1` or copied derived indices
   cannot issue a mathematical receipt. The original Exact Number rational
