@@ -386,13 +386,17 @@ export function coboundary(sheaf) {
   return sparse(sheaf.c1, sheaf.c0, entries);
 }
 
-/** Apply a sparse matrix to a vector, summing each row in column order. */
+/** Apply an original sparse matrix to one finite, inert numeric vector;
+ * row and column order follows the issued source. No caller-defined
+ * iterator/getter can substitute coordinates after mathematical admission. */
 export function apply(matrix, x) {
-  if (x.length !== matrix.cols) throw new RangeError("apply: vector length does not match the matrix");
+  const vector=finiteNumericVectorSource(x,matrix.cols,"apply source vector",
+    "apply: vector length does not match the matrix",
+    "apply: vector entries must be finite numbers");
   return matrix.entries.map((row) => {
     let sum = 0;
     for (const [column, value] of row) {
-      sum += numericProduct(value, x[column], "apply");
+      sum += numericProduct(value, vector[column], "apply");
       if (!Number.isFinite(sum)) throw new RangeError("apply: numerical sum overflowed host arithmetic");
     }
     return sum;
@@ -1332,11 +1336,23 @@ export function planConnectedBarExchanges({ points, beforeBars, afterBars, dimen
 
 // — the dual: loads, and the transpose of the coboundary —
 
-/** Mᵀ y for a sparse matrix, summing in row order (deterministic). */
+/** Mᵀy for the original sparse matrix, summing in source row order.
+ * The same finite-vector source and numeric product laws as apply prevent
+ * false zero loads and nonfinite results in the normal solver and Keratin.
+ * This is a numerical reading, not an authenticated physical load. */
 export function applyTranspose(matrix, y) {
-  if (y.length !== matrix.rows) throw new RangeError("applyTranspose: vector length does not match the matrix");
+  const vector=finiteNumericVectorSource(y,matrix.rows,"applyTranspose source vector",
+    "applyTranspose: vector length does not match the matrix",
+    "applyTranspose: vector entries must be finite numbers");
   const out = new Array(matrix.cols).fill(0);
-  matrix.entries.forEach((row, i) => { for (const [column, value] of row) out[column] += value * y[i]; });
+  matrix.entries.forEach((row, i) => {
+    for (const [column, value] of row) {
+      const total=out[column]+numericProduct(value,vector[i],"applyTranspose");
+      if (!Number.isFinite(total))
+        throw new RangeError("applyTranspose: numerical sum overflowed host arithmetic");
+      out[column]=total;
+    }
+  });
   return out;
 }
 
