@@ -372,19 +372,31 @@ receiving establishes parity and then a measured improvement.
   activities and agents, a sourceRecord locator and an inert matrix do
   not independently certify who measured it, when or with what authority.
   Exact cohomology remains the separate rational operation. **One mathematical chart custody boundary:** `cellularSheaf` constructs
-  an issued exact source chart; `admitCellularSheaf` checks its in-process
-  issued identity or reconstructs and compares a transported chart.
-  `cochain`, `coboundary`, `sheafLaplacian`, weighted metric/Dirichlet,
-  `diffuse`, `hodgeCheck`, and `solveNormal` now all use this original
-  admission **before reading a supplied chart's dimensions, incidences
-  or restrictions**. A forged coordinate index cannot create a measured
-  zero, apparent numeric compatibility, false harmonic result or
-  zero-obstruction load certificate. `solveNormal` also calculates its
-  default work bound only after source readmission. Issued charts are
-  constant-time to recognize; transported charts receive original structural
-  reconstruction, not a second mathematical model. This is structural
-  mathematical custody, never authentication of the external observer or
-  provenance of a witness. **Exact-rank custody and work bound:**
+  an issued structural chart; `admitCellularSheaf` checks in-process
+  identity or reconstructs and compares a transported chart. The existing
+  numerical cochain, coboundary, Laplacian, weighted, heat-flow, Hodge and
+  normal-solver operations all admit that original chart before reading its
+  dimensions or incidences. A forged coordinate index cannot issue a zero,
+  false harmonic section or solved-load certificate.
+
+  **One finite numeric source cut:** weighted Dirichlet, `diffuse` and
+  `solveNormal` share the original descriptor-admitted numeric-array or
+  intrinsic TypedArray value snapshot. Executable getters, overridden array
+  methods, source iterators and inherited values cannot fabricate numeric
+  inputs. The two iterative readers use declared inert option records;
+  `diffuse` additionally admits exact `{vertex,value}` pinned records and
+  finite stalk coordinates. Such pins are caller-supplied boundary
+  conditions, **not independently authenticated evidence**. Both iterative
+  readers cap `maxSteps` at 1,000,000; `solveNormal` computes its default
+  after source readmission. A single scale-resistant finite norm prevents
+  nonzero subnormal residuals from becoming zero and refuses unrepresentable
+  magnitudes; `solveNormal` does not impose an undeclared `1e-300`
+  absolute consistency allowance when `floor:0`, although a caller may
+  explicitly supply a different numerical floor. These are bounded
+  host-double mathematical conditions, not unrestricted Hodge/physical
+  proofs. Issued charts are O(1) to recognize; transported charts undergo
+  original mathematical reconstruction, not a second model. Neither
+  operation authenticates the actor or source testimony. **Exact-rank custody and work bound:**
   `cellularSheafCohomology` likewise
   first receives the chart through the original `admitCellularSheaf` owner:
   a caller's invented `exact`, `c0`, `c1` or copied derived indices
