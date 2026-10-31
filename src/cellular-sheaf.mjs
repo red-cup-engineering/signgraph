@@ -977,7 +977,26 @@ export function tensorCellularSheaves(factors) {
 
 // — the heat flow —
 
-const norm = (vector) => { let sum = 0; for (const v of vector) sum += v * v; return Math.sqrt(sum); };
+/** One numerically scaled Euclidean norm for diffusion, rigidity and
+ * source-local load obstructions; do not let squaring underflow a nonzero
+ * residual into a false zero or overflow a representable norm. */
+const norm = (values) => {
+  let scale=0,ssq=1;
+  for (const value of values) {
+    if (typeof value !== "number" || !Number.isFinite(value))
+      throw new RangeError("cellularSheaf: numerical norm requires finite values");
+    const absolute=Math.abs(value);
+    if (absolute===0) continue;
+    if (scale<absolute) {
+      ssq=1+ssq*(scale/absolute)**2;
+      scale=absolute;
+    } else ssq+=(absolute/scale)**2;
+  }
+  const result=scale*Math.sqrt(ssq);
+  if(!Number.isFinite(result))
+    throw new RangeError("cellularSheaf: numerical norm exceeded finite host arithmetic");
+  return result;
+};
 
 /** The Gershgorin bound on L's spectrum: the largest absolute row sum (λ_max ≤ this). */
 export function gershgorinBound(laplacian) {
@@ -1331,24 +1350,7 @@ export function solveNormal(sheaf, rhs, options = {}) {
   };
   const f = new Array(sheaf.c1).fill(0);
   const r = [...load];
-  // Scale-resistant Euclidean norm; naive sum(v*v) could underflow a real
-  // nonzero obstruction to numerical zero and certify consistency falsely.
-  const finiteNorm=(values)=>{
-    let scale=0,ssq=1;
-    for(const value of values){
-      if(!Number.isFinite(value))
-        throw new RangeError("solveNormal: nonfinite numerical state");
-      const a=Math.abs(value);
-      if(a===0)continue;
-      if(scale<a){ssq=1+ssq*(scale/a)**2;scale=a;}
-      else ssq+=(a/scale)**2;
-    }
-    const result=scale*Math.sqrt(ssq);
-    if(!Number.isFinite(result))
-      throw new RangeError("solveNormal: numerical norm exceeded finite host arithmetic");
-    return result;
-  };
-  const rhsNorm = finiteNorm(load);
+  const rhsNorm = norm(load);
   let s = apply(delta, r), gamma = dot(s, s);
   const stop = (tolerance * Math.sqrt(gamma)) ** 2;
   let p = [...s], steps = 0, converged = gamma === 0;
@@ -1367,7 +1369,7 @@ export function solveNormal(sheaf, rhs, options = {}) {
     gamma = next;
     p = s.map((v, i) => v + beta * p[i]);
   }
-  const residual = finiteNorm(r);
+  const residual = norm(r);
   return Object.freeze({
     kind: "signgraph.normalSolution", section: Object.freeze(f), obstruction: Object.freeze(r), residual, rhsNorm,
     steps, converged, consistent: converged && residual <= consistency * Math.max(rhsNorm, floor, 1e-300),
