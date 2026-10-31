@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { cell } from "@red-cup-engineering/signcell/cell";
-import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
+import { cellular2Complex, cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
   apply, applyLaplacian, admitCellularSheaf, cellularSheaf, cellularSheafCohomology, exactCohomologyRankWithinBudget, MAX_EXACT_COHOMOLOGY_RANK_SLOTS, coboundary, cochain, constantSheaf, sheafSourceScalar,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
@@ -128,6 +128,29 @@ test("exact rational rank bounds dense coefficient work before materialization w
   const trivial=cellularSheafCohomology(isolated);
   assert.equal(trivial.h0,257);
   assert.equal(trivial.h1,0);
+});
+
+test("exact H0/H1 retain original graph cohomology across all 512 three-position directed incidences",()=>{
+  const vertices=["source:a","source:b","source:c"];
+  const possible=vertices.flatMap((from,i)=>vertices.map((to,j)=>({
+    id:"directed:"+i+":"+j,from,to,
+  })));
+  let verified=0;
+  // Exhaustive finite metamodel over the nine independently present/absent
+  // oriented incidences (including self loops). This is a finite conformance
+  // assay of two existing source implementations, NOT a Lean theorem.
+  for(let mask=0;mask<(1<<possible.length);mask++){
+    const edges=possible.filter((_,i)=>(mask&(1<<i))!==0);
+    const sheaf=cellularSheafCohomology(constantSheaf(vertices,edges));
+    const complex=cellular2Complex({vertices,edges,faces:[]});
+    assert.equal(sheaf.h0,complex.betti.h0,"H0 differs at mask "+mask);
+    assert.equal(sheaf.h1,complex.graphOnlyH1,"graph-only H1 differs at mask "+mask);
+    assert.equal(sheaf.rank,complex.rank.zero,"δ rank differs at mask "+mask);
+    assert.equal(sheaf.h0-sheaf.h1,vertices.length-edges.length,
+      "Euler relation differs at mask "+mask);
+    verified++;
+  }
+  assert.equal(verified,512);
 });
 
 test("diffusion: converges to the harmonic section (component means) and lies in ker L", () => {
