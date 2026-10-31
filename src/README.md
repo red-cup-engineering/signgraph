@@ -254,7 +254,11 @@ receiving establishes parity and then a measured improvement.
   both witness sides, source tokens and obstruction as the full section.
   `queryInheritedTellings(frame, selection, page)` selects optional token,
   predicate, object and FOUR reading with a bounded 1–128-row page. Missing
-  claims remain absent; foreign tokens refuse. Its `sourceCells` identifies
+  claims remain absent; foreign tokens refuse. A `cellNi` selection must be a
+  canonical RFC 6920 SHA-256 NI name, admitted through the original URI
+  Services `isNiUri` contract: nonzero final Base64url pad bits refuse rather
+  than masquerading as an absent Cell. This syntactic test neither proves the
+  digest matches a source nor grants the reader access to the named Cell. Its `sourceCells` identifies
   the evidence-bearing source cut, while `snapshot` also binds the actual
   specialization predicate. A changed interpretation cannot reuse the old
   page identity. Mutable transported frames are read into an owned cut;
