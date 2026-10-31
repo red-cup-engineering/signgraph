@@ -431,9 +431,35 @@ export const applyLaplacian = (sheaf, x) => apply(sheafLaplacian(sheaf), x);
 
 // — exact cohomology over ℚ —
 
-/** The exact cohomology receipt: dim H⁰ = dim C⁰ − rank δ, dim H¹ = dim C¹ − rank δ over ℚ. Needs exact restriction entries. */
+/** The native exact rank implementation materializes a dense C¹ × C⁰
+ * rational differential. This is a bounded COMPUTATION, not an algebraic
+ * dimension axiom; 65,536 coefficient slots also bounds cubic elimination
+ * near the square case. The original Exact Number package owns ratRank. */
+export const MAX_EXACT_COHOMOLOGY_RANK_SLOTS = 65_536;
+
+/** Preflight the actual source-owned mathematical chart. Returning false
+ * means "not evaluated", NEVER zero cohomology. Empty rows/columns have
+ * provable rank zero and require no dense matrix, regardless of dimension.
+ * Re-admit transported charts through the existing cellularSheaf owner;
+ * caller-supplied 'exact', dimensions or incidence cannot bypass admission.
+ */
+export function exactCohomologyRankWithinBudget(sheaf) {
+  sheaf = admitCellularSheaf(sheaf);
+  const { c0, c1 } = sheaf;
+  return Number.isSafeInteger(c0) && Number.isSafeInteger(c1) &&
+    c0 >= 0 && c1 >= 0 &&
+    (c0 === 0 || c1 === 0 || c0 <= Math.floor(MAX_EXACT_COHOMOLOGY_RANK_SLOTS / c1));
+}
+
+/** Exact H⁰/H¹ over ℚ, only of an original issued or fully re-admitted
+ * cellular chart, with resource-qualified rank evaluation. A transported
+ * readout is reconstructed from actual restrictions, not trusted because
+ * it carries matching 'exact' or degree labels. */
 export function cellularSheafCohomology(sheaf) {
+  sheaf = admitCellularSheaf(sheaf);
   if (!sheaf.exact) throw new RangeError("cellularSheafCohomology: restriction entries must be exact (integers, bigints, rational carriers or \"a/b\")");
+  if (!exactCohomologyRankWithinBudget(sheaf))
+    throw new RangeError("cellularSheafCohomology: exact rational rank not evaluated; dense coefficient work budget exceeded");
   const rankValue = sheaf.c1 === 0 || sheaf.c0 === 0 ? 0 : ratRank(exactCoboundary(sheaf));
   const h0 = sheaf.c0 - rankValue, h1 = sheaf.c1 - rankValue;
   return Object.freeze({ kind: "signgraph.cellularSheafCohomology", h0, h1, vanishing: rankVanishing(h1), rank: rankValue, c0: sheaf.c0, c1: sheaf.c1 });
