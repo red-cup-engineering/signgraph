@@ -385,8 +385,11 @@ receiving establishes parity and then a measured improvement.
   intrinsic TypedArray value snapshot. The transpose now uses the forward
   operator's original guarded `numericProduct` and finite-accumulation
   law; neither a nonzero subnormal product becoming zero nor a host-float
-  overflow can be accepted as a load, and no caller getter may silently
-  change either side of the duality `⟨δx,y⟩ = ⟨x,δᵀy⟩`.
+  overflow can be accepted as a load, and no caller-supplied **vector**
+  getter may silently change either side of the duality
+  `⟨δx,y⟩ = ⟨x,δᵀy⟩`. The sparse matrix itself is the original
+  `coboundary`-issued source operator: this numeric vector contract does
+  not authenticate an independently supplied arbitrary matrix object.
   Executable getters, overridden array methods, source iterators and
   inherited values cannot fabricate numeric inputs. This is a
   **conditional finite host-arithmetic identity**, not an authentication of
