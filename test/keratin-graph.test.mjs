@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {keratinGraphOfPredications,keratinPositionKey,keratinLinearSheaf,assessKeratinLinearObservations,analyzeKeratinGraph,keratinGraphToDot} from '../src/keratin-graph.mjs';
+import { apply, weightedSheafDirichlet, weightedSheafLaplacian } from '../src/cellular-sheaf.mjs';
 
 const p = (s, display='same') => ({performed:s,side:'token',display});
 const edge = (id, from, predicate, to) => ({occurrence:id,sourceRecord:`source:${id}`,cell:{subject:p(from),predicate,object:p(to)}});
@@ -179,6 +180,54 @@ const linearSpec=(graph,{twisted=false}={})=>keratinLinearSheaf(graph,{
   })),
 });
 const reading=(position,value,sourceRecord)=>({position:id(position),value,sourceRecord,evidence:{for:[sourceRecord],against:[]}});
+
+test('witness-qualified Keratin linear observations retain genuine source-indexed weighted energy',()=>{
+  const graph=specimen({contacts:contacts(false)});
+  const linear=linearSpec(graph);
+  const observed=graph.feather.positions.map((position,index)=>({
+    position:position.key,value:index,
+    sourceRecord:'meter:'+index,
+    evidence:{for:['witness:'+index],against:[]},
+  }));
+  const report=assessKeratinLinearObservations(linear,observed);
+  assert.equal(report.status,'incompatible-numeric-coboundary');
+  assert.equal(report.compatible,false,
+    'nonzero observed coboundary must remain a numeric obstruction');
+  assert.equal(report.positions.length,3);
+  const weights=linear.sheaf.edges.map(()=>[[2]]);
+  const energy=weightedSheafDirichlet(linear.sheaf,weights,report.vector);
+  assert.ok(Math.abs(energy.energy-12)<1e-12,
+    'all three original directed source contacts retain the triangle energy');
+  const laplacian=weightedSheafLaplacian(linear.sheaf,weights);
+  const Lx=apply(laplacian,report.vector);
+  const quadratic=report.vector.reduce((sum,v,i)=>sum+v*Lx[i],0);
+  assert.ok(Math.abs(energy.energy-quadratic)<1e-12,
+    'the same original numeric cochain is received by both weighted kernels');
+  assert.deepEqual(new Set(energy.perEdge.map(e=>e.id)),
+    new Set(graph.feather.predications.map(p=>p.occurrence)),
+    'weighted energy retains original source-indexed occurrence addresses');
+
+  // An opposing original witness prevents a numerical cochain from being
+  // issued. This is the genuine Keratin information→numeric gate, not an
+  // implied right to a measured or physical energy claim.
+  const opposed=observed.map((row,i)=>i===0?{
+    ...row,evidence:{for:row.evidence.for,against:['counter:witness']},
+  }:row);
+  const refused=assessKeratinLinearObservations(linear,opposed);
+  assert.equal(refused.vector,null);
+  assert.equal(refused.status,'unassayed-incomplete-or-unqualified-source');
+
+  let calls=0;
+  const malicious=[[-1]];
+  Object.defineProperty(malicious,'map',{value(){
+    calls++;return [[1]];
+  }});
+  assert.throws(()=>weightedSheafDirichlet(linear.sheaf,
+    [malicious,...weights.slice(1)],report.vector),
+  /weighted edge metric cannot be sparse or decorated/);
+  assert.equal(calls,0,
+    'a numerical metric must not replace its declared source before Cholesky');
+});
 
 test('a complete observed linear sheaf preserves source identity and never proves a separate discrete model',()=>{
   const graph=specimen(),linear=linearSpec(graph);
