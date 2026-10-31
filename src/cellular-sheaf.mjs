@@ -135,6 +135,11 @@ export function cellularSheaf(source) {
     if (vertexIndex.has(key)) throw new RangeError("cellularSheaf: duplicate vertex id");
     vertexIndex.set(key, index);
     const dim = dimensionOf(sheafSourceField(vertex,"dim"), "a vertex dim");
+    // Coordinate offsets are JavaScript safe integers, never rounded
+    // approximations of actual stalk dimensions. Detect overflow before
+    // exposing an invented cochain index to any downstream solver.
+    if (dim > Number.MAX_SAFE_INTEGER - c0)
+      throw new RangeError("cellularSheaf: vertex coordinate index exceeds safe integer range");
     vertexOffsets.push(c0);
     c0 += dim;
     return Object.freeze({ id, dim });
@@ -154,6 +159,8 @@ export function cellularSheaf(source) {
     const fi = vertexIndex.get(coincidenceKey(fromId)), ti = vertexIndex.get(coincidenceKey(toId));
     if (fi === undefined || ti === undefined) throw new RangeError("cellularSheaf: an edge names a vertex that is not in the sheaf");
     const dim = dimensionOf(sheafSourceField(edge,"dim"), "an edge dim");
+    if (dim > Number.MAX_SAFE_INTEGER - c1)
+      throw new RangeError("cellularSheaf: edge coordinate index exceeds safe integer range");
     const check = (matrix, vertexDim, side) => {
       if (!Array.isArray(matrix) || matrix.length !== dim) {
         throw new RangeError(`cellularSheaf: restriction ${side} of an edge must be ${dim} × ${vertexDim}`);
@@ -222,14 +229,51 @@ export function admitCellularSheaf(source) {
   return rebuilt;
 }
 
-/** The constant sheaf ℝ^dim on a graph: identity restrictions. edges: [{ id, from, to }] or [from, to]. */
+/** The constant sheaf ℝ^dim on a graph: identity restrictions.
+ * Edges are exactly source arrays [from,to] or plain source records with
+ * {from,to,id?}. This public original producer must admit its own source
+ * before constructing a cellular chart: cellularSheaf cannot undo a getter
+ * or overridden iterator already executed in this convenience constructor.
+ *
+ * Resource limits apply to materialized source and restriction slots, not
+ * to abstract existence of the constant sheaf. Graphs outside these limits
+ * must be handled by the proper bounded/streaming owner, not claimed false.
+ */
 export function constantSheaf(vertexIds, edgeList, dim = 1) {
-  const identity = Array.from({ length: dim }, (_, i) => Array.from({ length: dim }, (_, j) => (i === j ? 1 : 0)));
+  if (!Number.isSafeInteger(dim) || dim < 0)
+    throw new RangeError("constantSheaf: dimension must be a nonnegative safe integer");
+  if (!Array.isArray(vertexIds) || !Array.isArray(edgeList))
+    throw new TypeError("constantSheaf: vertices and edges must be source arrays");
+  // Preflight before materializing any property-descriptor list. These limits
+  // avoid large caller allocations through the identity-matrix shortcut.
+  const MAX_SOURCE_ITEMS = 65_536, MAX_DENSE_SLOTS = 1_048_576n;
+  if (vertexIds.length > MAX_SOURCE_ITEMS || edgeList.length > MAX_SOURCE_ITEMS)
+    throw new RangeError("constantSheaf: source lists exceed finite admission budget");
+  const vertices = sheafSourceArray(vertexIds, "constantSheaf vertices");
+  const edges = sheafSourceArray(edgeList, "constantSheaf edges");
+  const slots = edges.length === 0 ? 0n :
+    BigInt(dim) * BigInt(dim) * (1n + 2n * BigInt(edges.length));
+  if (slots > MAX_DENSE_SLOTS)
+    throw new RangeError("constantSheaf: dense restriction construction not evaluated; coefficient slot budget exceeded");
+  // No restriction matrix is needed for an edgeless source. Every output
+  // coordinate is issued by the original cellularSheaf constructor.
+  const identity = edges.length === 0 ? [] :
+    Array.from({ length: dim }, (_, i) => Array.from({ length: dim }, (_, j) => i === j ? 1 : 0));
   return cellularSheaf({
-    vertices: vertexIds.map((id) => ({ id, dim })),
-    edges: edgeList.map((edge, index) => {
-      const [fromId, toId, id] = Array.isArray(edge) ? [edge[0], edge[1], index] : [edge.from, edge.to, edge.id ?? index];
-      return { id, from: fromId, to: toId, dim, restrict: { from: identity, to: identity } };
+    vertices: vertices.map(id => ({ id, dim })),
+    edges: edges.map((edge, index) => {
+      if (Array.isArray(edge)) {
+        const pair = sheafSourceArray(edge, "constantSheaf edge pair");
+        if (pair.length !== 2)
+          throw new TypeError("constantSheaf: an oriented source edge pair has exactly two endpoints");
+        return { id: index, from: pair[0], to: pair[1], dim,
+          restrict: { from: identity, to: identity } };
+      }
+      const declared = sourceCoverRecord(edge,
+        Object.hasOwn(edge, "id") ? ["id","from","to"] : ["from","to"],
+        "constantSheaf source edge");
+      return { id: declared.id ?? index, from: declared.from, to: declared.to, dim,
+        restrict: { from: identity, to: identity } };
     }),
   });
 }
