@@ -100,7 +100,7 @@ FEATHER-G is a different standard numerical embedding algorithm. The already ope
 ## Receiving gates still owed
 
 1. Source-only finite program: tests of identity, orientation, gap-vs-filled-face topology, exact global compatibility, lock monotonicity, cone-limited observation, matrix sheaf handoff, malicious data refusal, bounded computation and Graphviz DOT roundtrip.
-2. **Native dependencies:** run the package's actual `node --test` suite with the published SignCell, Metrologic, exact arithmetic and related house packages. Offline test doubles are insufficient for claiming integration. The private repository's GitHub Actions runner has previously failed allocation before tests; report absent CI as absent rather than green.
+2. **Native dependencies:** run the package's actual `node --test` suite with the published SignCell, Metrologic, exact arithmetic and related Group packages. Offline test doubles are insufficient for claiming integration. The private repository's GitHub Actions runner has previously failed allocation before tests; report absent CI as absent rather than green.
 3. A source-admissible **KeratinSheaf/`ShroudIndexedKeratin` → SignGraph bridge** must be established by Lenticule Science without inventing an `Articulating.Beneath` predication, hole interior, or observer cone. The existing `#79` obligation remains open.
 4. Real consuming workloads (e.g., Semioverse provenance gaps, SignCraft-compatible fibers, and actual agency resource flows), graph interaction, actor rights, and packaging/installation must be independently received. A passing unit test or attractive SVG cannot close that institutional outcome.
 
