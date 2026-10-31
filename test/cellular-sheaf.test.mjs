@@ -1168,7 +1168,8 @@ test("verified transported charts retain the original cochain and numerical shea
     assert.deepEqual(read(transported),read(issued),
       name+" must preserve exact source geometry and bounded computation");
   assert.deepEqual(apply(coboundary(transported),[2,4]),[2]);
-  assert.equal(weightedSheafDirichlet(transported,[[[2]]],[2,4]).energy,8);
+  assert.ok(Math.abs(weightedSheafDirichlet(transported,[[[2]]],[2,4]).energy-8)<1e-12,
+    "host-float Cholesky energy agrees within round-off, not bit-for-bit");
 });
 
 test("derived sheaf indices and declared exactness cannot be forged into source-valid mathematical claims",()=>{
