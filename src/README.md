@@ -165,7 +165,14 @@ unfilled boundary, a global-section obstruction, and a causally inaccessible
 interior are *not equivalent*. A separate `keratinLinearSheaf` reading
 delegates vector-stalk restrictions and exact rational H0/H1 to the original
 `cellularSheaf` engine. Graph-sheaf H1 is not asserted to equal filled-surface
-H1.
+H1. `keratinLinearSheaf` now reports `cohomologyStatus: "exact"` only when
+the original issued/re-admitted chart has passed the upstream exact rank
+work guard. A valid over-budget exact chart retains its original `sheaf`,
+source occurrences, and separately bounded numeric coboundary reader, but
+returns `cohomology: null` and
+`cohomologyStatus: "not-evaluated: rational rank work budget exceeded"`.
+Nonexact restrictions have a distinct unevaluated status. Neither case is
+a certificate that H0 or H1 vanishes.
 
 `assessKeratinLinearObservations` is the strict **observed information → numeric
 geometry** gate on that exact linear source graph. Each local numeric reading
@@ -341,7 +348,22 @@ receiving establishes parity and then a measured improvement.
   whitening Cᵀ where W = CCᵀ and the existing coboundary, so non-identity restrictions and self-edges
   retain their meaning and ker L = H⁰. Metrics are validated without adding a ridge; only relative
   floating-point symmetry round-off is averaged. Exact cohomology remains the separate rational
-  operation. For inverse-covariance metrics these describe calibrated disagreement; they do not
+  operation. **Exact-rank custody and work bound:** `cellularSheafCohomology`
+  first receives the chart through the original `admitCellularSheaf` owner:
+  a caller's invented `exact`, `c0`, `c1` or copied derived indices
+  cannot issue a mathematical receipt. The original Exact Number rational
+  rank provider remains authoritative. `exactCohomologyRankWithinBudget`
+  imposes a **computational** cap of 65,536 dense differential coefficient
+  slots before materializing a matrix; an actual zero-row or zero-column
+  differential retains its exactly computable rank-zero result. Exceeding
+  the budget means **not evaluated**, never H1=0. This is no algebraic
+  restriction on the existence of H0/H1 and grants no source authority.
+  JSON Schema describes JSON structure, not executable JavaScript input
+  admission, while W3C PROV-O's Entity/Activity/Agent provenance remains
+  with its proper producer. Both source and consumer changes need a new
+  immutable versioned package edition, frozen dependency execution, and
+  independent receiving before publication; do not overwrite existing
+  published bytes. For inverse-covariance metrics these describe calibrated disagreement; they do not
   establish a probabilistic forecast or trading edge.
   `compareFixedCountRigidity({before, after, dimension})` composes the
   existing exact rational `rigidityReceipt` for two simple embedded
