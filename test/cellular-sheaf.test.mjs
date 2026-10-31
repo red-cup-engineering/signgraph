@@ -617,11 +617,21 @@ test("normal loads admit the declared finite vector, never iterable claims or un
   // A nonzero load on an edgeless original sheaf is a genuine obstruction.
   // In particular the small value must not be squared into a false zero.
   const noEdges=constantSheaf(["isolated"],[]);
-  const small=solveNormal(noEdges,[1e-200]);
-  assert.equal(small.converged,true);
-  assert.equal(small.consistent,false);
-  assert.equal(small.residual,1e-200);
-  assert.equal(small.rhsNorm,1e-200);
+  for(const magnitude of [1e-200,1e-300,1e-310,1e-320]){
+    const result=solveNormal(noEdges,[magnitude]);
+    assert.equal(result.converged,true);
+    assert.equal(result.consistent,false,
+      "a real unresolvable load cannot be hidden by an unrequested numeric floor");
+    assert.equal(result.residual,magnitude);
+    assert.equal(result.rhsNorm,magnitude);
+  }
+  // An operator may declare an application-specific absolute scale, but
+  // the default floor is zero, never a secret 1e-300 acceptance threshold.
+  const explicitlyQualified=solveNormal(noEdges,[1e-310],{floor:1e-300});
+  assert.equal(explicitlyQualified.consistent,true,
+    "only the explicitly supplied floor grants this numerical tolerance");
+  assert.throws(()=>solveNormal(noEdges,[1e308],{consistency:1e308}),
+    /consistency limit exceeded finite host arithmetic/);
 });
 
 const norm2 = (v) => Math.sqrt(v.reduce((a, b) => a + b * b, 0));
