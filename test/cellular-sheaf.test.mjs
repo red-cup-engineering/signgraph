@@ -338,6 +338,69 @@ test("diffuse: pinned testimony is order-independent, identical repetition is id
   assert.throws(() => diffuse(s, [3, 7], { fixed: [{ vertex: "a", value: Infinity }] }), /pinned stalk values/);
 });
 
+test("source-qualified heat flow rejects fabricated numeric vectors, boundary pins and options",()=>{
+  const sheaf=constantSheaf(["a","b"],[["a","b"]]);
+  let callbacks=0;
+  const forged=[0,4];
+  Object.defineProperty(forged,Symbol.iterator,{value(){
+    callbacks++;return [4,0][Symbol.iterator]();
+  }});
+  assert.throws(()=>diffuse(sheaf,forged,{maxSteps:0}),
+    /diffuse initial 0-cochain cannot be sparse or decorated/);
+  const getterVector=[0,4];
+  Object.defineProperty(getterVector,"0",{enumerable:true,get(){
+    callbacks++;return 4;
+  }});
+  assert.throws(()=>diffuse(sheaf,getterVector,{maxSteps:0}),
+    /diffuse initial 0-cochain array slots must be inert own data/);
+  const forgedPin={value:4};
+  Object.defineProperty(forgedPin,"vertex",{enumerable:true,get(){
+    callbacks++;return "a";
+  }});
+  assert.throws(()=>diffuse(sheaf,[0,4],{maxSteps:0,fixed:[forgedPin]}),
+    /diffuse fixed reading: requires exact inert own source fields/);
+  const decoratedPin={vertex:"a",value:0};
+  Object.defineProperty(decoratedPin,"sourceAuthority",{value:"fabricated"});
+  assert.throws(()=>diffuse(sheaf,[0,4],{maxSteps:0,fixed:[decoratedPin]}),
+    /diffuse fixed reading: requires exact inert own source fields/);
+  const inheritedPin=Object.assign(Object.create({vertex:"a"}),{value:4});
+  assert.throws(()=>diffuse(sheaf,[0,4],{maxSteps:0,fixed:[inheritedPin]}),
+    /diffuse fixed reading: requires a plain original source record/);
+  const pinnedValues=[0];
+  Object.defineProperty(pinnedValues,"0",{enumerable:true,get(){
+    callbacks++;return 0;
+  }});
+  assert.throws(()=>diffuse(sheaf,[0,4],{maxSteps:0,
+    fixed:[{vertex:"a",value:pinnedValues}]}),
+    /diffuse pinned coordinates array slots must be inert own data/);
+  const maliciousOptions={maxSteps:0};
+  Object.defineProperty(maliciousOptions,"tolerance",{enumerable:true,get(){
+    callbacks++;return 1e-12;
+  }});
+  assert.throws(()=>diffuse(sheaf,[0,4],maliciousOptions),
+    /diffuse options: requires exact inert own source fields/);
+  assert.throws(()=>hodgeCheck(sheaf,[0,4],maliciousOptions),
+    /hodgeCheck options: requires exact inert own source fields/);
+  assert.throws(()=>diffuse(sheaf,[0,4],{unknown:"issued"}),
+    /diffuse options: undeclared numerical option/);
+  assert.throws(()=>diffuse(sheaf,[0,4],{maxSteps:1000001}),/maxSteps/);
+  assert.equal(callbacks,0,"mathematical source admission runs no untrusted callbacks");
+
+  const original=diffuse(sheaf,[0,4],{maxSteps:10});
+  const typed=new Float64Array([0,4]);
+  Object.defineProperty(typed,"length",{get(){
+    callbacks++;throw Error("typed-array length override executed");
+  }});
+  Object.defineProperty(typed,Symbol.iterator,{value(){
+    callbacks++;throw Error("typed-array iterator executed");
+  }});
+  assert.deepEqual(diffuse(sheaf,typed,{maxSteps:10}),original,
+    "native numeric vector variants admit the same source coordinates");
+  assert.equal(callbacks,0);
+  const pinned=diffuse(sheaf,[0,4],{maxSteps:0,fixed:[{vertex:"a",value:0}]});
+  assert.deepEqual(pinned.section,[0,4],"a legitimate pinned coordinate is retained");
+});
+
 test("diffuse: rejects unstable steps and non-finite inputs instead of certifying numeric settlement", () => {
   const s = constantSheaf(["a", "b"], [["a", "b"]]);
   const ordinary = diffuse(s, [0, 10]);
@@ -468,6 +531,64 @@ test("solveNormal: an unresolvable load is an obstruction in ker δ, not NaN", (
   assert.ok(!r.consistent);
   assert.ok(Number.isFinite(r.residual) && r.residual > 0.1);
   near(norm2(apply(coboundary(s), r.obstruction)), 0, 1e-8); // the obstruction is a motion
+});
+
+test("normal loads admit the declared finite vector, never iterable claims or underflowed obstructions",()=>{
+  const sheaf=constantSheaf(["a","b"],[["a","b"]]);
+  let callbacks=0;
+  const forged=[0,0];
+  Object.defineProperty(forged,Symbol.iterator,{value(){
+    callbacks++;return [1,-1][Symbol.iterator]();
+  }});
+  assert.throws(()=>solveNormal(sheaf,forged),
+    /solveNormal source load cannot be sparse or decorated/);
+  const accessor=[1,-1];
+  Object.defineProperty(accessor,"0",{enumerable:true,get(){
+    callbacks++;return 0;
+  }});
+  assert.throws(()=>solveNormal(sheaf,accessor),
+    /solveNormal source load array slots must be inert own data/);
+  const hostileOptions={};
+  Object.defineProperty(hostileOptions,"maxSteps",{enumerable:true,get(){
+    callbacks++;return 1000000;
+  }});
+  assert.throws(()=>solveNormal(sheaf,[1,-1],hostileOptions),
+    /solveNormal options: requires exact inert own source fields/);
+  for(const options of [{tolerance:NaN},{consistency:Infinity},{floor:-1},
+      {maxSteps:-1},{maxSteps:1000001},{unknown:1}]){
+    assert.throws(()=>solveNormal(sheaf,[1,-1],options),
+      /solveNormal: (tolerance|consistency|floor|maxSteps)|solveNormal options:/);
+  }
+  for(const invalid of [[Infinity,0],[NaN,0],["1",0]]){
+    assert.throws(()=>solveNormal(sheaf,invalid),/rhs stalk values must be finite numbers/);
+  }
+  assert.equal(callbacks,0,"normal solver cannot execute input getters or iterators");
+
+  const expected=solveNormal(sheaf,[1,-1]);
+  assert.ok(expected.consistent && expected.converged);
+  const typed=new Float64Array([1,-1]);
+  Object.defineProperty(typed,"length",{get(){
+    callbacks++;throw Error("typed-array length override");
+  }});
+  Object.defineProperty(typed,Symbol.iterator,{value(){
+    callbacks++;throw Error("typed-array iterator override");
+  }});
+  assert.deepEqual(solveNormal(sheaf,typed),expected);
+  assert.equal(callbacks,0);
+  const doubled=solveNormal(sheaf,[2,-2]);
+  near(doubled.section[0],2*expected.section[0]);
+  const reverse=constantSheaf(["a","b"],[["b","a"]]);
+  const reversed=solveNormal(reverse,[1,-1]);
+  near(reversed.section[0],-expected.section[0],
+    1e-9);
+  // A nonzero load on an edgeless original sheaf is a genuine obstruction.
+  // In particular the small value must not be squared into a false zero.
+  const noEdges=constantSheaf(["isolated"],[]);
+  const small=solveNormal(noEdges,[1e-200]);
+  assert.equal(small.converged,true);
+  assert.equal(small.consistent,false);
+  assert.equal(small.residual,1e-200);
+  assert.equal(small.rhsNorm,1e-200);
 });
 
 const norm2 = (v) => Math.sqrt(v.reduce((a, b) => a + b * b, 0));
