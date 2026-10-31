@@ -65,12 +65,16 @@ export function featherSourceArray(values, context, maximum = 256, scope = 'feat
   const descriptors = Object.getOwnPropertyDescriptors(values);
   if (Reflect.ownKeys(descriptors).length !== values.length + 1)
     refuse(`${context}: array must be dense, undecorated inert data`);
+  // Admission must return a detached, immutable cut of the inspected own
+  // slots, not the caller's mutable source list. No foreign iterator runs.
+  const snapshot = new Array(values.length);
   for (let i = 0; i < values.length; i++) {
     const slot = descriptors[String(i)];
     if (!slot || !slot.enumerable || !Object.hasOwn(slot, 'value'))
       refuse(`${context}: array slots must be inert data`);
+    snapshot[i] = slot.value;
   }
-  return values;
+  return freeze(snapshot);
 }
 function positionOf(value) {
   const position = featherSourceFields(value, ['performed', 'side', 'display'], 'source-position role');
@@ -97,7 +101,7 @@ export function featherGraphOfPredications(source, options = {}) {
     fail(`requires 1-${MAX_PREDICATIONS} original predication occurrences`);
   // Protect source occurrence iteration AND selectors before the original
   // graph can read any purported performed source position or relation.
-  featherSourceArray(source, 'original predications', MAX_PREDICATIONS);
+  const admittedSource = featherSourceArray(source, 'original predications', MAX_PREDICATIONS);
   const selectors = featherSourceFields(options,
     ['axialPredicate', 'transversePredicate'], 'predicate selectors');
   const {axialPredicate, transversePredicate} = selectors;
@@ -112,7 +116,7 @@ export function featherGraphOfPredications(source, options = {}) {
       positions.set(role.key, role);
     return role.key;
   };
-  for (const rawOccurrence of source) {
+  for (const rawOccurrence of admittedSource) {
     const original = featherSourceFields(rawOccurrence,
       ['occurrence', 'sourceRecord', 'cell'], 'source occurrence');
     const predication = featherSourceFields(original.cell,
@@ -229,7 +233,7 @@ export function positGraphOfFeather(feather, posits) {
   // Keep source testimony finite before inspection. The original graph's
   // existing 8192 candidate budget also bounds caller-reported posit rows
   // and individual testimony lanes; no new independent witness is inferred.
-  featherSourceArray(posits, 'posit testimony', MAX_FORK_PAIRS);
+  const admittedPosits = featherSourceArray(posits, 'posit testimony', MAX_FORK_PAIRS);
   const originals = new Set(feather.predications.map(item => item.occurrence));
   const told = new Set(), chargeOccurrences = [];
   // A bound on each row and lane alone is multiplicative: 8192 rows with
@@ -237,7 +241,7 @@ export function positGraphOfFeather(feather, posits) {
   // Share the established finite candidate budget across both testimony
   // sides and ALL source records, before retaining any new row.
   let witnessSlots = 0;
-  for (const sourcePosit of posits) {
+  for (const sourcePosit of admittedPosits) {
     const posit = featherSourceFields(sourcePosit,
       ['occurrence', 'sourceRecord', 'for', 'against'], 'posit testimony');
     const forSide = featherSourceArray(posit.for, 'posit for witnesses', MAX_FORK_PAIRS);
