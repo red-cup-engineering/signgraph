@@ -15,7 +15,7 @@
  */
 import { featherGraphOfPredications, featherSourceFields, featherSourceArray } from './feather-graph.mjs';
 import { cellular2Complex } from './cohomology.mjs';
-import { apply, coboundary, cochain, cellularSheaf, cellularSheafCohomology } from './cellular-sheaf.mjs';
+import { apply, coboundary, cochain, cellularSheaf, cellularSheafCohomology, exactCohomologyRankWithinBudget } from './cellular-sheaf.mjs';
 import { readingOfSides } from '@red-cup-engineering/computer-data-engineering-services-section/four';
 
 const freeze = Object.freeze;
@@ -262,10 +262,20 @@ export function keratinLinearSheaf(graph, options = {}) {
   }
   if(edges.size!==pred.size)fail('linear sheaf missing original directed relation');
   const sheaf=cellularSheaf({vertices:[...vertices.values()],edges:[...edges.values()]});
+  // Exact rational H0/H1 must be issued by the original cellular-sheaf
+  // kernel, not guessed from absent rank results. For finite but too-wide
+  // source charts, retain the ADMITTED sheaf and its original occurrences
+  // with an explicit "not evaluated" status; no fabricated zero H1.
+  const cohomologyStatus=!sheaf.exact
+    ?'not-evaluated: nonexact source restrictions'
+    :exactCohomologyRankWithinBudget(sheaf)
+      ?'exact'
+      :'not-evaluated: rational rank work budget exceeded';
   const reading=freeze({kind:'signgraph.keratinGraph.linearSheafReading.v1',
-    sheaf,cohomology:sheaf.exact?cellularSheafCohomology(sheaf):null,
+    sheaf,cohomology:cohomologyStatus==='exact'?cellularSheafCohomology(sheaf):null,
+    cohomologyStatus,
     sourceOccurrences:frozen([...pred.values()].map(p=>freeze({occurrence:p.occurrence,sourceRecord:p.sourceRecord}))),
-    qualification:'original edge identities retained; linear restrictions supplied; exact H1 belongs to graph sheaf only, not a filled surface or physical keratin',
+    qualification:'original edge identities retained; linear restrictions supplied; exact H1 only when cohomologyStatus is exact; graph sheaf, not a filled surface or physical keratin',
   });
   linearOwners.set(reading,graph);
   return reading;
