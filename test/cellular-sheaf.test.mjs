@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cell } from "@red-cup-engineering/signcell/cell";
 import { cellular2Complex, cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
-  apply, applyLaplacian, admitCellularSheaf, cellularSheaf, cellularSheafCohomology, exactCohomologyRankWithinBudget, MAX_EXACT_COHOMOLOGY_RANK_SLOTS, coboundary, cochain, constantSheaf, sheafSourceScalar,
+  apply, applyLaplacian, admitCellularSheaf, cellularSheaf, cellularSheafCohomology, cellularSheafCohomologyStatus, exactCohomologyRankWithinBudget, MAX_EXACT_COHOMOLOGY_RANK_SLOTS, coboundary, cochain, constantSheaf, sheafSourceScalar,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
   weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection, tensorCellularSheaves, pullbackCellularSheaf, glueCellularSheafPatches,
 } from "../src/cellular-sheaf.mjs";
@@ -251,6 +251,76 @@ test("exact H0/H1 retain original graph cohomology across all 512 three-position
     verified++;
   }
   assert.equal(verified,512);
+});
+
+test("Hodge H0 remains numerically assessable when exact H1 exceeds the original rank budget",()=>{
+  // This chart is valid, small enough for ordinary numerical graph
+  // operations, but its 257*256 dense Q differential is 65,792 slots.
+  const vertices=Array.from({length:257},(_,i)=>"position:"+i);
+  const edges=Array.from({length:256},(_,i)=>[vertices[i],vertices[i+1]]);
+  const source=constantSheaf(vertices,edges);
+  assert.equal(source.c0,257);
+  assert.equal(source.c1,256);
+  assert.equal(source.exact,true);
+  assert.equal(exactCohomologyRankWithinBudget(source),false);
+  const expected="not-evaluated: rational rank work budget exceeded";
+  assert.equal(cellularSheafCohomologyStatus(source),expected);
+  assert.throws(()=>cellularSheafCohomology(source),
+    /exact rational rank not evaluated;/,
+    "a work-budget refusal is NOT exact H1=0");
+  const zero=hodgeCheck(source,Array(source.c0).fill(0),{maxSteps:0});
+  assert.equal(zero.cohomologyStatus,expected);
+  assert.equal(zero.h1,null,"unassayed exact H1 has no invented numerical value");
+  assert.equal(zero.harmonic,true);
+  assert.equal(zero.sectionResidual,0);
+  assert.equal(zero.laplacianResidual,0);
+  assert.equal(zero.section.length,source.c0);
+
+  const nonzero=Array(source.c0).fill(0);nonzero[0]=1;
+  const unrelaxed=hodgeCheck(source,nonzero,{maxSteps:0});
+  assert.equal(unrelaxed.cohomologyStatus,expected);
+  assert.equal(unrelaxed.h1,null);
+  assert.equal(unrelaxed.harmonic,false,
+    "not evaluating H1 cannot confer harmonicity on a nonzero residual");
+  assert.ok(unrelaxed.sectionResidual>0);
+
+  const transported=JSON.parse(JSON.stringify(source));
+  assert.equal(cellularSheafCohomologyStatus(transported),expected);
+  assert.deepEqual(hodgeCheck(transported,Array(source.c0).fill(0),
+    {maxSteps:0}),zero,
+    "original mathematical custody survives valid source transport");
+  const forged={...transported,c1:0};
+  assert.throws(()=>cellularSheafCohomologyStatus(forged),
+    /cellularSheaf chart:/,
+    "a false dimension cannot make an over-budget chart appear exact");
+});
+
+test("Hodge H1 status agrees with the original exact and nonexact chart contracts",()=>{
+  const exact=constantSheaf(["a","b","c"],
+    [["a","b"],["b","c"],["c","a"]]);
+  const original=cellularSheafCohomology(exact);
+  const reading=hodgeCheck(exact,[1,2,3],{maxSteps:30});
+  assert.equal(reading.cohomologyStatus,"exact");
+  assert.equal(reading.h1,original.h1);
+  assert.equal(original.h1,1);
+
+  // Nonexact binary64 restriction entries support numerical heat flow
+  // without pretending the exact rational H1 rank was computed.
+  const nonexact=cellularSheaf({
+    vertices:[{id:"a",dim:1},{id:"b",dim:1}],
+    edges:[{id:"e",from:"a",to:"b",dim:1,
+      restrict:{from:[[0.5]],to:[[1]]}}],
+  });
+  assert.equal(nonexact.exact,false);
+  assert.equal(cellularSheafCohomologyStatus(nonexact),
+    "not-evaluated: nonexact source restrictions");
+  const numeric=hodgeCheck(nonexact,[0,0],{maxSteps:0});
+  assert.equal(numeric.cohomologyStatus,
+    "not-evaluated: nonexact source restrictions");
+  assert.equal(numeric.h1,undefined,
+    "the legacy unassayed nonexact H1 remains undefined");
+  assert.equal(numeric.harmonic,true,
+    "the zero section's numerical harmonicity is not an H1 proof");
 });
 
 test("diffusion: converges to the harmonic section (component means) and lies in ker L", () => {
