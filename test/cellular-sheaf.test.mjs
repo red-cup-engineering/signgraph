@@ -637,6 +637,22 @@ test("weighted metrics and observed numeric cochains cannot execute source array
   }});
   assert.throws(()=>weightedSheafDirichlet(s,[[[rational]]],[0,2]),
     /exact source scalar cannot contain accessors or hidden data/);
+  const typed=new Float64Array([0,2]);
+  Object.defineProperty(typed,"length",{get(){
+    executed++;throw Error("typed-array length override executed");
+  }});
+  Object.defineProperty(typed,Symbol.iterator,{value(){
+    executed++;throw Error("typed-array iterator executed");
+  }});
+  Object.defineProperty(typed,"map",{value(){
+    executed++;throw Error("typed-array map override executed");
+  }});
+  assert.equal(weightedSheafDirichlet(s,[[[1]]],typed).energy,4,
+    "the original numeric TypedArray consumer remains admitted without source callbacks");
+  assert.throws(()=>weightedSheafDirichlet(s,[[[1]]],new DataView(new ArrayBuffer(16))),
+    /finite 0-cochain/);
+  assert.throws(()=>weightedSheafDirichlet(s,[[[1]]],new Float64Array([Infinity,2])),
+    /finite 0-cochain/);
   assert.equal(executed,0,"metric and observed-value source callbacks must not execute");
   assert.equal(weightedSheafDirichlet(s,[[[1]]],[0,2]).energy,4,
     "the original lawful unit metric still has its expected energy");
