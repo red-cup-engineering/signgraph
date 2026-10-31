@@ -130,6 +130,21 @@ obligations of [Obsmetrologia issue #79](https://github.com/lenticule-science/ob
 The present pure implementation is a **conditional view over caller-qualified
 source acts**, not a theorem or authenticated source importer.
 
+**Original consumer source-cut convergence:** the Keratin workbench now
+uses the immutable arrays **returned** by Feather's original
+`featherSourceArray` for discrete stalks, contacts, directed allowed pairs,
+boundary walks, locks, observers and linear stalk, testimony and numeric
+observations. Merely calling the guard and then iterating caller-owned arrays
+was not a qualified source snapshot: a proxy's own descriptors could describe
+one list while its later iterator/getter supplied a different list.
+The original `test/keratin-graph.test.mjs` contains positive original-source
+consumer checks with adversarial method/index access; the fixed
+array bound, independent-source testimony and mathematical qualification
+remain unchanged. Proxy descriptor traps still require a host security
+boundary; this fix claims only that no post-admission raw-array read is
+used for those admitted arrays. Native Node/pinned dependency/packed receiver
+qualification remains mandatory.
+
 ## Keratin Graphs: hole-aware sheaf/fiber graphing
 
 The `./keratin-graph` export is a **real finite computation and Graphviz
