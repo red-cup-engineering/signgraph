@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {keratinGraphOfPredications,keratinPositionKey,keratinLinearSheaf,assessKeratinLinearObservations,analyzeKeratinGraph,keratinGraphToDot} from '../src/keratin-graph.mjs';
-import { apply, weightedSheafDirichlet, weightedSheafLaplacian } from '../src/cellular-sheaf.mjs';
+import { apply, applyTranspose, coboundary, diffuse, hodgeCheck, solveNormal, weightedSheafDirichlet, weightedSheafLaplacian } from '../src/cellular-sheaf.mjs';
 
 const p = (s, display='same') => ({performed:s,side:'token',display});
 const edge = (id, from, predicate, to) => ({occurrence:id,sourceRecord:`source:${id}`,cell:{subject:p(from),predicate,object:p(to)}});
@@ -231,6 +231,66 @@ test('witness-qualified Keratin linear observations retain genuine source-indexe
   /weighted edge metric cannot be sparse or decorated/);
   assert.equal(calls,0,
     'a numerical metric must not replace its declared source before Cholesky');
+});
+
+test('Keratin source-qualified numeric fibers receive heat flow and normal loads without fabricated witnesses',()=>{
+  const graph=specimen({contacts:contacts(false)});
+  const linear=linearSpec(graph);
+  const original=graph.feather.positions.map((position,i)=>({
+    position:position.key,value:i*2,sourceRecord:'reading:'+i,
+    evidence:{for:['observed:'+i],against:[]},
+  }));
+  const observed=assessKeratinLinearObservations(linear,original);
+  assert.deepEqual(observed.vector,[0,2,4]);
+  assert.equal(observed.sourceAuthentication,'caller-supplied-not-adjudicated');
+
+  // The SAME original issued sheaf accepts numeric source cuts, including
+  // the established binary64 typed-cochain carrier, without a second graph.
+  const flow=diffuse(linear.sheaf,observed.vector,{maxSteps:100});
+  const typedFlow=diffuse(linear.sheaf,Float64Array.from(observed.vector),{maxSteps:100});
+  assert.deepEqual(typedFlow,flow);
+  assert.equal(flow.converged,true);
+  assert.ok(flow.compatible);
+  const harmonic=hodgeCheck(linear.sheaf,observed.vector,{maxSteps:100});
+  assert.equal(harmonic.harmonic,true);
+  assert.equal(harmonic.h1,linear.cohomology.h1);
+  assert.deepEqual(harmonic.section,flow.section);
+
+  // A mathematically issued load from the SAME oriented coboundary is
+  // representable. The normal solver returns a finite response and an
+  // independently checkable δᵀf reading without inventing source authority.
+  const delta=coboundary(linear.sheaf);
+  const load=applyTranspose(delta,[1,0,-1]);
+  const balanced=solveNormal(linear.sheaf,load);
+  assert.equal(balanced.consistent,true);
+  const roundtrip=applyTranspose(delta,balanced.section);
+  for(let i=0;i<load.length;i++)
+    assert.ok(Math.abs(roundtrip[i]-load[i])<1e-9);
+  assert.deepEqual(solveNormal(linear.sheaf,Float64Array.from(load)),balanced);
+
+  let calls=0;
+  const forgedLoad=[...load];
+  Object.defineProperty(forgedLoad,Symbol.iterator,{value(){
+    calls++;return [0,0,0][Symbol.iterator]();
+  }});
+  assert.throws(()=>solveNormal(linear.sheaf,forgedLoad),
+    /solveNormal source load cannot be sparse or decorated/);
+  const forgedPin={value:0};
+  Object.defineProperty(forgedPin,'vertex',{enumerable:true,get(){
+    calls++;return graph.feather.positions[0].key;
+  }});
+  assert.throws(()=>diffuse(linear.sheaf,observed.vector,{maxSteps:0,
+    fixed:[forgedPin]}),
+  /diffuse fixed reading: requires exact inert own source fields/);
+  assert.equal(calls,0);
+
+  const contrary=original.map((v,i)=>i===0
+    ?{...v,evidence:{for:v.evidence.for,against:['counter:witness']}}:v);
+  const unqualified=assessKeratinLinearObservations(linear,contrary);
+  assert.equal(unqualified.vector,null);
+  assert.throws(()=>solveNormal(linear.sheaf,unqualified.vector),
+    /solveNormal: rhs has the wrong length/,
+    'a refused observation cannot be smuggled into the normal solver as an empty or zero load');
 });
 
 test('a complete observed linear sheaf preserves source identity and never proves a separate discrete model',()=>{
