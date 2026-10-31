@@ -17,6 +17,7 @@
  */
 import { address, cell, cellSetAddress, claimCoordinate, coincidenceKey, coincides, evidenceOf, knowledgeReading, merge, retainedCarrier, semanticId, told as evidenceTold } from "@red-cup-engineering/signcell/cell";
 import { admitTokenFrame, cacheableTokenFrame, extent, generalizations, top } from "@red-cup-engineering/signcell/token-frame";
+import { isNiUri } from "@red-cup-engineering/uri-services-section/ni-uri";
 
 const INHERITED = "signgraph.inherited-tellings";
 const frozen = (values) => Object.freeze([...values]);
@@ -189,8 +190,7 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
       !Number.isSafeInteger(offset) || offset < 0 ||
       !Number.isSafeInteger(limit) || limit < 1 || limit > 128 ||
       (reading !== undefined && !["absurd", "potential", "active", "stable"].includes(reading)) ||
-      (cellNi !== undefined && (typeof cellNi !== "string" ||
-        !/^ni:\/\/\/sha-256;[A-Za-z0-9_-]{43}$/u.test(cellNi))))
+      (cellNi !== undefined && !isNiUri(cellNi)))
     throw new TypeError("signgraph claim query: noncanonical coordinate, reading or page");
   // Materialize one immutable, owned cut of any mutable wire presentation.
   // The original frame maker owns clone/merge/admission; this query never
