@@ -347,8 +347,27 @@ receiving establishes parity and then a measured improvement.
   and each edge's unweighted residual and energy (no factor of 1/2). Both use the same Cholesky
   whitening Cᵀ where W = CCᵀ and the existing coboundary, so non-identity restrictions and self-edges
   retain their meaning and ker L = H⁰. Metrics are validated without adding a ridge; only relative
-  floating-point symmetry round-off is averaged. Exact cohomology remains the separate rational
-  operation. **One mathematical chart custody boundary:** `cellularSheaf` constructs
+  floating-point symmetry round-off is averaged. **The original weighted-source
+  boundary** now uses the same `sheafSourceArray` and `sheafSourceScalar`
+  admission as the original sheaf's restriction matrices. Every supplied
+  metric collection, edge matrix, coordinate row and rational scalar is
+  inspected as inert own data *before* Cholesky or energy evaluation. The
+  original `weightedSheafDirichlet` also uses one detached, finite numeric
+  cochain snapshot for both its validation and coboundary calculation.
+  A decorated input method, getter, inherited element or an actual negative
+  definite metric cannot manufacture a positive energy receipt. The
+  weighted-metric work envelope refuses before materializing more than
+  1,048,576 edge-metric coefficient slots; this is a host resource limit,
+  not an algebraic bound on sheaves or a limit on Exact Number bit complexity.
+  The original Keratin test consumer explicitly receives one
+  witness-qualified 1-cochain into these same two weighted operators and
+  checks the quadratic energy law, with unopposed and opposed testimony
+  distinguished. These are **conditional host-double mathematical
+  computations**, not attested material energy. As W3C
+  [PROV-O](https://www.w3.org/TR/prov-o/) distinguishes entities,
+  activities and agents, a sourceRecord locator and an inert matrix do
+  not independently certify who measured it, when or with what authority.
+  Exact cohomology remains the separate rational operation. **One mathematical chart custody boundary:** `cellularSheaf` constructs
   an issued exact source chart; `admitCellularSheaf` checks its in-process
   issued identity or reconstructs and compares a transported chart.
   `cochain`, `coboundary`, `sheafLaplacian`, weighted metric/Dirichlet,
