@@ -638,6 +638,18 @@ test("NI-addressed compact L-Space claims re-expand through the original source 
       "the compact NI resolves its full original side-specific witness and source coordinates");
     assert.equal(semanticId(exact.entries[0].cell), address);
     assert.notEqual(exact.selection.cellNi, undefined);
+    // RFC 6920's SHA-256 NI digest is exactly 43 base64url characters.
+    // The last sextet carries only four digest bits; toggling one of its
+    // two zero pad bits must REFUSE, not give a false "no matching source".
+    // This alias has the SAME 32 digest bytes as `address` but is not a
+    // canonical ni:///sha-256 name. URI Services is the original owner.
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const last = alphabet.indexOf(address.at(-1));
+    assert.equal(last % 4, 0, "source-issued NI addresses have zero pad bits");
+    const noncanonicalAlias = address.slice(0, -1) + alphabet[last + 1];
+    assert.notEqual(noncanonicalAlias, address);
+    assert.throws(() => queryInheritedTellings(frame, { cellNi: noncanonicalAlias }),
+      /noncanonical/, "an alias of the same digest must not look like absent testimony");
   }
   assert.deepEqual(sidesOf(queryInheritedTellings(frame, {
     cellNi: semanticId(alpha.cell),
