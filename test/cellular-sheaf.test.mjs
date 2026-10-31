@@ -422,6 +422,39 @@ test("diffuse: rejects unstable steps and non-finite inputs instead of certifyin
   });
 });
 
+test("shared sheaf norm preserves nonzero residual and normalized rigidity across the binary64 exponent range",()=>{
+  const graph=constantSheaf(["a","b"],[["a","b"]]);
+  const reverse=constantSheaf(["a","b"],[["b","a"]]);
+  let verified=0;
+  for(const magnitude of [1e-200,1e-100,1,1e100,1e200,1e308]){
+    const result=diffuse(graph,[magnitude,0],{tolerance:0,maxSteps:0});
+    const backward=diffuse(reverse,[magnitude,0],{tolerance:0,maxSteps:0});
+    assert.equal(result.residual,magnitude,
+      "original nonzero coboundary cannot be squared into zero at "+magnitude);
+    assert.equal(result.compatible,false,
+      "a nonzero exact-tolerance coboundary is not a global section");
+    assert.equal(result.converged,false,
+      "a nonzero exact-tolerance gradient cannot be called stationary");
+    assert.equal(backward.residual,result.residual,
+      "directed reversal preserves the source's Euclidean residual");
+    verified++;
+  }
+  assert.equal(verified,6);
+  assert.throws(()=>diffuse(graph,[1.5e308,0],{tolerance:0,maxSteps:0}),
+    /numerical norm exceeded finite host arithmetic/,
+    "an unrepresentable gradient norm must refuse, never become valid infinity");
+
+  // The original normalized rigidity sheaf consumes this SAME native norm.
+  // Both tiny and large but finite nonzero bars remain nonzero directions,
+  // not spurious zero-length bars or all-zero restriction matrices.
+  for(const length of [1e-200,1e200]){
+    const sheaf=rigiditySheaf([[0,0],[length,0]],[[0,1]],2,
+      {normalize:true});
+    assert.deepEqual(sheaf.edges[0].restrict.from,[[1,0]]);
+    assert.deepEqual(sheaf.edges[0].restrict.to,[[1,0]]);
+  }
+});
+
 test("diffusion with pinned vertices: boundary conditions are admitted evidence", () => {
   const s = constantSheaf(["a", "b", "c"], [["a", "b"], ["b", "c"]]);
   const r = diffuse(s, cochain(s, []), { fixed: [{ vertex: "a", value: 0 }, { vertex: "c", value: 10 }], tolerance: 1e-12 });
