@@ -100,8 +100,11 @@ the performed source-position reader. Its original `featherSourceFields`
 and `featherSourceArray` reject accessor-backed selectors, hidden or
 decorated occurrence/Cell/position records, executable list iterators,
 sparse arrays and over-budget source/posit testimony **before** creating
-a fork, edge or charge. These functions return frozen data snapshots and
-preserve the independently supplied source occurrence IDs. Posit testimony
+a fork, edge or charge. The guards return frozen **shallow source cuts**:
+record snapshots or detached arrays of inspected own data slots. The Feather
+reader traverses these cuts rather than continuing with a mutable caller
+array; its nested position, Cell, and testimony records are separately
+admitted. The original source occurrence IDs are retained. Posit testimony
 now shares the existing 8,192-entry candidate budget across the **total**
 number of source witness entries (both `for` and `against`, over all rows),
 rather than admitting 8,192 records each with 8,192 copied witnesses.
