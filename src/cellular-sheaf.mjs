@@ -1370,9 +1370,15 @@ export function solveNormal(sheaf, rhs, options = {}) {
     p = s.map((v, i) => v + beta * p[i]);
   }
   const residual = norm(r);
+  // A source-supplied floor is an EXPLICIT absolute-scale allowance.
+  // The former hidden 1e-300 fallback declared genuine subnormal
+  // unresolvable loads consistent even when the caller chose floor=0.
+  const consistencyLimit=consistency*Math.max(rhsNorm,floor);
+  if(!Number.isFinite(consistencyLimit))
+    throw new RangeError("solveNormal: consistency limit exceeded finite host arithmetic");
   return Object.freeze({
     kind: "signgraph.normalSolution", section: Object.freeze(f), obstruction: Object.freeze(r), residual, rhsNorm,
-    steps, converged, consistent: converged && residual <= consistency * Math.max(rhsNorm, floor, 1e-300),
+    steps, converged, consistent: converged && residual <= consistencyLimit,
   });
 }
 
