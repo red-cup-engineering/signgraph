@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   native-receiving:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, bare-cedar-fog]
     timeout-minutes: 15
     defaults:
       run:
