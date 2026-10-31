@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { cell } from "@red-cup-engineering/signcell/cell";
 import { cohomologyReceiptOfCells } from "../src/cohomology.mjs";
 import {
-  apply, applyLaplacian, admitCellularSheaf, cellularSheaf, cellularSheafCohomology, coboundary, cochain, constantSheaf, sheafSourceScalar,
+  apply, applyLaplacian, admitCellularSheaf, cellularSheaf, cellularSheafCohomology, exactCohomologyRankWithinBudget, MAX_EXACT_COHOMOLOGY_RANK_SLOTS, coboundary, cochain, constantSheaf, sheafSourceScalar,
   compareFixedCountRigidity, planConnectedBarExchanges, diffuse, harmonicProjection, hodgeCheck, rigidityReceipt, rigiditySheaf, sheafLaplacian,
   weightedSheafDirichlet, weightedSheafLaplacian, extendCellularSheafSection, tensorCellularSheaves, pullbackCellularSheaf, glueCellularSheafPatches,
 } from "../src/cellular-sheaf.mjs";
@@ -77,6 +77,57 @@ test("exact cohomology: rational restrictions and a twisted cycle", () => {
   assert.equal(cellularSheafCohomology(flat).h0, 1);
   const inexact = cellularSheaf({ vertices: vs, edges: [edge(1, "a", "b", 0.5, 1)] });
   assert.throws(() => cellularSheafCohomology(inexact), RangeError);
+});
+
+test("exact cohomology admits original sheaf custody, not counterfeit dimensions or an exact label", () => {
+  const built = constantSheaf(["source:a","source:b"], [["source:a","source:b"]]);
+  const reference = cellularSheafCohomology(built);
+  assert.equal(reference.h0,1);
+  assert.equal(reference.h1,0);
+  // A transported chart is mathematically re-admitted by the original
+  // constructor; it is not trusted merely because its labels agree.
+  const transported = JSON.parse(JSON.stringify(built));
+  assert.deepEqual(cellularSheafCohomology(transported),reference);
+  assert.equal(exactCohomologyRankWithinBudget(transported),true);
+  assert.throws(()=>cellularSheafCohomology({exact:true,c0:3,c1:0,edges:[]}),
+    /cellularSheaf chart/,
+    "a caller cannot issue H0/H1 by inventing an exact rank-zero chart");
+  assert.throws(()=>exactCohomologyRankWithinBudget({exact:true,c0:3,c1:0,edges:[]}),
+    /cellularSheaf chart/,
+    "budget qualification itself must not bless unissued geometry");
+  const corrupted={...transported,c0:9};
+  assert.throws(()=>cellularSheafCohomology(corrupted),
+    /derived indices, dimensions, restrictions or exactness differ/,
+    "a transported chart cannot rewrite original sheaf degree dimensions");
+  let executed=0;
+  const hostile={...transported};
+  Object.defineProperty(hostile,"exact",{enumerable:true,get(){executed++;return true;}});
+  assert.throws(()=>cellularSheafCohomology(hostile),/inert own source fields/);
+  assert.equal(executed,0);
+});
+
+test("exact rational rank bounds dense coefficient work before materialization without manufacturing vanishing",()=>{
+  const vertices=Array.from({length:257},(_,i)=>"source:vertex:"+i);
+  const edges=Array.from({length:256},(_,i)=>[vertices[i],vertices[i+1]]);
+  const expensive=constantSheaf(vertices,edges);
+  assert.equal(expensive.c0,257);
+  assert.equal(expensive.c1,256);
+  assert.equal(MAX_EXACT_COHOMOLOGY_RANK_SLOTS,65536);
+  assert.equal(exactCohomologyRankWithinBudget(expensive),false);
+  assert.throws(()=>cellularSheafCohomology(expensive),
+    /not evaluated; dense coefficient work budget exceeded/,
+    "out-of-budget rank MUST refuse instead of claiming H1=0");
+  const elementary=constantSheaf(["a","b","c"],[["a","b"],["b","c"]]);
+  assert.equal(exactCohomologyRankWithinBudget(elementary),true);
+  assert.equal(cellularSheafCohomology(elementary).h0,1);
+  assert.equal(cellularSheafCohomology(elementary).h1,0);
+  // A zero-row differential needs no rational matrix allocation, even if
+  // its valid H0 rank dimension happens to exceed the dense work cap.
+  const isolated=constantSheaf(vertices,[]);
+  assert.equal(exactCohomologyRankWithinBudget(isolated),true);
+  const trivial=cellularSheafCohomology(isolated);
+  assert.equal(trivial.h0,257);
+  assert.equal(trivial.h1,0);
 });
 
 test("diffusion: converges to the harmonic section (component means) and lies in ker L", () => {
