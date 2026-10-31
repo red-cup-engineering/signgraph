@@ -120,6 +120,8 @@ test('linear keratin sheaf reuses native cellular restriction/cohomology arithme
     occurrence:e.occurrence,dim:1,restrict:{from:[[1]],to:[[1]]},
   }));
   const ordinary=keratinLinearSheaf(g,{vertexStalks,relationStalks});
+  assert.equal(ordinary.cohomologyStatus,'exact',
+    'a small original rational sheaf remains fully evaluated');
   assert.equal(ordinary.cohomology.h0,1);
   assert.equal(ordinary.cohomology.h1,1);
   assert.equal(ordinary.sourceOccurrences.length,3);
@@ -129,6 +131,44 @@ test('linear keratin sheaf reuses native cellular restriction/cohomology arithme
   assert.equal(twisted.cohomology.h1,0);
   assert.equal(g.topology.betti.h1,1,'linear sheaf H1 differs from topological H1');
   assert.throws(()=>keratinLinearSheaf(g,{vertexStalks,relationStalks:relationStalks.slice(1)}),/missing original directed relation/);
+});
+
+test('large exact Keratin charts preserve original source geometry while rank is explicitly not evaluated',()=>{
+  // 17 genuine performed positions with stalk dimension 16 give 272 C0
+  // coordinates and 16 edges of dimension 16 give 256 C1 coordinates.
+  // Their dense rank would materialize 69,632 rational coefficients,
+  // exceeding the original cellular-sheaf owner's 65,536-slot budget.
+  const sourceRows=Array.from({length:16},(_,i)=>
+    edge('performed:'+i,'p'+i,'continued-by','p'+(i+1)));
+  const graph=keratinGraphOfPredications({
+    source:sourceRows,selectors,
+    stalks:Array.from({length:17},(_,i)=>({position:id('p'+i),states:['0']})),
+    contacts:sourceRows.map(row=>({occurrence:row.occurrence,allowed:[['0','0']]})),
+  });
+  const identity16=Array.from({length:16},(_,i)=>
+    Array.from({length:16},(_,j)=>i===j?1:0));
+  const linear=keratinLinearSheaf(graph,{
+    vertexStalks:graph.feather.positions.map(p=>({position:p.key,dim:16})),
+    relationStalks:graph.feather.predications.map(p=>({
+      occurrence:p.occurrence,dim:16,restrict:{from:identity16,to:identity16},
+    })),
+  });
+  assert.equal(linear.sheaf.exact,true);
+  assert.equal(linear.sheaf.c0,272);
+  assert.equal(linear.sheaf.c1,256);
+  assert.equal(linear.cohomology,null,'not evaluated is NOT exact H1=0');
+  assert.match(linear.cohomologyStatus,/^not-evaluated: rational rank work budget exceeded/);
+  assert.equal(linear.sourceOccurrences.length,16);
+  const observed=graph.feather.positions.map((p,i)=>({
+    position:p.key,value:Array(16).fill(0),
+    sourceRecord:'meter:'+i,evidence:{for:['witness:'+i],against:[]},
+  }));
+  const result=assessKeratinLinearObservations(linear,observed);
+  assert.equal(result.compatible,true,
+    'bounded numeric coboundary remains usable even when exact rational cohomology is unassayed');
+  assert.equal(result.residualNorm,0);
+  assert.equal(result.positions.length,17);
+  assert.equal(result.sourceAuthentication,'caller-supplied-not-adjudicated');
 });
 
 const linearSpec=(graph,{twisted=false}={})=>keratinLinearSheaf(graph,{
