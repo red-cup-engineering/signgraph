@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { samePoint } from "@red-cup-engineering/computer-data-engineering-services-section/four";
 import { toInt } from "@red-cup-engineering/exact-number-data-service/exact-number";
-import { cell, coincides, sameCell, valueOf } from "@red-cup-engineering/signcell/cell";
+import { cell, coincidenceKey, coincides, sameCell, valueOf, semanticId } from "@red-cup-engineering/signcell/cell";
 import { at, transpose } from "@red-cup-engineering/metrologic/chu";
-import { cellGraph, relationGraphOfCells, flowNetworkOfCells, flowNetwork } from "../src/cell-graph.mjs";
+import { cellGraph, relationGraphOfCells, flowNetworkOfCells, flowNetwork, cellNavigationOfCells } from "../src/cell-graph.mjs";
 
 const cellOf = (subject, predicate, object) => cell(subject, predicate, object);
 
@@ -258,4 +258,157 @@ test("graph admission refuses over-budget source positions before inspecting the
   assert.throws(()=>relationGraphOfCells(source),/bounded plain source array/u);
   assert.throws(()=>flowNetworkOfCells(source),/bounded plain source array/u);
   assert.equal(touched,0);
+});
+
+const navigationSource = () => {
+  const supported = cell("A", "supports", "B", { for: ["original-positive"] });
+  return [supported,
+    cell("A", "supports", "B", { against: ["original-negative"], value: "potential" }),
+    cell("B", "leads-to", "C", { for: ["original-step"] }),
+    cell("C", "refers-to", "C", { for: ["original-self"] }),
+    cell("D", "refers-to", "D"), supported];
+};
+
+test("Cell navigation retains source occurrences, both witness lanes and self-relations", () => {
+  const source = navigationSource();
+  const read = cellNavigationOfCells(source, { focus: "A", target: "C" });
+  assert.equal(read.kind, "signgraph.cellNavigation.v1");
+  assert.equal(read.sourceId, semanticId(source));
+  assert.deepEqual(read.sourceCells, source);
+  assert.deepEqual(read.nodes.map(node => [node.index, node.term]), [[0,"A"],[1,"B"],[2,"C"],[3,"D"]]);
+  assert.ok(read.nodes.every(node => node.key === coincidenceKey(node.term)));
+  assert.deepEqual(read.incidences.map(edge => [edge.sourceIndex,edge.fromIndex,edge.toIndex]),
+    [[0,0,1],[1,0,1],[2,1,2],[3,2,2],[4,3,3],[5,0,1]]);
+  assert.equal(read.incidences[0].address,read.incidences[1].address);
+  assert.deepEqual(read.incidences[1].cell.against,["original-negative"]);
+  assert.equal(valueOf(read.incidences[1].cell),"potential","written value is retained independently of witness presence");
+  assert.deepEqual(read.neighborhood,[{nodeIndex:0,distance:0},{nodeIndex:1,distance:1},{nodeIndex:2,distance:2}]);
+  assert.equal(read.complete,true);
+  assert.equal(read.route.status,"reached");
+  assert.deepEqual(read.route.nodeIndices,[0,1,2]);
+  assert.deepEqual(read.route.steps,[
+    {sourceIndex:0,fromIndex:0,toIndex:1,direction:"forward"},
+    {sourceIndex:2,fromIndex:1,toIndex:2,direction:"forward"}]);
+  assert.equal(read.route.distance,2);
+  assert.deepEqual(source,navigationSource(),"navigation changes no original source Cell");
+});
+
+test("Cell navigation reverse traversal does not fabricate a converse Cell", () => {
+  const source = navigationSource();
+  const incoming = cellNavigationOfCells(source,{focus:"C",target:"A",direction:"incoming"});
+  assert.deepEqual(incoming.route.nodeIndices,[2,1,0]);
+  assert.deepEqual(incoming.route.steps,[
+    {sourceIndex:2,fromIndex:2,toIndex:1,direction:"reverse"},
+    {sourceIndex:0,fromIndex:1,toIndex:0,direction:"reverse"}]);
+  assert.equal(incoming.sourceId,semanticId(source));
+  assert.equal(incoming.incidences[0].cell.subject,"A");
+  assert.equal(incoming.incidences[0].cell.object,"B");
+  assert.equal(cellNavigationOfCells(source,{focus:"C",target:"A"}).route.status,"unreachable");
+  const either = cellNavigationOfCells(source,{focus:"C",target:"A",direction:"either"});
+  assert.deepEqual(either.route.steps,incoming.route.steps);
+  assert.equal(either.sourceId,incoming.sourceId);
+});
+
+test("Cell navigation distinguishes a bounded search from proved structural non-reachability", () => {
+  const source = navigationSource();
+  const bounded = cellNavigationOfCells(source,{focus:"A",target:"C",maxHops:1});
+  assert.equal(bounded.complete,false);
+  assert.equal(bounded.route.status,"not-reached-within-bound");
+  assert.equal(bounded.route.distance,null);
+  assert.deepEqual(bounded.route.nodeIndices,[]);
+  assert.deepEqual(bounded.route.steps,[]);
+  const unrelated = cellNavigationOfCells(source,{focus:"A",target:"D",maxHops:1});
+  assert.equal(unrelated.route.status,"not-reached-within-bound",
+    "a bounded neighborhood does not inspect or assert the remainder");
+  assert.equal(cellNavigationOfCells(source,{focus:"A",target:"D",maxHops:2}).route.status,"unreachable");
+  assert.equal(cellNavigationOfCells(source,{focus:"D",target:"A",maxHops:0}).complete,true,
+    "an isolated reflexive component closes without expanding a hop");
+  const zero = cellNavigationOfCells(source,{focus:"A",target:"A",maxHops:0});
+  assert.equal(zero.route.status,"reached");
+  assert.equal(zero.route.distance,0);
+  assert.deepEqual(zero.route.nodeIndices,[0]);
+  assert.deepEqual(zero.route.steps,[]);
+  assert.equal(zero.complete,false);
+});
+
+test("Cell navigation uses canonical typed term equality and retains a detached source snapshot", () => {
+  const a={kind:"original",value:1}, b={kind:"original",value:"1"};
+  const wire=[{subject:a,predicate:{role:"links"},object:b,for:[{observed:new Uint8Array([7,8])}],against:[]}];
+  const read=cellNavigationOfCells(wire,{focus:{value:1,kind:"original"},target:{value:"1",kind:"original"}});
+  assert.equal(read.nodes.length,2);
+  assert.notEqual(read.nodes[0].key,read.nodes[1].key);
+  assert.equal(read.route.status,"reached");
+  const identity=read.sourceId;
+  wire[0].for[0].observed[0]=99;wire[0].subject.value=42;
+  assert.equal(read.sourceId,identity);
+  assert.equal(read.nodes[0].term.value,1);
+  assert.deepEqual([...read.sourceCells[0].for[0].observed],[7,8]);
+  for(const value of [read,read.nodes,read.nodes[0],read.sourceCells,read.incidences,
+    read.incidences[0],read.neighborhood,read.neighborhood[0],read.route,
+    read.route.nodeIndices,read.route.steps,read.route.steps[0]])assert.equal(Object.isFrozen(value),true);
+});
+
+test("Cell navigation refuses foreign focus, omitted evidence, executable options and excessive bounds", () => {
+  const source=navigationSource();
+  for(const options of [undefined,{}, {focus:undefined},{focus:"foreign"},{focus:"A",target:"foreign"},
+    {focus:"A",target:undefined},{focus:"A",direction:"sideways"},{focus:"A",direction:null},
+    {focus:"A",invented:1},{focus:"A",maxHops:-1},{focus:"A",maxHops:Infinity},
+    {focus:"A",maxHops:NaN},{focus:"A",maxHops:1.5},{focus:"A",maxHops:32768}])
+    assert.throws(()=>cellNavigationOfCells(source,options));
+  assert.throws(()=>cellNavigationOfCells([],{focus:"A"}),TypeError);
+  assert.throws(()=>cellNavigationOfCells([{subject:"A",predicate:"p",object:"B"}],{focus:"A"}),TypeError);
+  let touched=0;
+  for(const options of [
+    Object.defineProperty({},"focus",{enumerable:true,get(){touched++;return "A";}}),
+    {focus:Object.defineProperty({},"value",{enumerable:true,get(){touched++;return "A";}})},
+    Object.assign(Object.create({focus:"A"}),{})])
+    assert.throws(()=>cellNavigationOfCells(source,options),TypeError);
+  const oversized=Array(16385);
+  Object.defineProperty(oversized,"0",{enumerable:true,get(){touched++;return source[0];}});
+  assert.throws(()=>cellNavigationOfCells(oversized,{focus:"A"}),TypeError);
+  assert.equal(touched,0);
+});
+
+test("Cell navigation matches independent all-pairs distances and original path endpoints", () => {
+  // Enumerate all 64 directed non-reflexive graphs on three named terms.
+  // Reflexive originals retain isolated terms, and a repeated first edge
+  // exercises occurrence identity without changing the independent oracle.
+  const names=["A","B","C"], pairs=[];
+  for(let a=0;a<3;a++)for(let b=0;b<3;b++)if(a!==b)pairs.push([a,b]);
+  for(let mask=0;mask<64;mask++) {
+    const selected=pairs.filter((_,i)=>mask&(1<<i));
+    const source=names.map(name=>cell(name,"self",name));
+    for(const [a,b] of selected)source.push(cell(names[a],"step",names[b],{for:[`source:${a}:${b}`]}));
+    if(selected.length)source.push(source[3]);
+    for(const direction of ["outgoing","incoming","either"]) {
+      const expected=names.map((_,a)=>names.map((_,b)=>a===b?0:Infinity));
+      for(const [a,b] of selected) {
+        if(direction!=="incoming")expected[a][b]=1;
+        if(direction!=="outgoing")expected[b][a]=1;
+      }
+      // Floyd–Warshall is independent of the production queue/heap traversal.
+      for(let k=0;k<3;k++)for(let a=0;a<3;a++)for(let b=0;b<3;b++)
+        expected[a][b]=Math.min(expected[a][b],expected[a][k]+expected[k][b]);
+      for(let focus=0;focus<3;focus++)for(let target=0;target<3;target++)for(const maxHops of [0,1,2]) {
+        const read=cellNavigationOfCells(source,{focus:names[focus],target:names[target],direction,maxHops});
+        const reached=new Map(read.neighborhood.map(item=>[read.nodes[item.nodeIndex].term,item.distance]));
+        for(let node=0;node<3;node++)assert.equal(reached.get(names[node]),
+          expected[focus][node]<=maxHops?expected[focus][node]:undefined);
+        const complete=expected[focus].every(distance=>!Number.isFinite(distance)||distance<=maxHops);
+        assert.equal(read.complete,complete);
+        const cost=expected[focus][target];
+        assert.equal(read.route.status,cost<=maxHops?"reached":complete?"unreachable":"not-reached-within-bound");
+        assert.equal(read.route.distance,cost<=maxHops?cost:null);
+        assert.equal(read.route.steps.length,cost<=maxHops?cost:0);
+        for(let index=0;index<read.route.steps.length;index++) {
+          const step=read.route.steps[index], original=source[step.sourceIndex];
+          const from=read.nodes[step.fromIndex].term,to=read.nodes[step.toIndex].term;
+          assert.equal(step.fromIndex,read.route.nodeIndices[index]);
+          assert.equal(step.toIndex,read.route.nodeIndices[index+1]);
+          assert.equal(from,step.direction==="forward"?original.subject:original.object);
+          assert.equal(to,step.direction==="forward"?original.object:original.subject);
+        }
+      }
+    }
+  }
 });
