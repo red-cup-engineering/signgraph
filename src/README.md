@@ -343,6 +343,27 @@ projection does not manufacture observed edges, witnesses or permissions.
   distinct incidence edges; loops retain vertices but have zero boundary.
   No second graph type, signer, evidence authority or new execution path
   is introduced by these projections.
+  `cellNavigationOfCells(cells, {focus, direction?, maxHops?, target?})`
+  reads a bounded structural neighborhood and optional shortest route from
+  the same original ordered Cells. Direction is `outgoing` (default),
+  `incoming`, or `either`; reversed traversal never asserts a converse Cell.
+  Metrologic's existing directed multigraph, distances and source-edge path
+  reader own the traversal. SignGraph retains every admitted occurrence,
+  including duplicate addresses, both witness lanes, written FOUR values and
+  reflexive relations. The ordered source has its existing semantic ID;
+  nodes carry original terms, canonical coincidence keys and local indices.
+  `incidences` ties each `sourceIndex` to the original Cell/address and its
+  `fromIndex`/`toIndex`. `neighborhood` records reached node indices and hop
+  counts. `complete` means the entire reachable set has been explored.
+  An optional route has `reached`, `unreachable`, or
+  `not-reached-within-bound` status: exhausting a hop bound cannot establish
+  absence. Route steps retain original `sourceIndex` and explicit
+  `forward`/`reverse` traversal; they introduce no transitive claim.
+  The existing 16,384-Cell source budget bounds the graph. `maxHops` permits
+  0–32,767 and defaults to one fewer than the number of original terms.
+  A renderer supplies its own explicit original-term-to-view-object binding
+  and source-authored labels; geometry, focus, keyboard behavior and other
+  presentation choices do not change the source ID or witness contents.
 - `graph` — the deterministic typed directed-multigraph carrier and its
   traversal, cycle, path, merge, and text-rendering operations.
 - `cellular-sheaf` — cellular sheaves on a graph (vector stalks on vertices and edges, restriction matrices on

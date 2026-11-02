@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.7.3-dev.0",
+  "version": "0.8.0-dev.0",
   "packageManager": "pnpm@11.28.5",
   "type": "module",
   "description": "SignCell and SignChain sites, transport, relations and graph projections.",

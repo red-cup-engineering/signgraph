@@ -8,11 +8,15 @@
  * organizations are SignChain's `chuMap`.
  */
 import {
-  address, admitCell, admitCellSequence, admitTripleSequence, cellSet, coincidenceKey, coincides, measured,
-  presence, recordOf, retainedCarrier, sameCell, valueOf
+  address, admitCell, admitCellSequence, admitTripleSequence, assertInertCarrierSource, cellSet,
+  coincidenceKey, coincides, measured, presence, readSourceRecord, recordOf, retainedCarrier,
+  sameCell, semanticId, valueOf
 } from "@red-cup-engineering/signcell/cell";
 import { natZero, natOne, natAdd, fromNatural } from "@red-cup-engineering/exact-number-data-service/exact-number";
 import { chuSpaceOfEntries } from "@red-cup-engineering/metrologic/chu";
+import {
+  createGraph, distances, shortestPathWithSourceEdges
+} from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 
 /** The Chu space of a cell set under a list of named observations. */
 export function cellGraph(cells, observations, options = {}) {
@@ -129,6 +133,108 @@ export function flowNetworkOfCells(cells) {
 /** The flow network of a section delegates to its SignCell source carrier. */
 export function flowNetwork(section) {
     return flowNetworkOfCells(section.entries.map((entry) => entry.cell));
+}
+
+/**
+ * Finite structural navigation over one original ordered SignCell source cut.
+ * The mathematical traversal is Metrologic's existing directed multigraph;
+ * SignGraph retains the Cells, their witness lanes and source occurrences.
+ *
+ * `incoming` and `either` permit reverse TRAVERSAL, never a converse assertion.
+ * Reflexive and parallel source incidences remain visible even when a shortest
+ * route needs neither. A hop limit bounds the neighborhood. Failure to reach a
+ * target is known to be unreachable only after the reachable set closes under traversal.
+ *
+ * Terms and distances do not grant a relation, proof, permission, physical
+ * metric or layout. A view supplies its own explicit term-to-object mapping.
+ */
+export function cellNavigationOfCells(cells, supplied) {
+  const options = readSourceRecord(supplied, "SignGraph cell navigation options");
+  if (!Object.hasOwn(options, "focus") || options.focus === undefined ||
+      Object.keys(options).some(name => !["focus", "target", "direction", "maxHops"].includes(name)))
+    throw new TypeError("SignGraph cell navigation requires focus and permits target, direction and maxHops");
+  const direction = options.direction ?? "outgoing";
+  if (!["outgoing", "incoming", "either"].includes(direction))
+    throw new TypeError("SignGraph cell navigation direction must be outgoing, incoming or either");
+  if (Object.hasOwn(options, "direction") && options.direction === null)
+    throw new TypeError("SignGraph cell navigation direction must be outgoing, incoming or either");
+  assertInertCarrierSource(options.focus);
+  const hasTarget = Object.hasOwn(options, "target");
+  if (hasTarget) assertInertCarrierSource(options.target);
+  if (Object.hasOwn(options, "maxHops") &&
+      (!Number.isSafeInteger(options.maxHops) || options.maxHops < 0 || options.maxHops > 32767))
+    throw new RangeError("SignGraph cell navigation maxHops must be an integer from 0 through 32767");
+
+  // Reuse the existing source budget and admission, without joining repeated
+  // source positions or forgetting contrary evidence before projection.
+  const sourceCells = admitCellSequence(cells, { maxItems: 16384, maxWitnesses: 16384 });
+  if (sourceCells.length === 0)
+    throw new TypeError("SignGraph cell navigation requires a nonempty Cell source");
+  const nodes = [], indexByKey = new Map();
+  const indexOf = term => {
+    const key = coincidenceKey(term);
+    let index = indexByKey.get(key);
+    if (index !== undefined) return index;
+    index = nodes.length;
+    nodes.push(Object.freeze({ index, key, term }));
+    indexByKey.set(key, index);
+    return index;
+  };
+  const incidences = Object.freeze(sourceCells.map((cell, sourceIndex) => Object.freeze({
+    sourceIndex, address: address(cell), cell,
+    fromIndex: indexOf(cell.subject), toIndex: indexOf(cell.object),
+  })));
+  Object.freeze(nodes);
+  const memberIndex = (term, label) => {
+    const index = indexByKey.get(coincidenceKey(term));
+    if (index === undefined)
+      throw new TypeError(`SignGraph cell navigation ${label} is not an original endpoint`);
+    return index;
+  };
+  const focusIndex = memberIndex(options.focus, "focus");
+  const targetIndex = hasTarget ? memberIndex(options.target, "target") : null;
+  const maxHops = options.maxHops ?? nodes.length - 1;
+  const topology = createGraph();
+  for (const { index } of nodes) topology.addNode(String(index));
+  const addTraversal = (incidence, fromIndex, toIndex, traversal) => topology.addEdge({
+    from: String(fromIndex), to: String(toIndex),
+    // The original source position prevents duplicate Cell addresses from
+    // collapsing into one arc. No witness is synthesized by reversing an arc.
+    data: { sourceIndex: incidence.sourceIndex, direction: traversal },
+  });
+  for (const incidence of incidences) {
+    if (direction !== "incoming")
+      addTraversal(incidence, incidence.fromIndex, incidence.toIndex, "forward");
+    if (direction !== "outgoing")
+      addTraversal(incidence, incidence.toIndex, incidence.fromIndex, "reverse");
+  }
+  const reached = distances(topology, String(focusIndex), { maxDepth: maxHops });
+  const neighborhood = Object.freeze([...reached].map(([id, distance]) =>
+    Object.freeze({ nodeIndex: Number(id), distance })));
+  const complete = [...reached.keys()].every(id =>
+    topology.outgoing(id).every(edge => reached.has(edge.to)));
+  let route = null;
+  if (hasTarget) {
+    const path = reached.has(String(targetIndex))
+      ? shortestPathWithSourceEdges(topology, String(focusIndex), String(targetIndex)) : null;
+    const edges = path === null ? [] : topology.edges();
+    route = Object.freeze({
+      targetIndex,
+      status: path !== null ? "reached" : complete ? "unreachable" : "not-reached-within-bound",
+      distance: path?.cost ?? null,
+      nodeIndices: Object.freeze(path === null ? [] : path.path.map(Number)),
+      steps: Object.freeze(path === null ? [] : path.sourceEdgeIndices.map(index => {
+        const edge = edges[index];
+        return Object.freeze({ sourceIndex: edge.data.sourceIndex,
+          fromIndex: Number(edge.from), toIndex: Number(edge.to), direction: edge.data.direction });
+      })),
+    });
+  }
+  return Object.freeze({
+    kind: "signgraph.cellNavigation.v1",
+    sourceId: semanticId(sourceCells), sourceCells, nodes, incidences,
+    focusIndex, direction, maxHops, neighborhood, complete, route,
+  });
 }
 
 // — Receive (not recreate) the original SignCell FOUR ⇄ Record adjunction. —
