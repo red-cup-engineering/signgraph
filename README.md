@@ -13,30 +13,16 @@
 [![Tips welcome](https://img.shields.io/badge/tips-welcome-d4a017)](https://github.com/561-group/.github/blob/main/TIPS.md)
 <!-- 561-group-standards:badges:end -->
 
-A general graphing library whose semantic specialization organizes the assembled bilattice as a Chu space:
-points (SignCell's cells, and the things they are addressed by) against
-observations (attributes, queries, indexes) under an evaluation, with Chu
-morphisms (forward map, backward demand, adjointness) as the contract
-between two organizations.
+Relations, sites, fibers and sheaves organizing SignCell cells and SignChain orderings.
 
-A contract of data carried between parties, with demand transported back, is
-what networking is.
+## Place in the family
 
-## What lives here
+Metrologic → SignCell → SignChain → SignGraph → SignCraft. Each library may import
+only those before it. SignGraph imports: Metrologic, SignCell and SignChain.
 
-- `./cell-graph`: `cellGraph(cells, observations)` builds the Chu-space
-  relation of a cell set under a list of named, total observations
-  (`{ name, evaluate(cell) }`).
-- `./graph`: the deterministic typed directed-multigraph carrier and its
-  traversal, cycle, path, merge, and text-rendering operations.
-- `./relation-adapters`: projections from already-parsed Markdown, JavaScript,
-  and EAVT evidence into relation observations.
-- `./pam`: graph-backed predicate-algebra modeling.
-- `./semantic-graph`, `./cellular-sheaf`, `./token-sheaf`: semantic graphs and
-  sheaf structures over them.
-
-The [package manifest](package.json) lists every export, and the
-[source guide](src/README.md) documents them in full.
+Metrologic holds pure mathematics; the Sign libraries hold the semiotic
+implementation (cells, ports, channels, messages); specific formats and protocols
+are codecs downstream of the family.
 
 ## Install
 
@@ -47,7 +33,14 @@ authentication. Node.js 24.2 or later is required.
 npm install @red-cup-engineering/signgraph --registry=https://registry.561.group/
 ```
 
-## Depends on
+## Status
 
-Metrologic for mathematics, SignCell for cells, and SignChain for cell order and
-FOUR evidence profiles. Nothing here imports SignCraft; SignCraft imports this.
+The family is being rebuilt to that order. See
+[the plan](https://github.com/red-cup-engineering/computer-engineering-services-section/blob/main/content/text/documents/specifications/2026-11-07-rebuilding-the-sign-family-from-its-theory.md).
+The test suites were removed on 2026-11-07 and will be rewritten from the theory.
+
+## Documentation
+
+- [Source guide](src/README.md): the modules and their exports.
+- [Requirements](requirements/): the peers this library must meet, then beat.
+- [Examples](examples/).

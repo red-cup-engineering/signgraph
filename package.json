@@ -4,13 +4,10 @@
   "license": "MIT",
   "packageManager": "pnpm@11.28.5",
   "type": "module",
-  "description": "SignCell and SignChain sites, transport, relations and graph projections.",
+  "description": "Relations, sites, fibers and sheaves organizing SignCell cells and SignChain orderings.",
   "files": [
     "src",
-    "data/records/requirements-records",
-    "examples/keratin-hole-workbench.mjs",
-    "scripts/verify-packed-receiving.mjs",
-    "scripts/qualify-packed-registry.mjs"
+    "examples/keratin-hole-workbench.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
