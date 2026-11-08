@@ -9,7 +9,7 @@ import { canonicalEqual } from "@red-cup-engineering/cbor-services-section";
 import { decodeRelationalValue, encodeRelationalValue, RELATIONAL_VALUE_TYPE, relationalValueId } from "./relational-value.mjs";
 import { semanticId } from "@red-cup-engineering/signcell/cell";
 import { bytesCompare, utf8Bytes } from "@red-cup-engineering/semiotic-content-address";
-import { FOUR, four, isKnowledgeCover, joinKnowledgeWire, knowledgeLeqWire, validateFour, witnessBit } from "@red-cup-engineering/computer-data-engineering-services-section/four";
+import { FOUR, four, isKnowledgeCover, joinKnowledgeWire, knowledgeLeqWire, validateFour, witnessBit } from "@red-cup-engineering/metrologic/four";
 
 
 const joinFour = joinKnowledgeWire;

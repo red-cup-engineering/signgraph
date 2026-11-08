@@ -16,7 +16,7 @@
 import { featherGraphOfPredications, featherSourceFields, featherSourceArray } from './feather-graph.mjs';
 import { cellular2Complex } from './cohomology.mjs';
 import { apply, coboundary, cochain, cellularSheaf, cellularSheafCohomology, cellularSheafCohomologyStatus } from './cellular-sheaf.mjs';
-import { readingOfSides } from '@red-cup-engineering/computer-data-engineering-services-section/four';
+import { readingOfSides } from '@red-cup-engineering/metrologic/four';
 
 const freeze = Object.freeze;
 const isRecord = x => x !== null && typeof x === 'object' && !Array.isArray(x);

@@ -25,7 +25,7 @@
  */
 import { tm } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation";
 import { arrayTerm, objectTerm, stringTerm, jsonToTerm } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation/json-codec";
-import { knowledgeBottom, negateReading, readingFamilies } from "@red-cup-engineering/computer-data-engineering-services-section/four";
+import { knowledgeBottom, negateReading, readingFamilies } from "@red-cup-engineering/metrologic/four";
 
 
 // Lower the scientific negation table into the JSON reading-name representation.

@@ -12,9 +12,9 @@
 import { canonicalCarrier, coincidenceKey } from '@red-cup-engineering/signcell/cell';
 import { cellular2Complex } from './cohomology.mjs';
 import { cellularSheaf, sheafSourceArray, sheafSourceField, sheafSourceScalar } from './cellular-sheaf.mjs';
-import { ratPairOfEntry, ratRank } from '@red-cup-engineering/exact-number-data-service/rational-matrix';
-import { rationalOfBigInts, ratZero, ratAdd, ratMultiply, ratNegate, ratIsZero, rationalParts } from '@red-cup-engineering/exact-number-data-service/exact-number';
-import { rationalToFiniteNumber } from '@red-cup-engineering/exact-number-data-service/exact-number-host';
+import { ratPairOfEntry, ratRank } from '@red-cup-engineering/metrologic/number/rational-matrix';
+import { rationalOfBigInts, ratZero, ratAdd, ratMultiply, ratNegate, ratIsZero, rationalParts } from '@red-cup-engineering/metrologic/number/exact-number';
+import { rationalToFiniteNumber } from '@red-cup-engineering/metrologic/number/exact-number-host';
 
 // Matrix exchange is a capability of actually admitted in-process cochain
 // readings; JSON-shaped forged structs cannot turn into certified operators.

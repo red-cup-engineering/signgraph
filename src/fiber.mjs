@@ -13,7 +13,7 @@
 import { canonicalCarrier, coincides, coincidenceKey, knowledgeReading } from "@red-cup-engineering/signcell/cell";
 import { evidenceAt } from "./valuation.mjs";
 import { reindex, existsAlong, forallAlong } from "@red-cup-engineering/metrologic/hyperdoctrine/adjoints";
-import { isReading, knowledgeBottom, samePoint, fusionReading, residuumReading } from "@red-cup-engineering/computer-data-engineering-services-section/four";
+import { isReading, knowledgeBottom, samePoint, fusionReading, residuumReading } from "@red-cup-engineering/metrologic/four";
 import { orderOps } from "@red-cup-engineering/metrologic/hyperdoctrine/order";
 
 // Construction-origin receipts for this installed SignGraph module. These are

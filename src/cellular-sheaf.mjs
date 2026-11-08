@@ -20,9 +20,9 @@
  * order; no transcendental functions.
  */
 import { canonicalCarrier, coincidenceKey, coincides } from "@red-cup-engineering/signcell/cell";
-import { isExactEntry, ratPairOfEntry, ratRank, ratSolve } from "@red-cup-engineering/exact-number-data-service/rational-matrix";
-import { rationalToFiniteNumber } from "@red-cup-engineering/exact-number-data-service/exact-number-host";
-import { rationalOfBigInts } from "@red-cup-engineering/exact-number-data-service/exact-number";
+import { isExactEntry, ratPairOfEntry, ratRank, ratSolve } from "@red-cup-engineering/metrologic/number/rational-matrix";
+import { rationalToFiniteNumber } from "@red-cup-engineering/metrologic/number/exact-number-host";
+import { rationalOfBigInts } from "@red-cup-engineering/metrologic/number/exact-number";
 import { rankVanishing } from "./cohomology.mjs";
 
 const freezeMatrix = (matrix) => Object.freeze(matrix.map((row) => Object.freeze([...row])));

@@ -23,7 +23,7 @@
  * mark-gluing → this cohomology consumer, not an independent Mark
  * identity imposed from already known space.
  */
-import { charPoly, fromInts, rank, toCount, toInt } from "@red-cup-engineering/exact-number-data-service/exact-number";
+import { charPoly, fromInts, rank, toCount, toInt } from "@red-cup-engineering/metrologic/number/exact-number";
 
 /** The rank of an integer matrix of host numbers, exactly. */
 const integerRank = (matrix) => (matrix.length === 0 ? 0 : toCount(rank(fromInts(matrix))));
@@ -32,7 +32,7 @@ const characteristicPolynomial = (matrix) => (matrix.length === 0 ? Object.freez
 import { admitTripleSequence, coincides, coincidenceKey } from "@red-cup-engineering/signcell/cell";
 import { sourceIncidencePairs, sourceIsolatedEntities } from "./site.mjs";
 import { sixfoldMotion, sixfoldIdentity, sixfoldCompose, sixfoldInverse } from "./paths.mjs";
-import { readingOfRecord, record, sidesOfReading, topMass } from "@red-cup-engineering/computer-data-engineering-services-section/four";
+import { readingOfRecord, record, sidesOfReading, topMass } from "@red-cup-engineering/metrologic/four";
 import { coverNerve, h1Rank } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/coordination-cohomology";
 
 const uniqueBy = (values, same) => {

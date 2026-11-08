@@ -19,7 +19,7 @@
 import { isMark } from "@red-cup-engineering/signcell/mark";
 import { isUtterance, traceOfArticulating } from "@red-cup-engineering/signcell/utterance";
 import { semanticId, admitCell, cellSet, measured, presence, recordOf } from "@red-cup-engineering/signcell/cell";
-import { charPoly, fromInts, toInt } from "@red-cup-engineering/exact-number-data-service/exact-number";
+import { charPoly, fromInts, toInt } from "@red-cup-engineering/metrologic/number/exact-number";
 import { cohomologyOfEdgeGraph } from "./cohomology.mjs";
 
 const LIMIT=8,MAX_WORD=64;

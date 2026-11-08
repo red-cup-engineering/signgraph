@@ -12,7 +12,7 @@ import {
   coincidenceKey, coincides, measured, presence, readSourceRecord, recordOf, retainedCarrier,
   sameCell, semanticId, valueOf
 } from "@red-cup-engineering/signcell/cell";
-import { natZero, natOne, natAdd, fromNatural } from "@red-cup-engineering/exact-number-data-service/exact-number";
+import { natZero, natOne, natAdd, fromNatural } from "@red-cup-engineering/metrologic/number/exact-number";
 import { chuSpaceOfEntries } from "@red-cup-engineering/metrologic/chu";
 import {
   createGraph, distances, shortestPathWithSourceEdges
