@@ -124,8 +124,13 @@ function normalizeBehavior(source, ports) {
   const usedInputs = new Set(), usedOutputs = new Set();
   const factors = source.factors.map((sourceFactor) => {
     if (!exactKeys(sourceFactor, ["inputs", "outputs", "rows"]) || !Array.isArray(sourceFactor.inputs) || !Array.isArray(sourceFactor.outputs)) fail("malformed-circuit", "a behavior factor must expose exactly inputs, outputs, and rows");
-    const factorInputs = sourceFactor.inputs.map((name) => text(name, "behavior factor input")).sort(utf8Compare);
-    const factorOutputs = sourceFactor.outputs.map((name) => text(name, "behavior factor output")).sort(utf8Compare);
+    // Row coordinates name the source's declared pin sequence. Canonical
+    // ordering must transport the corresponding columns, not just rename
+    // their positions: doing the latter changes the represented function.
+    const declaredInputs = sourceFactor.inputs.map((name) => text(name, "behavior factor input"));
+    const declaredOutputs = sourceFactor.outputs.map((name) => text(name, "behavior factor output"));
+    const factorInputs = [...declaredInputs].sort(utf8Compare);
+    const factorOutputs = [...declaredOutputs].sort(utf8Compare);
     if (factorInputs.length + factorOutputs.length === 0) fail("malformed-circuit", "an empty behavior factor is not material");
     if (new Set(factorInputs).size !== factorInputs.length || new Set(factorOutputs).size !== factorOutputs.length) fail("overlapping-factor", "a behavior factor cannot repeat a pin");
     for (const name of factorInputs) {
@@ -138,7 +143,18 @@ function normalizeBehavior(source, ports) {
       if (usedOutputs.has(name)) fail("overlapping-factor", `output pin ${name} occurs in more than one behavior factor`);
       usedOutputs.add(name);
     }
-    return { inputs: factorInputs, outputs: factorOutputs, rows: normalizeRows(sourceFactor.rows, factorInputs.length, factorOutputs.length) };
+    // Admit completeness, arity and monotonicity in the declared coordinates
+    // first. A simultaneous permutation of names and columns preserves those
+    // laws; canonical row order is then determined by the transported inputs.
+    const inputOrder = factorInputs.map((name) => declaredInputs.indexOf(name));
+    const outputOrder = factorOutputs.map((name) => declaredOutputs.indexOf(name));
+    const rows = normalizeRows(sourceFactor.rows, declaredInputs.length, declaredOutputs.length)
+      .map((row) => ({
+        input: inputOrder.map((index) => row.input[index]),
+        output: outputOrder.map((index) => row.output[index]),
+      }))
+      .sort((left, right) => utf8Compare(valuationKey(left.input), valuationKey(right.input)));
+    return { inputs: factorInputs, outputs: factorOutputs, rows };
   }).sort((left, right) => utf8Compare(factorKey(left), factorKey(right)));
   for (const name of inputs.keys()) if (!usedInputs.has(name)) fail("incomplete-behavior", `behavior factors omit input pin ${name}`);
   for (const name of outputs.keys()) if (!usedOutputs.has(name)) fail("incomplete-behavior", `behavior factors omit output pin ${name}`);

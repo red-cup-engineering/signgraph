@@ -32,6 +32,10 @@ net = {
 }
 
 instance = { name: tstr, component: ni }
+; Row input/output positions correspond to the factor's DECLARED inputs/
+; outputs order. Canonicalization sorts pin names with the matching columns,
+; preserving named-port behavior; sorting names alone changes the function.
+; Factors must be complete and monotone in the FOUR knowledge order.
 behavior-row = { input: [* four], output: [* four] }
 behavior-factor = {
   inputs: [* tstr],

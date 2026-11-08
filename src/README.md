@@ -534,6 +534,16 @@ projection does not manufacture observed edges, witnesses or permissions.
   existing callers, not the owner of Electronic Design Automation or its
   fabrication machinery. Constructive, evidence-aware synthesis belongs in
   SignCraft, where consumers supply their own lawful constraints.
+
+  Each behavior row's input and output columns are bound to the factor's
+  declared input and output name sequences. Canonicalization transports
+  those columns when sorting the names; it never silently reassigns values
+  to different pins. Jointly permuting names and their columns preserves
+  behavior and canonical identity. Permuting only names changes the law.
+  Already canonical sources retain their identities. Previously unsorted
+  raw tables may now receive corrected identities: regenerate and requalify
+  their dependent proofs from the original source, rather than rewriting
+  an existing addressed circuit or treating its earlier receipt as current.
   `verifyCircuitEquivalence` checks only the modeled behavior, not a
   physical or deployed circuit.
 - `cohomology` — `cellular2Complex({vertices, edges, faces})` extends the
