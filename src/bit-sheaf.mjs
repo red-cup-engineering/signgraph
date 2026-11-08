@@ -6,8 +6,7 @@
  * operation, not an authentication of supplied patches or sovereign authority.
  * Cf. Obsmetrologia.Site.Basic / ProtectedCover.
  */
-import { isNiUri } from "@red-cup-engineering/uri-services-section/ni-uri";
-import { markResource, bitValues } from "@red-cup-engineering/computer-data-engineering-services-section/digital-mark-space";
+import { isNiUri } from "@red-cup-engineering/signcell/ni";
 
 export const MAX_BIT_SECTION = 32768;
 const natural = n => Number.isSafeInteger(n) && n >= 0;
@@ -49,23 +48,14 @@ function admitPatch(p) {
 const patch = (address,totalBits,fromBit,bits) =>
   Object.freeze({ kind:"signgraph.bitPatch",address,totalBits,fromBit,bits:Object.freeze([...bits]) });
 
-/** Restrict a Data-owned mark resource without re-encoding or re-reading raw
- * bytes. This receives Data's admitted carrier, not a caller-built patch.
- * Its original NI identity is preserved across multiple host-owned charts. */
-export function bitPatchOfResource(resource,{fromBit=0,bitCount}={}) {
-  if (resource?.kind !== "lspace.mark-resource")
-    fail("a Data-owned mark resource is required");
-  const totalBits = resource.bitLength;
-  const count = bitCount ?? Math.min(MAX_BIT_SECTION,totalBits-fromBit);
-  finiteInterval(fromBit,count,totalBits);
-  return patch(resource.address,totalBits,fromBit,
-    bitValues(resource,{offset:fromBit,count}));
-}
-
-/** Name the whole byte content and obtain the same native patch from it. */
-export function bitPatchOfBytes(bytes,selection={}) {
-  if (!(bytes instanceof Uint8Array)) fail("Uint8Array media bytes required");
-  return bitPatchOfResource(markResource(bytes),selection);
+/** Admit one section of an addressed bit carrier from bits the caller has
+ * already read (MSB-first, as Data reads them) starting at `fromBit`.
+ * Reading bits out of a resource or byte content is the caller's job. */
+export function bitPatchOfBits(section,{fromBit=0}={}) {
+  if (section === null || typeof section !== "object")
+    fail("a canonical NI address and bit values are required");
+  return admitPatch({address:patchField(section,"address"),
+    totalBits:patchField(section,"totalBits"),fromBit,bits:patchField(section,"bits")});
 }
 
 /** Functorial restriction to a contained interval of the same address. */

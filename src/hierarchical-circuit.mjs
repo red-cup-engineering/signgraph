@@ -4,11 +4,11 @@
  * nets, behavior synthesis and equivalence, circuit families and assemblies,
  * and their identities as relational-value graphs.
  */
-import { NI_URI_PATTERN as NI } from "@red-cup-engineering/uri-services-section/ni-uri";
-import { canonicalEqual } from "@red-cup-engineering/cbor-services-section";
+import { NI_URI_PATTERN as NI } from "@red-cup-engineering/signcell/ni";
+import { canonicalEqual } from "@red-cup-engineering/signcell/canonical-cbor";
 import { decodeRelationalValue, encodeRelationalValue, RELATIONAL_VALUE_TYPE, relationalValueId } from "./relational-value.mjs";
 import { semanticId } from "@red-cup-engineering/signcell/cell";
-import { bytesCompare, utf8Bytes } from "@red-cup-engineering/semiotic-content-address";
+import { bytesCompare, utf8Bytes } from "@red-cup-engineering/signcell/content-address";
 import { FOUR, four, isKnowledgeCover, joinKnowledgeWire, knowledgeLeqWire, validateFour, witnessBit } from "@red-cup-engineering/metrologic/four";
 
 

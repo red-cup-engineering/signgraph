@@ -1,12 +1,10 @@
 // A JSON value as a canonical Entity/Ground graph: its nodes and grounding
-// edges as one SEN term of RELATIONAL_VALUE_TYPE, identified by the semantic
-// content address of its ascription.
-import { base64ToBytes, bytesCompare, bytesEqual, bytesToBase64, concatBytes, decodeSemantic as decodeCanonical, ownedBytes, utf8Bytes } from "@red-cup-engineering/semiotic-content-address";
-import { makeNiUri } from "@red-cup-engineering/uri-services-section/ni-uri";
-import { validateSenTerm, validateSenType } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation";
-import { judgeSen } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation/typing";
-import { typedListItems, typedListTerm } from "@red-cup-engineering/computer-data-engineering-services-section/semiotic-expression-notation/json-codec";
-import { NI_URI_PATTERN } from "@red-cup-engineering/uri-services-section/ni-uri";
+// edges as one typed term of RELATIONAL_VALUE_TYPE, identified by the semantic
+// content address of its ascription. The term is a plain SignCell canonical
+// carrier (pair/mark/star arrays); its spelling is unchanged from the SEN
+// encoding it was first written in, so every identity is preserved.
+import { base64ToBytes, bytesCompare, bytesEqual, bytesToBase64, concatBytes, decodeSemantic as decodeCanonical, ownedBytes, utf8Bytes } from "@red-cup-engineering/signcell/content-address";
+import { makeNiUri, NI_URI_PATTERN } from "@red-cup-engineering/signcell/ni";
 import { canonicalizeSemioticJson, cell as predicationCell, cellSet, semanticBytes, semanticId } from "@red-cup-engineering/signcell/cell";
 
 // A mark is a textual term; it does not introduce a nominal type.
@@ -20,8 +18,18 @@ function kindTerm(kind) { return ["mark", kind]; }
 function kindOf(term) { if (term?.[0] !== "mark" || !KINDS.includes(term[1])) fail("malformed relational kind"); return term[1]; }
 function tuple(values) { return values.length === 1 ? values[0] : ["pair", values[0], tuple(values.slice(1))]; }
 function fields(term, count) { if (count === 1) return [term]; if (term?.[0] !== "pair") fail("malformed relational tuple"); return [term[1], ...fields(term[2], count - 1)]; }
-function vector(values, type) { return typedListTerm(type, values); }
-function vectorItems(term) { try { return typedListItems(term); } catch { fail("malformed relational list"); } }
+// A list is a tagged spine: pair(mark("\"sen.json.array\""), pair(item, ... star)).
+const LIST_TAG = ["mark", JSON.stringify("sen.json.array")];
+function vector(values) { return ["pair", LIST_TAG, values.reduceRight((tail, item) => ["pair", item, tail], ["star"])]; }
+function vectorItems(term) {
+  if (term?.[0] !== "pair" || term[1]?.[0] !== "mark") fail("malformed relational list");
+  const items = [];
+  for (let spine = term[2]; spine?.[0] !== "star"; spine = spine[2]) {
+    if (spine?.[0] !== "pair") fail("malformed relational list");
+    items.push(spine[1]);
+  }
+  return items;
+}
 function fail(message) { throw new Error(message); }
 function constant(id) { return ["mark", id]; }
 function constantId(term) { if (term?.[0] !== "mark" || !NI_URI_PATTERN.test(term[1])) fail("expected relational entity"); return term[1]; }
@@ -71,10 +79,18 @@ function scalar(value) {
   return null;
 }
 
-function assertRelationalClaim(type, term) {
-  validateSenType(type);
-  validateSenTerm(term);
-  if (!judgeSen([], term, type)) fail("relational graph does not inhabit its declared SEN type");
+// The relational term is a closed value of the pair/mark/star fragment only.
+function assertRelationalTerm(term) {
+  const pending = [{ node: term }], open = new Set();
+  while (pending.length) {
+    const { node, close } = pending.pop();
+    if (close) { open.delete(close); continue; }
+    if (!Array.isArray(node) || open.has(node)) fail("relational graph does not inhabit its declared type");
+    if (node[0] === "star" && node.length === 1) continue;
+    if (node[0] === "mark" && node.length === 2 && typeof node[1] === "string") continue;
+    if (node[0] === "pair" && node.length === 3) { open.add(node); pending.push({ close: node }, { node: node[2] }, { node: node[1] }); continue; }
+    fail("relational graph does not inhabit its declared type");
+  }
 }
 
 export function encodeRelationalValue(source) {
@@ -98,8 +114,7 @@ export function encodeRelationalValue(source) {
     const childId = visit(child, path);
     edges.push(tuple([constant(parent), mark(label), constant(childId)]));
   }
-  const root = visit(value, "root"), term = tuple([constant(root), vector(nodes, NODE), vector(edges, GROUND)]);
-  assertRelationalClaim(RELATIONAL_VALUE_TYPE, term);
+  const root = visit(value, "root"), term = tuple([constant(root), vector(nodes), vector(edges)]);
   return { type: RELATIONAL_VALUE_TYPE, term };
 }
 
@@ -123,7 +138,7 @@ function structuralLexeme(value) {
 
 export function decodeRelationalValue(type, term) {
   if (JSON.stringify(type) !== JSON.stringify(RELATIONAL_VALUE_TYPE)) fail("unknown relational value type");
-  assertRelationalClaim(type, term);
+  assertRelationalTerm(term);
   const [rootTerm, nodeTerms, edgeTerms] = fields(term, 3), root = constantId(rootTerm), nodes = new Map(), edges = new Map();
   for (const node of vectorItems(nodeTerms)) {
     const [entity, kind, lexical] = fields(node, 3), id = constantId(entity);

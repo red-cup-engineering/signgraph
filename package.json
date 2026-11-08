@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.8.0-dev.0",
+  "version": "0.9.0",
   "license": "MIT",
   "packageManager": "pnpm@11.28.5",
   "type": "module",
@@ -14,18 +14,12 @@
     "./cell-graph": "./src/cell-graph.mjs",
     "./feather-graph": "./src/feather-graph.mjs",
     "./mesh": "./src/mesh.mjs",
-    "./chu-term": "./src/chu-term.mjs",
     "./graph": "./src/graph.mjs",
-    "./pam": "./src/pam.mjs",
     "./relation-adapters": "./src/relation-adapters.mjs",
     "./relational-value": "./src/relational-value.mjs",
     "./hierarchical-circuit": "./src/hierarchical-circuit.mjs",
     "./circuit-trace": "./src/circuit-trace.mjs",
     "./carrier-refinement": "./src/carrier-refinement.mjs",
-    "./diagram": "./src/diagram.mjs",
-    "./diagram-schema": "./src/diagram-schema.mjs",
-    "./diagram-svg": "./src/diagram-svg.mjs",
-    "./diagram-sequence": "./src/diagram-sequence.mjs",
     "./site": "./src/site.mjs",
     "./token-sheaf": "./src/token-sheaf.mjs",
     "./valuation": "./src/valuation.mjs",
@@ -47,19 +41,9 @@
     "./alexandrov": "./src/alexandrov.mjs"
   },
   "dependencies": {
-    "@red-cup-engineering/cbor-services-section": "0.1.1",
-    "@red-cup-engineering/computer-code-engineering-services-section": "0.1.2",
-    "@red-cup-engineering/computer-content-engineering-services-section": "0.1.0",
-    "@red-cup-engineering/computer-data-engineering-services-section": "0.7.1",
-    "@red-cup-engineering/eavt-services-section": "0.11.0",
-    "@red-cup-engineering/json-schema-services-section": "0.5.0",
-    "@red-cup-engineering/json-services-section": "0.4.0",
     "@red-cup-engineering/metrologic": "0.20.0",
-    "@red-cup-engineering/semiotic-content-address": "0.1.1",
-    "@red-cup-engineering/signcell": "0.14.1-dev.1",
-    "@red-cup-engineering/signchain": "0.4.6-dev.1",
-    "@red-cup-engineering/uri-services-section": "0.1.1",
-    "@red-cup-engineering/xml-document-rendering-service": "0.1.7"
+    "@red-cup-engineering/signcell": "0.15.0",
+    "@red-cup-engineering/signchain": "0.5.0"
   },
   "scripts": {
     "check:keratin": "node --check src/feather-graph.mjs && node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs && node --check examples/keratin-hole-workbench.mjs",

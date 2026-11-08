@@ -3,7 +3,7 @@
  * provider's proof that a component's carrier refines its behavior over one
  * observed material root, as a relational-value graph.
  */
-import { NI_URI_PATTERN as NI } from "@red-cup-engineering/uri-services-section/ni-uri";
+import { NI_URI_PATTERN as NI } from "@red-cup-engineering/signcell/ni";
 import { decodeRelationalValue, encodeRelationalValue, RELATIONAL_VALUE_TYPE } from "./relational-value.mjs";
 
 export const CARRIER_REFINEMENT_PROFILE = "org.emsenn.infomaterial.carrier-refinement.v1";

@@ -566,9 +566,6 @@ projection does not manufacture observed edges, witnesses or permissions.
   thermodynamic temperature.
 - `relation-adapters` — projections from already-parsed Markdown, JavaScript,
   and EAVT evidence into relation observations.
-- `pam` — graph-backed predicate-algebra modeling over EAVT's relation web
-  (`@red-cup-engineering/eavt-services-section/relation-web`), which is data: content-addressed
-  relation observations over plain JSON terms, with no cell, valuation or FOUR.
 
 ## Pure functional boundary
 
@@ -782,17 +779,11 @@ Organizing authority, or execution-owner Work.
 
 ## Depends on
 
-### Data-owned resource composition
+### Caller-read bits
 
-The direct Computer Data dependency is exactly `0.7.1`. A host supplying
-`markResource` or `markSpace(...).get(address)` to `bitPatchOfResource` must
-resolve that same Data module instance. Data retains private admission and
-byte ownership; a matching NI address or resource-shaped JSON is not admission.
-Dependency composition must preserve this identity instead of overriding all
-transitive Data versions, weakening its guard, or copying and re-admitting bytes.
-SignGraph restricts the original resource through Data's bounded `bitValues`
-operation without re-reading host media or acquiring file/network authority.
-Separate module instances remain foreign even when their versions match.
+`bitPatchOfBits({ address, totalBits, bits }, { fromBit })` admits bits the
+caller has already read from its own resource (Data's `bitValues`, for
+example). SignGraph neither reads bytes nor depends on Data.
 
 `@red-cup-engineering/metrologic` for mathematics, SignCell for cells, and
 SignChain for cell order and FOUR evidence profiles. Canonical carrier snapshots,
@@ -800,12 +791,11 @@ semantic addresses and coincidence of Cell data come through SignCell's public
 `./cell` exports. These are the original content functions of the same supplier
 instance that retained the source cells and byte witnesses; a second independent
 content module cannot receive another instance's private byte-snapshot custody.
-The portable byte helpers and wire decoder retain their direct
-`@red-cup-engineering/semiotic-content-address` dependency. No wrapper, encoder,
+The portable byte helpers, wire decoder, RFC 6920 `ni` names and canonical
+CBOR come from SignCell's `./content-address`, `./ni` and `./canonical-cbor`. No wrapper, encoder,
 accessor exception or mathematical implementation is introduced here. Retained
 source presentation remains distinct from the canonical NFC projection used for
-fiber coordinates. The shipped `chu-term` module also receives its
-declared runtime dependency on Computer Code 0.1.2. Nothing here imports
+fiber coordinates. SignGraph imports only Metrologic, SignCell and SignChain. Nothing here imports
 SignCraft; SignCraft imports this.
 
 Relational SEN encoding also consumes that original canonical projection;
