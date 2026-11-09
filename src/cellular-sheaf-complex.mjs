@@ -14,7 +14,7 @@ import { cellular2Complex } from './cohomology.mjs';
 import { cellularSheaf, sheafSourceArray, sheafSourceField, sheafSourceScalar } from './cellular-sheaf.mjs';
 import { ratPairOfEntry, ratRank } from '@red-cup-engineering/metrologic/number/rational-matrix';
 import { rationalOfBigInts, ratZero, ratAdd, ratMultiply, ratNegate, ratIsZero, rationalParts } from '@red-cup-engineering/metrologic/number/exact-number';
-import { rationalToFiniteNumber } from '@red-cup-engineering/metrologic/number/exact-number-host';
+import { rationalToFiniteNumber } from '@red-cup-engineering/metrologic/number/exact-number';
 
 // Matrix exchange is a capability of actually admitted in-process cochain
 // readings; JSON-shaped forged structs cannot turn into certified operators.

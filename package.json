@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "license": "MIT",
   "packageManager": "pnpm@11.28.5",
   "type": "module",
@@ -41,9 +41,9 @@
     "./alexandrov": "./src/alexandrov.mjs"
   },
   "dependencies": {
-    "@red-cup-engineering/metrologic": "0.21.0",
-    "@red-cup-engineering/signcell": "0.17.1",
-    "@red-cup-engineering/signchain": "0.6.1"
+    "@red-cup-engineering/metrologic": "0.22.0",
+    "@red-cup-engineering/signcell": "0.17.3",
+    "@red-cup-engineering/signchain": "0.6.3"
   },
   "scripts": {
     "check:keratin": "node --check src/feather-graph.mjs && node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs && node --check examples/keratin-hole-workbench.mjs",

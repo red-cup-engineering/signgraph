@@ -12,18 +12,9 @@
  * congruence and orientation are checked independently. This is not a
  * theorem of a gap-free tessellation of multiple solids.
  */
+import { rationalOfBigInts } from "@red-cup-engineering/metrologic/number/exact-number";
+
 const MAX_COORD = 1000000;
-const abs = x => x < 0n ? -x : x;
-function gcd(a, b) {
-  a = abs(a); b = abs(b);
-  while (b !== 0n) { const next = a % b; a = b; b = next; }
-  return a || 1n;
-}
-function rational(n, d) {
-  if (d <= 0n) throw new RangeError("embedding: denominator must be positive");
-  const factor = gcd(n, d);
-  return Object.freeze({ numerator: (n / factor).toString(), denominator: (d / factor).toString() });
-}
 const sub = (a, b) => a.map((x, i) => x - b[i]);
 const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0n);
 const cross = (a, b) => [
@@ -69,7 +60,7 @@ export function metricSquareOfVector(vector, metric) {
   // many unit cells. The exact BigInt metric must not falsely cap it at
   // the single-cell vertex position budget.
   const { diagonal, denominator } = admittedMetric(metric);
-  return rational(normSquare(vector.map(BigInt), diagonal), denominator * denominator);
+  return rationalOfBigInts(normSquare(vector.map(BigInt), diagonal), denominator * denominator);
 }
 
 /** Receive an oriented, closed single-volume polyhedron as a regular,
@@ -96,7 +87,7 @@ export function geometricReceiving(complex, positions, metric) {
   const unit = edgeNumerators[0];
   const edgeCongruent = unit > 0n && edgeNumerators.every(x => x === unit);
   const edges = Object.freeze(complex.edges.map((edge, i) => Object.freeze({
-    id: edge.id, squaredLength: rational(edgeNumerators[i], scaleSquare),
+    id: edge.id, squaredLength: rationalOfBigInts(edgeNumerators[i], scaleSquare),
     matchesReference: edgeNumerators[i] === unit && unit > 0n,
   })));
   let inwardCount = 0, outwardCount = 0, detSum = 0n;
@@ -145,7 +136,7 @@ export function geometricReceiving(complex, positions, metric) {
   const supporting = faces.every(f => f.nondegenerate && f.planar && f.strictlySupporting);
   const regularFaces = faces.every(f => f.regular);
   const certified = edgeCongruent && supporting && regularFaces && orientationValid && detSum > 0n;
-  const volCoeff = rational(detSum, 6n * denominator * denominator * denominator);
+  const volCoeff = rationalOfBigInts(detSum, 6n * denominator * denominator * denominator);
   const areaSquareCount = faces.filter(f => f.polygon === "square-candidate").length;
   const areaTriangleCount = faces.filter(f => f.polygon === "triangle").length;
   const scaleArea = denominator * denominator;
@@ -169,8 +160,8 @@ export function geometricReceiving(complex, positions, metric) {
     area: Object.freeze({
       // Regular squares have area l²; equilateral triangles have
       // area (sqrt(3)/4) l². Only certify this when the faces are regular.
-      squareCoefficient: rational(BigInt(areaSquareCount) * unit, scaleArea),
-      triangularCoefficient: rational(BigInt(areaTriangleCount) * unit, 4n * scaleArea),
+      squareCoefficient: rationalOfBigInts(BigInt(areaSquareCount) * unit, scaleArea),
+      triangularCoefficient: rationalOfBigInts(BigInt(areaTriangleCount) * unit, 4n * scaleArea),
       radical: 3,
       certified: regularFaces && edgeCongruent,
     }),

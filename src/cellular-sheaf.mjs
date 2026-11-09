@@ -21,7 +21,7 @@
  */
 import { canonicalCarrier, coincidenceKey, coincides } from "@red-cup-engineering/signcell/cell";
 import { isExactEntry, ratPairOfEntry, ratRank, ratSolve } from "@red-cup-engineering/metrologic/number/rational-matrix";
-import { rationalToFiniteNumber } from "@red-cup-engineering/metrologic/number/exact-number-host";
+import { rationalToFiniteNumber } from "@red-cup-engineering/metrologic/number/exact-number";
 import { rationalOfBigInts } from "@red-cup-engineering/metrologic/number/exact-number";
 import { rankVanishing } from "./cohomology.mjs";
 
