@@ -9,13 +9,13 @@ importers:
   .:
     dependencies:
       '@red-cup-engineering/metrologic':
-        specifier: 0.22.0
+        specifier: ^0.22.0
         version: 0.22.0
       '@red-cup-engineering/signcell':
-        specifier: 0.17.3
+        specifier: ^0.17.3
         version: 0.17.3
       '@red-cup-engineering/signchain':
-        specifier: 0.6.3
+        specifier: ^0.6.3
         version: 0.6.3
 
 packages:

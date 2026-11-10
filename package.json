@@ -42,9 +42,9 @@
     "./alexandrov": "./src/alexandrov.mjs"
   },
   "dependencies": {
-    "@red-cup-engineering/metrologic": "0.22.0",
-    "@red-cup-engineering/signcell": "0.17.3",
-    "@red-cup-engineering/signchain": "0.6.3"
+    "@red-cup-engineering/metrologic": "^0.22.0",
+    "@red-cup-engineering/signcell": "^0.17.3",
+    "@red-cup-engineering/signchain": "^0.6.3"
   },
   "scripts": {
     "check:keratin": "node --check src/feather-graph.mjs && node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs && node --check examples/keratin-hole-workbench.mjs",
