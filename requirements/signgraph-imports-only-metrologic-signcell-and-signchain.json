@@ -1,0 +1,52 @@
+{
+  "id": "signgraph-imports-only-metrologic-signcell-and-signchain",
+  "name": "SignGraph is pure-functional and imports only Metrologic, SignCell and SignChain",
+  "kind": "requirement",
+  "raised-by": "emsenn",
+  "asks": "The Sign libraries are pure-functional and everything else is built downstream of them.",
+  "met-when": [
+    {
+      "cell": "signgraph-imports-only-metrologic-signcell-and-signchain:dependencies",
+      "target": "held",
+      "says": "package.json lists exactly three dependencies, @red-cup-engineering/metrologic, @red-cup-engineering/signcell and @red-cup-engineering/signchain, and no peer or optional dependency.",
+      "command": "node --test test/requirements/signgraph-imports-only-metrologic-signcell-and-signchain/dependencies.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-imports-only-metrologic-signcell-and-signchain:imports",
+      "target": "held",
+      "says": "No module under src/ imports any other package, any Node.js built-in module, or any file outside src/.",
+      "command": "node --test test/requirements/signgraph-imports-only-metrologic-signcell-and-signchain/imports.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-imports-only-metrologic-signcell-and-signchain:no-effects",
+      "target": "held",
+      "says": "No module under src/ reads a clock, a random source, the environment, a file or the network, or writes to anything outside its return value. A store, a clock or a model call reaches SignGraph only as a function argument.",
+      "command": "node --test test/requirements/signgraph-imports-only-metrologic-signcell-and-signchain/no-effects.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-imports-only-metrologic-signcell-and-signchain:same-arguments-same-value",
+      "target": "held",
+      "says": "Every exported function returns a deeply equal, frozen value when called twice with the same arguments.",
+      "command": "node --test test/requirements/signgraph-imports-only-metrologic-signcell-and-signchain/same-arguments-same-value.test.mjs",
+      "expected-exit": 0
+    }
+  ],
+  "x-provenance": {
+    "recorded-by": "claude",
+    "recorded-on": "2026-11-10",
+    "sources": [
+      {
+        "words": "The Sign libraries are pure-functional and everything else is built downstream of them.",
+        "from": "the Leader's brief of 2026-11-10"
+      },
+      {
+        "words": "first metrologic, then signcell, then signchain, then signgraph, then signcraft",
+        "from": "the Leader's order of the family, quoted in computer-engineering-services-section content/text/documents/specifications/2026-11-07-rebuilding-the-sign-family-from-its-theory.md"
+      }
+    ],
+    "acceptance": "Each command names one test file in this repository. A test file that does not exist yet fails its command, so the condition reads unmet until the test is written and passes."
+  }
+}

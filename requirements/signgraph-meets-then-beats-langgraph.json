@@ -1,0 +1,113 @@
+{
+  "id": "signgraph-meets-then-beats-langgraph",
+  "name": "SignGraph meets then beats LangGraph",
+  "kind": "requirement",
+  "raised-by": "emsenn",
+  "asks": "signgraph: langgraph\n\nSignGraph is meant to meet then beat LangGraph actually.",
+  "comparison": {
+    "required-of": "561-group",
+    "subject": {
+      "kind": "package",
+      "name": "@red-cup-engineering/signgraph"
+    },
+    "relation": "meet-then-beat",
+    "against": [
+      {
+        "name": "LangGraph",
+        "domain": "stateful graph workflows: conditional routing, fan-out and reducer joins, subgraphs, checkpoints, restart, interrupt and resume, state history and forking, streamed execution"
+      }
+    ]
+  },
+  "met-when": [
+    {
+      "cell": "signgraph-meets-then-beats-langgraph:meet-conditional-routing",
+      "target": "held",
+      "says": "A workflow whose next node is chosen from its state reaches the same final state as LangGraph's StateGraph, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-langgraph/meet-conditional-routing.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-langgraph:meet-fan-out-and-join",
+      "target": "held",
+      "says": "A node that fans out to several nodes whose writes a reducer joins gives the same joined state as LangGraph, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-langgraph/meet-fan-out-and-join.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-langgraph:meet-subgraphs",
+      "target": "held",
+      "says": "A workflow that calls another workflow as one node gives the same final state as LangGraph, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-langgraph/meet-subgraphs.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-langgraph:meet-checkpoint-restart-resume",
+      "target": "held",
+      "says": "A run stopped after any step and restarted from its last checkpoint by a new process finishes in the same final state as an uninterrupted run, as LangGraph's does, against a pinned release of the peer, run on the same input in the same CI job. The checkpoint store is a function argument.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-langgraph/meet-checkpoint-restart-resume.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-langgraph:meet-interrupt-and-resume",
+      "target": "held",
+      "says": "A run that stops for outside input and resumes with it finishes in the same state as LangGraph, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-langgraph/meet-interrupt-and-resume.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-langgraph:meet-history-and-fork",
+      "target": "held",
+      "says": "The states of a run are listed in order, and a run forked from any earlier state proceeds from it without changing the original, as in LangGraph, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-langgraph/meet-history-and-fork.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-langgraph:meet-streaming",
+      "target": "held",
+      "says": "Each step's state update is delivered to the caller as it is produced, in the same order LangGraph streams them, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-langgraph/meet-streaming.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-langgraph:beat-replay-is-exact",
+      "target": "held",
+      "says": "Replaying a run from any checkpoint with the same inputs reproduces every later checkpoint with the same content address. Claimed only after every meet condition holds.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-langgraph/beat-replay-is-exact.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-langgraph:beat-contradiction-is-kept",
+      "target": "held",
+      "says": "Two branches that write different values to one key with no reducer do not fail the run and do not overwrite one another: the joined state holds both, each with the path that produced it. Claimed only after every meet condition holds.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-langgraph/beat-contradiction-is-kept.test.mjs",
+      "expected-exit": 0
+    }
+  ],
+  "x-provenance": {
+    "recorded-by": "claude",
+    "recorded-on": "2026-11-10",
+    "sources": [
+      {
+        "words": "signgraph: langgraph",
+        "from": "the Leader, 2026-10-15"
+      },
+      {
+        "words": "SignGraph is meant to meet then beat LangGraph actually.",
+        "from": "the Leader, 2026-10-18"
+      }
+    ],
+    "conditions-not-in-the-leaders-words": [
+      {
+        "cell": "signgraph-meets-then-beats-langgraph:beat-replay-is-exact",
+        "derived-by": "claude",
+        "derived-from": "the family's content and proof-path addressing; the Leader has not stated what beating LangGraph is"
+      },
+      {
+        "cell": "signgraph-meets-then-beats-langgraph:beat-contradiction-is-kept",
+        "derived-by": "claude",
+        "derived-from": "FOUR and proof-path addressing; the Leader has not stated what beating LangGraph is"
+      }
+    ],
+    "acceptance": "Each command names one test file in this repository. A test file that does not exist yet fails its command, so the condition reads unmet until the test is written and passes."
+  }
+}

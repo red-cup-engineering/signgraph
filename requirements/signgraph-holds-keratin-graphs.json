@@ -1,0 +1,48 @@
+{
+  "id": "signgraph-holds-keratin-graphs",
+  "name": "SignGraph holds keratin graphs: fiber and sheaf graphs with holes",
+  "kind": "requirement",
+  "raised-by": "emsenn",
+  "asks": "graphing technology for our work. Keratin graphs, as a way of having fiber/sheaf graphs with holes",
+  "met-when": [
+    {
+      "cell": "signgraph-holds-keratin-graphs:keratin-graph-over-a-feather-graph",
+      "target": "held",
+      "says": "A keratin graph is built over a feather graph from supplied stalks, contact tables and face attachments, and is a sheaf on that graph whose restriction maps are checked when it is built.",
+      "command": "node --test test/requirements/signgraph-holds-keratin-graphs/keratin-graph-over-a-feather-graph.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-holds-keratin-graphs:holes-are-found",
+      "target": "held",
+      "says": "Each hole, a boundary loop that no attached face fills, is reported with the cells on its boundary, and the count of independent holes equals the first Betti number Metrologic computes for the same complex, in exact arithmetic.",
+      "command": "node --test test/requirements/signgraph-holds-keratin-graphs/holes-are-found.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-holds-keratin-graphs:a-proposed-filling-is-not-a-face",
+      "target": "held",
+      "says": "A boundary proposed for filling is reported as proposed and changes no count until a face is attached to it.",
+      "command": "node --test test/requirements/signgraph-holds-keratin-graphs/a-proposed-filling-is-not-a-face.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-holds-keratin-graphs:observations-across-a-hole",
+      "target": "held",
+      "says": "Observations on the stalks around a hole are assessed as consistent or inconsistent, and an inconsistency names the cells that disagree.",
+      "command": "node --test test/requirements/signgraph-holds-keratin-graphs/observations-across-a-hole.test.mjs",
+      "expected-exit": 0
+    }
+  ],
+  "x-provenance": {
+    "recorded-by": "claude",
+    "recorded-on": "2026-11-10",
+    "sources": [
+      {
+        "words": "graphing technology for our work. Keratin graphs, as a way of having fiber/sheaf graphs with holes",
+        "from": "the Leader, SignGraph issue 30, 2026-10-21"
+      }
+    ],
+    "acceptance": "Each command names one test file in this repository. A test file that does not exist yet fails its command, so the condition reads unmet until the test is written and passes."
+  }
+}

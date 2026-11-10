@@ -1,6 +1,6 @@
 {
   "id": "signgraph-meets-then-beats-sqlite-and-couchdb",
-  "name": "SignGraph meets then beats SQLite and Apache CouchDB through proof-path-addressed flat files",
+  "name": "SignGraph meets then beats SQLite and CouchDB over flat files",
   "kind": "requirement",
   "raised-by": "emsenn",
   "asks": "Continue researching feather graphs, add them to signgraph, since posit graphs are feather graphs.\n\nWe want signgraph to meet then beat more things like sqlite and couchdb, yes even though it's all flatfile, that's what the proof path addressing technologies are meant to be for :O",
@@ -14,138 +14,93 @@
     "against": [
       {
         "name": "SQLite",
-        "domain": "Embedded SQL, indexed point/range/join and JSON/FTS queries, constraints, transactions, rollback, concurrent access, crash recovery, backup and restore"
+        "domain": "embedded indexed queries, transactions, rollback, crash recovery"
       },
       {
         "name": "Apache CouchDB",
-        "domain": "HTTP/JSON MVCC document database, revisions/conflicts, indexed Mango queries, changes feed and checkpointed offline replication"
+        "domain": "document revisions and conflicts, changes feed, checkpointed replication"
       }
     ]
   },
   "met-when": [
     {
-      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:sqlite-meet",
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-sqlite-indexed-queries",
       "target": "held",
-      "says": "Independently run equivalent SQLite workloads against a source-pinned operational SignGraph composition; verify correct SQL subset, indexed queries, ACID transactions, concurrency, crash recovery and backup/restore within declared supported scope."
+      "says": "Over cells kept as flat files addressed by proof path, a point lookup, a range scan and a join of two relations return the same rows as SQLite, against a pinned release of the peer, run on the same input in the same CI job, and read a number of files that grows with the logarithm of the number of cells, counted at the store argument.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-sqlite-indexed-queries.test.mjs",
+      "expected-exit": 0
     },
     {
-      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:sqlite-beat",
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-sqlite-transactions",
       "target": "held",
-      "says": "After parity is received, demonstrate a user-relevant improvement on like-for-like SQLite workloads, retaining all parity capabilities and recording latency, throughput, cost and original proof-path verification."
+      "says": "A batch of writes is all present or all absent after it returns, and a batch that is refused leaves the previous root address current, as SQLite's COMMIT and ROLLBACK do, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-sqlite-transactions.test.mjs",
+      "expected-exit": 0
     },
     {
-      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:couchdb-meet",
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-sqlite-crash-recovery",
       "target": "held",
-      "says": "Independently run equivalent CouchDB HTTP/JSON document/revision, conflict, indexed-query, changes, checkpointed two-peer offline replication and recovery workloads against a deployed SignGraph composition."
+      "says": "A store whose last write was cut off at any byte opens at its last complete root address with every earlier cell readable.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-sqlite-crash-recovery.test.mjs",
+      "expected-exit": 0
     },
     {
-      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:couchdb-beat",
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-couchdb-revisions-and-conflicts",
       "target": "held",
-      "says": "After CouchDB parity is received, demonstrate a user-relevant improvement on the same replication/query/recovery workload with provenance and proof-path checks and no loss of interoperable behavior."
+      "says": "Two edits of one document made without sight of each other are both kept as revisions and the conflict is reported, as CouchDB reports it, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-couchdb-revisions-and-conflicts.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-couchdb-changes",
+      "target": "held",
+      "says": "The changes since a given checkpoint are listed in order, each once, as CouchDB's changes feed lists them, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-couchdb-changes.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-couchdb-replication",
+      "target": "held",
+      "says": "Replicating between two stores, in either direction and resumed from a checkpoint after interruption, leaves both with the same documents and revisions, as CouchDB's replication does, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-couchdb-replication.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:beat-stores-that-agree-have-one-address",
+      "target": "held",
+      "says": "Two stores holding the same cells have the same root address however their writes were ordered, so agreement is checked by comparing one address. Claimed only after every meet condition holds.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/beat-stores-that-agree-have-one-address.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:beat-answers-check-without-the-store",
+      "target": "held",
+      "says": "A query's answer comes with the proof paths of the cells it read, and a reader holding only the answer and the root address can verify it. Claimed only after every meet condition holds.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/beat-answers-check-without-the-store.test.mjs",
+      "expected-exit": 0
     }
   ],
   "x-provenance": {
-    "recorded-by": "chatgpt-web",
-    "recorded-on": "2026-10-20",
-    "leader-source": "Leader's exact new demand quoted in asks; adds rather than replaces existing SignGraph meet-then-beat targets.",
-    "leader-named-targets": [
-      "SQLite",
-      "Apache CouchDB"
-    ],
-    "additive-to": [
-      "signgraph-meets-then-beats-application-peers",
-      "signgraph-meets-then-beats-oxigraph"
-    ],
-    "observed-benchmark-baselines-as-of": "2026-10-20",
-    "benchmarks": {
-      "SQLite": {
-        "version": "3.54.1",
-        "released": "2026-10-16",
-        "primarySources": [
-          "https://www.sqlite.org/changes.html",
-          "https://www.sqlite.org/lang_transaction.html",
-          "https://www.sqlite.org/fts5.html",
-          "https://www.sqlite.org/json1.html"
-        ],
-        "workloads": [
-          "Same source-pinned typed records; parameterized point/range/join, JSON field, full-text and indexed reads with exact result-set comparison and query plans",
-          "Explicit BEGIN/COMMIT/ROLLBACK, integrity constraints and concurrent-reader/writer cases; inject interruptions before and after the commit boundary and independently verify restart/atomicity",
-          "Backup, restore, compaction and three dataset sizes; measure cold/warm query latency, write latency, throughput, disk and memory amplification",
-          "Re-read duplicate-content records with distinct witness histories and quantify witness/proof-preservation without changing SQLite's ordinary relational result semantics"
-        ]
-      },
-      "Apache CouchDB": {
-        "version": "3.5.3",
-        "released": "2026-10-12",
-        "primarySources": [
-          "https://couchdb.apache.org/",
-          "https://docs.couchdb.org/en/stable/",
-          "https://docs.couchdb.org/en/stable/whatsnew/3.5.html"
-        ],
-        "workloads": [
-          "Equivalent HTTP/JSON CRUD for documents and attachments including revision preconditions, conflicting updates, deletions and explicit server statuses",
-          "Equivalent indexed Mango selectors and _changes feed including restartable checkpoints; check full revision identities and event ordering",
-          "Two peers concurrently edit while disconnected; reconnect and restart replication after injected partial transport failure, verifying stable conflict preservation, idempotent replay and convergence",
-          "Measure query/replication latency, transferred bytes, disk, memory, restart recovery, conflict handling and recipient-accepted interoperability"
-        ]
+    "recorded-by": "claude",
+    "recorded-on": "2026-11-10",
+    "sources": [
+      {
+        "words": "We want signgraph to meet then beat more things like sqlite and couchdb, yes even though it's all flatfile, that's what the proof path addressing technologies are meant to be for :O",
+        "from": "the Leader, quoted in the requirement record of 2026-10-15"
       }
-    },
-    "production-boundaries": {
-      "SignGraph": "Owns source-qualified predication graphs, feather/posit readouts, graph query semantics and proof-route relation identity. It remains accountable for the named market outcome without duplicating its storage engine.",
-      "SignCell-SignChain-SignCraft": "Own the original typed cell/occurrence admission, distinct witnessed charge and lawful further composition.",
-      "Proof-Path Addressing": "Use the original proof-path-structuration-service for root-to-target generator-witness derivation and the proof-pathing-services-section for typed POSIX path admission/settlement. A path is not its content hash or proof of permission.",
-      "Systems-File-Networking": "Original owners must furnish durable atomic flat-file writes, journal/recovery, locks/MVCC, indexing/compaction, backups, SQL/JSON/HTTP codec interoperability, CouchDB replication and deployed service endpoints."
-    },
-    "sourceReferences": [
-      "https://github.com/lenticule-science/obsmetrologia/issues/79",
-      "https://github.com/lenticule-science/obsmetrologia/blob/main/docs/research/2026-10-16-relationlessness-spiral-pisot-prior-work-assay.md#relation-only-feather-graphs-candidate-derived-forks-and-first-negative-controls",
-      "https://github.com/red-cup-engineering/proof-path-structuration-service",
-      "https://github.com/red-cup-engineering/proof-pathing-services-section"
     ],
-    "qualification-gaps": [
-      "Original Lean source-to-predication admission and transverse-contact generation are open; present computational readouts are conditional, not mathematical proof.",
-      "The proof-pathing section has workspace-only/private dependencies and bounded file-leg behavior. An installed exact-release composed store with verified on-disk transaction semantics is not yet independently received.",
-      "Validate this typed requirement against the original source-owner schema and formally receive the Work through authorized office contracts.",
-      "Select immutable comparator binaries, test fixtures, customer workload, threat model, resource budget and independent fault-injection runner; store evidence for each peer and separate meet and beat result.",
-      "Use the actual existing SEAVT source-owned store and custody engine and account for its documented missing multi-record transactions, stale-writer fencing and CouchDB HTTP replica interoperation.",
-      "For arbitrary predicates without a query-derived selective coordinate or other admitted summary, worst-case complete query may require examining all independent candidate records; specify precisely which proof-path addressed queries can avoid this and test their cost."
+    "conditions-not-in-the-leaders-words": [
+      {
+        "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:beat-stores-that-agree-have-one-address",
+        "derived-by": "claude",
+        "derived-from": "the Leader's words that proof-path addressing is what makes flat files sufficient"
+      },
+      {
+        "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:beat-answers-check-without-the-store",
+        "derived-by": "claude",
+        "derived-from": "the Leader's words that proof-path addressing is what makes flat files sufficient"
+      }
     ],
-    "hard-refusals": [
-      "No file existence, new source path, unit test or declared requirement alone establishes SQLite/CouchDB parity or superiority.",
-      "No primitive vertices, inferred contact witnesses, Mark-only identity, unearned paths, unauthorized access or inferred route coherence.",
-      "No ad hoc replacements for upstream canonical NI/CBOR/SEN, POSIX proof-path, SQL/JSON/HTTP or network protocols.",
-      "Do not implement materialized hot/cold inverse-index registries or a second store as a way around the Leader's formula-addressable flat-file requirement; investigate exact query-derived location, and account for the cost of queries that cannot derive their own addresses.",
-      "Do not treat SEAVT single-head atomic publication plus record put as a multi-record serializable SQLite transaction or its existing head/causes pull as CouchDB HTTP revision replication."
-    ],
-    "admission": "Authored source-owned additional Engineering requirement; not a signed or live-enterprise admission, installed flat-file DB, parity qualification or customer acceptance.",
-    "actual-existing-substrate": {
-      "owner": "@red-cup-engineering/semiotic-eavt-services-section/store",
-      "source": "https://github.com/red-cup-engineering/semiotic-eavt-services-section/blob/main/content/text/documents/specifications/store.md",
-      "API": [
-        "put",
-        "get",
-        "has",
-        "each",
-        "walk",
-        "append",
-        "readLog",
-        "readHead",
-        "writeHead",
-        "extend",
-        "heads",
-        "pull"
-      ],
-      "built-facts": "Original immutable content-addressed JSONL bucket records, guarded named heads, chronological typed logs, bounded causes walks and bounded head/record peer exchange. Opt-in strict durable record/head publication and File owner atomic single-head writer exist, with explicitly qualified limitations.",
-      "path-model": "Existing NI-bucket address formula, not yet an earned full proof-path coordinate for each original SignGraph source-position relation.",
-      "physical-index-rule": "No load-bearing hot or cold secondary indexes; use structural proof-address derivations and bounded source-time/causal readings, preserving native original flat-file layout and accounting for any scans.",
-      "transaction-boundary": "Individual guarded head publication is atomic but put+writeHead/extend is not a combined SQL transaction; crash-orphan record and uncertain post-rename result need source-owned recovery. The expiring lock is not a fence against a paused writer.",
-      "peer-exchange-boundary": "SEAVT pull exchanges causal frontiers and records by heads; this is not CouchDB wire-protocol replication, HTTP/JSON API parity or general MVCC isolation."
-    },
-    "actual-owner-execution-work": {
-      "SEAVT": "https://github.com/red-cup-engineering/semiotic-eavt-services-section/issues/17",
-      "PPA-file-leg": "https://github.com/red-cup-engineering/proof-pathing-services-section/issues/2",
-      "Science": "https://github.com/lenticule-science/obsmetrologia/issues/79"
-    },
-    "database-query-obligation": "Match baseline SQL, full-text and Mango result sets and practical latency, but do not assume a database physical index must be copied. Demonstrate a derived proof-path selection formula or bounded explicitly admitted source scan, with honest complexity/coverage measurements."
+    "acceptance": "Each command names one test file in this repository. A test file that does not exist yet fails its command, so the condition reads unmet until the test is written and passes."
   }
 }

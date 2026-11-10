@@ -1,0 +1,46 @@
+{
+  "id": "signgraph-routes-by-hits",
+  "name": "SignGraph routes by HITS",
+  "kind": "requirement",
+  "raised-by": "emsenn",
+  "asks": "agentic slime mold HITS only",
+  "met-when": [
+    {
+      "cell": "signgraph-routes-by-hits:hub-and-authority-scores",
+      "target": "held",
+      "says": "The hub and authority scores of a graph of cells are computed by the HITS iteration in exact arithmetic to a stated number of rounds, and equal a reference HITS implementation's scores on the same graph to its precision.",
+      "command": "node --test test/requirements/signgraph-routes-by-hits/hub-and-authority-scores.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-routes-by-hits:routes-follow-the-scores",
+      "target": "held",
+      "says": "A route between two cells is chosen by those scores alone, reinforced along the edges that were used and decayed along those that were not, as a slime mold reinforces the tubes that carry flow; no other ranking takes part.",
+      "command": "node --test test/requirements/signgraph-routes-by-hits/routes-follow-the-scores.test.mjs",
+      "expected-exit": 0
+    }
+  ],
+  "x-provenance": {
+    "recorded-by": "claude",
+    "recorded-on": "2026-11-10",
+    "sources": [
+      {
+        "words": "agentic slime mold HITS only",
+        "from": "the Leader, SignGraph issue 26, 2026-10-21"
+      }
+    ],
+    "conditions-not-in-the-leaders-words": [
+      {
+        "cell": "signgraph-routes-by-hits:hub-and-authority-scores",
+        "derived-by": "claude",
+        "derived-from": "a plain reading of the Leader's four words; the Leader has not said more"
+      },
+      {
+        "cell": "signgraph-routes-by-hits:routes-follow-the-scores",
+        "derived-by": "claude",
+        "derived-from": "a plain reading of the Leader's four words; the Leader has not said more"
+      }
+    ],
+    "acceptance": "Each command names one test file in this repository. A test file that does not exist yet fails its command, so the condition reads unmet until the test is written and passes."
+  }
+}

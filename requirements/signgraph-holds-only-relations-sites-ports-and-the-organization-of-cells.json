@@ -1,0 +1,48 @@
+{
+  "id": "signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells",
+  "name": "SignGraph holds relations, sites, Ports and the organization of cells, and nothing that belongs to a consumer",
+  "kind": "requirement",
+  "raised-by": "emsenn",
+  "asks": "SignGraph holds almost nothing of SignGraph and much that belongs to downstream consumers, such as the feather graph codecs. Move that material to its consumers and make SignGraph a coherent library.",
+  "met-when": [
+    {
+      "cell": "signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells:no-codec",
+      "target": "held",
+      "says": "No export reads or writes a named format, protocol or standard (FEATHER-G, DOT, CSV, JSON Schema, SEN, OTLP and the like). Each such reader or writer is in the section of its format and imports SignGraph.",
+      "command": "node --test test/requirements/signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells/no-codec.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells:no-mathematics-of-its-own",
+      "target": "held",
+      "says": "A module whose definitions never mention a cell, a relation between cells, a site or a Port is not in SignGraph: mathematics is imported from Metrologic.",
+      "command": "node --test test/requirements/signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells/no-mathematics-of-its-own.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells:no-single-consumer-export",
+      "target": "held",
+      "says": "No export exists for one named downstream application. What only one consumer uses is in that consumer.",
+      "command": "node --test test/requirements/signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells/no-single-consumer-export.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells:one-documented-surface",
+      "target": "held",
+      "says": "Every export in package.json is described in docs/API.md with an example that CI runs, and docs/API.md describes nothing that is not exported.",
+      "command": "node --test test/requirements/signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells/one-documented-surface.test.mjs",
+      "expected-exit": 0
+    }
+  ],
+  "x-provenance": {
+    "recorded-by": "claude",
+    "recorded-on": "2026-11-10",
+    "sources": [
+      {
+        "words": "SignGraph holds almost nothing of SignGraph and much that belongs to downstream consumers, such as the feather graph codecs. Move that material to its consumers and make SignGraph a coherent library.",
+        "from": "the Leader's brief of 2026-11-10, item 3"
+      }
+    ],
+    "acceptance": "Each command names one test file in this repository. A test file that does not exist yet fails its command, so the condition reads unmet until the test is written and passes."
+  }
+}

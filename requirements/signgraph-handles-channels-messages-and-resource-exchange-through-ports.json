@@ -1,0 +1,72 @@
+{
+  "id": "signgraph-handles-channels-messages-and-resource-exchange-through-ports",
+  "name": "SignGraph handles channels, messages, resources and resource exchange through Ports",
+  "kind": "requirement",
+  "raised-by": "emsenn",
+  "asks": "improve the ability of signgraph to handle channels, messages, resources, resource exchange, so that signcraft is more able to handle multicellular structures, complex resource flows",
+  "met-when": [
+    {
+      "cell": "signgraph-handles-channels-messages-and-resource-exchange-through-ports:port",
+      "target": "held",
+      "says": "A Port is constructed from a finite set of message kinds and an independence relation on them, as the glossary defines it, and is a frozen value.",
+      "command": "node --test test/requirements/signgraph-handles-channels-messages-and-resource-exchange-through-ports/port.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-handles-channels-messages-and-resource-exchange-through-ports:refusal",
+      "target": "held",
+      "says": "Offering a Port a message whose kind it does not list returns a typed refusal naming the Port and the kind, and changes nothing.",
+      "command": "node --test test/requirements/signgraph-handles-channels-messages-and-resource-exchange-through-ports/refusal.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-handles-channels-messages-and-resource-exchange-through-ports:independent-messages-commute",
+      "target": "held",
+      "says": "Two messages the Port's independence relation relates give the same graph in either order of delivery; two it does not relate keep their order.",
+      "command": "node --test test/requirements/signgraph-handles-channels-messages-and-resource-exchange-through-ports/independent-messages-commute.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-handles-channels-messages-and-resource-exchange-through-ports:composition",
+      "target": "held",
+      "says": "Two graphs that share a Port compose into one graph across it; the composite's cells are exactly the cells of both, and every message that crossed the Port is a cell of the composite.",
+      "command": "node --test test/requirements/signgraph-handles-channels-messages-and-resource-exchange-through-ports/composition.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-handles-channels-messages-and-resource-exchange-through-ports:resource-exchange",
+      "target": "held",
+      "says": "An exchange of a resource between two cells across a Port is conserved: the composite graph holds what left one side as what arrived at the other, in exact numbers, and an exchange that would not balance is refused.",
+      "command": "node --test test/requirements/signgraph-handles-channels-messages-and-resource-exchange-through-ports/resource-exchange.test.mjs",
+      "expected-exit": 0
+    }
+  ],
+  "x-provenance": {
+    "recorded-by": "claude",
+    "recorded-on": "2026-11-10",
+    "sources": [
+      {
+        "words": "improve the ability of signgraph to handle channels, messages, resources, resource exchange, so that signcraft is more able to handle multicellular structures, complex resource flows",
+        "from": "the Leader, SignCraft issue 11, 2026-10-21"
+      }
+    ],
+    "conditions-not-in-the-leaders-words": [
+      {
+        "cell": "signgraph-handles-channels-messages-and-resource-exchange-through-ports:port",
+        "derived-by": "claude",
+        "derived-from": "the glossary's definition of Port, as read in the 2026-11-07 Sign family plan"
+      },
+      {
+        "cell": "signgraph-handles-channels-messages-and-resource-exchange-through-ports:refusal",
+        "derived-by": "claude",
+        "derived-from": "the glossary's definition of Port"
+      },
+      {
+        "cell": "signgraph-handles-channels-messages-and-resource-exchange-through-ports:independent-messages-commute",
+        "derived-by": "claude",
+        "derived-from": "the glossary's definition of Port"
+      }
+    ],
+    "acceptance": "Each command names one test file in this repository. A test file that does not exist yet fails its command, so the condition reads unmet until the test is written and passes."
+  }
+}
