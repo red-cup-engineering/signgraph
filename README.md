@@ -9,6 +9,18 @@
 
 Relations, sites, fibers and sheaves organizing SignCell cells and SignChain orderings.
 
+## Quickstart
+
+Compose paths over SignCell cells and inspect the ordered predicate sequence of a composite. The [runnable example](examples/quickstart.test.mjs)
+uses the same public imports as an installed application.
+
+```sh
+npm run test:consumer
+```
+
+Run the source suite with `npm test`. See the [public API](docs/API.md) for
+verified import paths and acceptance cases.
+
 ## Place in the family
 
 Metrologic → SignCell → SignChain → SignGraph → SignCraft. Each library may import
@@ -31,7 +43,6 @@ npm install @red-cup-engineering/signgraph --registry=https://registry.561.group
 
 The family is being rebuilt to that order. See
 [the plan](https://github.com/red-cup-engineering/computer-engineering-services-section/blob/main/content/text/documents/specifications/2026-11-07-rebuilding-the-sign-family-from-its-theory.md).
-The test suites were removed on 2026-11-07 and will be rewritten from the theory.
 
 ## Requirements
 

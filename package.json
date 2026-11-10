@@ -7,7 +7,9 @@
   "description": "Relations, sites, fibers and sheaves organizing SignCell cells and SignChain orderings.",
   "files": [
     "src",
-    "examples/keratin-hole-workbench.mjs"
+    "examples/keratin-hole-workbench.mjs",
+    "docs/API.md",
+    "examples/quickstart.test.mjs"
   ],
   "exports": {
     "./package.json": "./package.json",
@@ -47,7 +49,9 @@
   },
   "scripts": {
     "check:keratin": "node --check src/feather-graph.mjs && node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs && node --check examples/keratin-hole-workbench.mjs",
-    "demo:keratin": "node examples/keratin-hole-workbench.mjs"
+    "demo:keratin": "node examples/keratin-hole-workbench.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:consumer": "node --test examples/quickstart.test.mjs"
   },
   "repository": {
     "type": "git",
