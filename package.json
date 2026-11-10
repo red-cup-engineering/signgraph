@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.9.3",
+  "version": "0.10.0",
   "license": "MIT",
   "packageManager": "pnpm@11.28.5",
   "type": "module",
@@ -39,7 +39,6 @@
     "./semantic-graph-schema": "./src/semantic-graph-schema.mjs",
     "./cellular-sheaf-complex": "./src/cellular-sheaf-complex.mjs",
     "./keratin-graph": "./src/keratin-graph.mjs",
-    "./feather-g-codec": "./src/feather-g-codec.mjs",
     "./alexandrov": "./src/alexandrov.mjs"
   },
   "dependencies": {
