@@ -28,13 +28,13 @@ jobs:
       - name: Check source syntax
         run: find src -name '*.mjs' -print0 | xargs -0 -n1 node --check
       - run: npm test
-      - name: Inspect package contents
-        run: npm pack --dry-run --json
       - name: Run the shipped quickstart in a clean consumer
         run: |
           consumer=$(mktemp -d)
           trap 'rm -rf "$consumer"' EXIT
-          archive=$(npm pack --ignore-scripts --pack-destination "$consumer")
+          archive=$(npm pack --silent --ignore-scripts --pack-destination "$consumer")
           cd "$consumer"
           npm install --ignore-scripts --no-audit --no-fund --registry=https://registry.561.group/ "./$archive"
-          node --test node_modules/@red-cup-engineering/signgraph/examples/quickstart.test.mjs
+          test -f node_modules/@red-cup-engineering/signgraph/docs/API.md
+          cp node_modules/@red-cup-engineering/signgraph/examples/quickstart.test.mjs quickstart.test.mjs
+          node --test ./quickstart.test.mjs
