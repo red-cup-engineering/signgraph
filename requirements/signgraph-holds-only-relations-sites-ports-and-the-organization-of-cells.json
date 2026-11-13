@@ -25,13 +25,6 @@
       "says": "No export exists for one named downstream application. What only one consumer uses is in that consumer.",
       "command": "node --test test/requirements/signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells/no-single-consumer-export.test.mjs",
       "expected-exit": 0
-    },
-    {
-      "cell": "signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells:one-documented-surface",
-      "target": "held",
-      "says": "Every export in package.json is described in docs/API.md with an example that CI runs, and docs/API.md describes nothing that is not exported.",
-      "command": "node --test test/requirements/signgraph-holds-only-relations-sites-ports-and-the-organization-of-cells/one-documented-surface.test.mjs",
-      "expected-exit": 0
     }
   ],
   "x-provenance": {

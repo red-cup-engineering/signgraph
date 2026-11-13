@@ -8,7 +8,6 @@
   "files": [
     "src",
     "examples/keratin-hole-workbench.mjs",
-    "docs/API.md",
     "examples/quickstart.test.mjs"
   ],
   "exports": {

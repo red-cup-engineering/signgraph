@@ -18,8 +18,7 @@ uses the same public imports as an installed application.
 npm run test:consumer
 ```
 
-Run the source suite with `npm test`. See the [public API](docs/API.md) for
-verified import paths and acceptance cases.
+Run the source suite with `npm test`.
 
 ## Place in the family
 
