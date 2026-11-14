@@ -202,13 +202,21 @@ export function unrelatedPairs(value) {
  *  for-evidence up from the specialized predicate to the general one, against-evidence down. */
 export function transportRules(value) {
   const closed = closeSpecialization(value.base);
-  const has = (at) => value.cells.some((other) => coincides(triple(other), triple(at)));
+  // The site's cells indexed once: by triple key (is the general cell in the site?) and by predicate
+  // (which cells does an edge's specialized predicate carry?), so the rules cost one pass per edge's
+  // cells instead of a canonical comparison against every cell of the site.
+  const keys = new Set(value.cells.map((at) => tripleKey(triple(at))));
+  const byPredicate = new Map();
+  for (const at of value.cells) {
+    const key = coincidenceKey(at.predicate);
+    if (!byPredicate.has(key)) byPredicate.set(key, []);
+    byPredicate.get(key).push(at);
+  }
   const rules = [];
   for (const edge of closed.specialization) {
-    for (const at of value.cells) {
-      if (!coincides(at.predicate, edge.codomain)) continue;
+    for (const at of byPredicate.get(coincidenceKey(edge.codomain)) ?? []) {
       const general = triple(cell(at.subject, edge.domain, at.object));
-      if (!has(general)) continue;
+      if (!keys.has(tripleKey(general))) continue;
       rules.push(rule(`specialization-for:${JSON.stringify([at.subject, edge.codomain, edge.domain, at.object])}`, [{ cell: at, atLeast: "potential" }], { cell: general, reading: "potential" }));
       rules.push(rule(`specialization-against:${JSON.stringify([at.subject, edge.domain, edge.codomain, at.object])}`, [{ cell: general, atLeast: "active" }], { cell: at, reading: "active" }));
     }
