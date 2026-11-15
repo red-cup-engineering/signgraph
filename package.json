@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.10.4-dev.0",
+  "version": "0.10.5-dev.0",
   "license": "MIT",
   "packageManager": "pnpm@11.28.5",
   "type": "module",
