@@ -37,7 +37,8 @@
     "./semantic-graph-schema": "./src/semantic-graph-schema.mjs",
     "./cellular-sheaf-complex": "./src/cellular-sheaf-complex.mjs",
     "./keratin-graph": "./src/keratin-graph.mjs",
-    "./alexandrov": "./src/alexandrov.mjs"
+    "./alexandrov": "./src/alexandrov.mjs",
+    "./diagram": "./src/diagram.mjs"
   },
   "dependencies": {
     "@red-cup-engineering/metrologic": "^0.22.0",
