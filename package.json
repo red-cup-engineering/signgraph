@@ -37,10 +37,12 @@
     "./cellular-sheaf-complex": "./src/cellular-sheaf-complex.mjs",
     "./keratin-graph": "./src/keratin-graph.mjs",
     "./alexandrov": "./src/alexandrov.mjs",
-    "./diagram": "./src/diagram.mjs"
+    "./diagram": "./src/diagram.mjs",
+    "./combinatorial-map": "./src/combinatorial-map.mjs",
+    "./coloring": "./src/coloring.mjs"
   },
   "dependencies": {
-    "@red-cup-engineering/metrologic": "^0.22.0",
+    "@red-cup-engineering/metrologic": "^0.22.10",
     "@red-cup-engineering/signcell": "^0.17.3",
     "@red-cup-engineering/signchain": "^0.6.3"
   },
