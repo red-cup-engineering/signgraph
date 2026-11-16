@@ -10,6 +10,7 @@
  * predicate names — the part of a path that does not saturate back into a cell.
  */
 import { coincides } from "@red-cup-engineering/signcell/cell";
+import { Disclination } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/affine-holonomy";
 
 const labels = (edge) => (Array.isArray(edge.predicate) ? edge.predicate : [edge.predicate]);
 
@@ -54,11 +55,15 @@ export function composeAndReopen(edges) {
  * Inferred topological charge is not by itself physical temperature or
  * an authenticated SignCell witness. This is exact coordinate transport.
  */
-const sixfoldR = ([a, b]) => [-b, a + b];
-const sixfoldRotate = (vector, turns) => {
-  let out = vector;
-  for (let j = 0; j < turns % 6; j++) out = sixfoldR(out);
-  return out;
+// The Metrologic frame rotation is linear. Read it on the two unit vectors
+// and apply those images in BigInt to keep intermediate coordinates exact.
+const sixfoldBasisImages = Array.from({ length: 6 }, (_, turn) => ({
+  first: Disclination.rotPow(turn, [1, 0]).map(BigInt),
+  second: Disclination.rotPow(turn, [0, 1]).map(BigInt),
+}));
+const sixfoldRotate = ([a, b], turns) => {
+  const { first, second } = sixfoldBasisImages[turns % sixfoldBasisImages.length];
+  return first.map((coordinate, index) => a * coordinate + b * second[index]);
 };
 const sixfoldSafe = value => {
   if (value > BigInt(Number.MAX_SAFE_INTEGER) || value < BigInt(Number.MIN_SAFE_INTEGER))

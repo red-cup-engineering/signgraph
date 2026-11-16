@@ -6,8 +6,8 @@
  * f(o) − f(s). Its kernel H⁰ is the locally constant 0-cochains — one per
  * connected component, with the component indicators as basis — and its
  * cokernel H¹ has rank the cycle rank |cells| − |entities| + |components|, the
- * first Betti number: the cycles no 0-cochain bounds. Components are found by
- * union–find; nothing here needs linear algebra.
+ * first Betti number: the cycles no 0-cochain bounds. Metrologic supplies the
+ * component calculation and exact matrix operations.
  *
  * This is GRAPH-ONLY H¹ of an already admitted predication-cell
  * 1-skeleton. It is not the H¹ of a proposed quotient-identification
@@ -23,17 +23,16 @@
  * mark-gluing → this cohomology consumer, not an independent Mark
  * identity imposed from already known space.
  */
-import { charPoly, fromInts, rank, toCount, toInt } from "@red-cup-engineering/metrologic/number/exact-number";
-
-/** The rank of an integer matrix of host numbers, exactly. */
-const integerRank = (matrix) => (matrix.length === 0 ? 0 : toCount(rank(fromInts(matrix))));
-/** The characteristic polynomial det(xI − A) of a host-integer matrix, highest degree first, exactly. */
-const characteristicPolynomial = (matrix) => (matrix.length === 0 ? Object.freeze([1]) : Object.freeze(charPoly(fromInts(matrix)).map(toInt).reverse()));
+import { charPoly, fromInts, matmul, matTranspose, rank, toCount, toInt } from "@red-cup-engineering/metrologic/number/exact-number";
+import { createGraph, weaklyConnectedComponents } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
+import { readingOfRecord, record, sidesOfReading, topMass } from "@red-cup-engineering/metrologic/four";
+import { coverNerve, h1Rank } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/coordination-cohomology";
 import { admitTripleSequence, coincides, coincidenceKey } from "@red-cup-engineering/signcell/cell";
 import { sourceIncidencePairs, sourceIsolatedEntities } from "./site.mjs";
 import { sixfoldMotion, sixfoldIdentity, sixfoldCompose, sixfoldInverse } from "./paths.mjs";
-import { readingOfRecord, record, sidesOfReading, topMass } from "@red-cup-engineering/metrologic/four";
-import { coverNerve, h1Rank } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/coordination-cohomology";
+
+/** The rank of an integer matrix of host numbers, exactly. */
+const integerRank = (matrix) => (matrix.length === 0 ? 0 : toCount(rank(fromInts(matrix))));
 
 const uniqueBy = (values, same) => {
   const out = [];
@@ -90,12 +89,20 @@ export function cohomologyOfCells(cells, extraEntities = []) {
     row[value.sourceIndex] -= 1;
     return Object.freeze(row);
   }));
-  const parent = entities.map((_, index) => index);
-  const find = (index) => (parent[index] === index ? index : (parent[index] = find(parent[index])));
-  for (const value of originals)
-    parent[find(value.sourceIndex)] = find(value.targetIndex);
-  const roots = [...new Set(entities.map((_, index) => find(index)))];
-  const h1 = originals.length - entities.length + roots.length;
+  const topology = createGraph({
+    nodes: entities.map((_, index) => ({ id: String(index) })),
+    edges: originals.map(({ sourceIndex, targetIndex }) => ({
+      from: String(sourceIndex),
+      to: String(targetIndex),
+    })),
+  });
+  const componentByEntity = Array(entities.length);
+  for (const component of weaklyConnectedComponents(topology)) {
+    for (const id of component) componentByEntity[Number(id)] = component;
+  }
+  // Keep the basis ordered by the first admitted entity in each component.
+  const components = [...new Set(componentByEntity)];
+  const h1 = originals.length - entities.length + components.length;
   return Object.freeze({
     kind: "signgraph.cohomology",
     entities,
@@ -104,9 +111,9 @@ export function cohomologyOfCells(cells, extraEntities = []) {
     }))),
     incidence,
     zeroCohomology: Object.freeze({
-      rank: roots.length,
-      cocycleBasis: Object.freeze(roots.map(root => Object.freeze(
-        entities.map((_, index) => find(index) === root ? 1 : 0)))),
+      rank: components.length,
+      cocycleBasis: Object.freeze(components.map(component => Object.freeze(
+        componentByEntity.map(value => value === component ? 1 : 0)))),
     }),
     firstCohomology: Object.freeze({ rank: h1, vanishing: rankVanishing(h1) }),
   });
@@ -136,27 +143,22 @@ export const firstCohomologyRankOfCells = (cells, extraEntities = []) => cohomol
 
 // — the graph Laplacian of a cohomology reading —
 
-const transpose = (matrix, columns) => Object.freeze(Array.from({ length: columns }, (_, j) => Object.freeze(matrix.map((row) => row[j]))));
-const multiply = (left, right) => Object.freeze(left.map((row) => Object.freeze(right[0] === undefined ? [] : right[0].map((_, j) => {
-  const value = row.reduce((sum, entry, k) => sum + entry * right[k][j], 0);
-  if (!Number.isSafeInteger(value)) throw new RangeError("signgraph laplacian: an entry left the exact integer range");
-  return value;
-}))));
-
 /** The graph Laplacian of a cohomology reading: L = Iᵀ·I over its incidence I (cells × entities), its
  *  characteristic polynomial, the ranks of I and L, and the rank identities H⁰ = |entities| − rank I and
  *  H¹ = |cells| − rank I. */
 export function cohomologyLaplacian(cohomology) {
   const incidence = cohomology.incidence;
-  const entityLaplacian = incidence.length === 0 ? Object.freeze([]) : multiply(transpose(incidence, cohomology.entities.length), incidence);
-  const incidenceRank = integerRank(incidence);
+  const exactIncidence = fromInts(incidence);
+  const laplacian = exactIncidence.length === 0 ? [] : matmul(matTranspose(exactIncidence), exactIncidence);
+  const entityLaplacian = Object.freeze(laplacian.map(row => Object.freeze(row.map(toInt))));
+  const incidenceRank = toCount(rank(exactIncidence));
   return Object.freeze({
     kind: "signgraph.laplacian",
     incidence,
     entityLaplacian,
-    characteristicPolynomial: characteristicPolynomial(entityLaplacian),
+    characteristicPolynomial: Object.freeze(charPoly(laplacian).map(toInt).reverse()),
     incidenceRank,
-    laplacianRank: integerRank(entityLaplacian),
+    laplacianRank: toCount(rank(laplacian)),
     zeroCohomologyKernelRank: rankIdentity(cohomology.zeroCohomology.rank, cohomology.entities.length - incidenceRank),
     firstCohomologyCokernelRank: rankIdentity(cohomology.firstCohomology.rank, cohomology.cells.length - incidenceRank),
   });
