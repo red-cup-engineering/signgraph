@@ -26,7 +26,7 @@
 import { charPoly, fromInts, matmul, matTranspose, rank, toCount, toInt } from "@red-cup-engineering/metrologic/number/exact-number";
 import { createGraph, weaklyConnectedComponents } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { readingOfRecord, record, sidesOfReading, topMass } from "@red-cup-engineering/metrologic/four";
-import { coverNerve, h1Rank } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/coordination-cohomology";
+import { coverNerve, h0Rank, h1Rank } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/coordination-cohomology";
 import { admitTripleSequence, coincides, coincidenceKey } from "@red-cup-engineering/signcell/cell";
 import { sourceIncidencePairs, sourceIsolatedEntities } from "./site.mjs";
 import { sixfoldMotion, sixfoldIdentity, sixfoldCompose, sixfoldInverse } from "./paths.mjs";
@@ -176,6 +176,21 @@ export function cohomologyReceiptOfCells(cells, extraEntities = []) {
 }
 
 // — the cover nerve: Euler counts of a federated cover —
+
+/** Read the ranks and coordination cost of a graph cover nerve from its Euler counts. */
+export function computeCoverNerve({ entities, cells, components } = {}) {
+  const nerve = coverNerve(entities, cells, components);
+  const h0rank = h0Rank(nerve);
+  // Subtract the spanning forest first so the rank stays exact for safe counts.
+  const h1rank = nerve.cells - (nerve.entities - h0rank);
+  return {
+    h0rank,
+    h1rank,
+    coordinationFree: h1rank === 0,
+    landauerBits: h1rank,
+    coordinationCost: h1rank,
+  };
+}
 
 /** The cover nerve of a cohomology reading. */
 export const coverNerveOfCohomology = (cohomology) => coverNerve(cohomology.entities.length, cohomology.cells.length, cohomology.zeroCohomology.rank);
