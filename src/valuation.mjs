@@ -8,7 +8,7 @@
  * the presheaf settlement reads: the site with a trace of valuations, seeded
  * with the posited one. The sheaf is a valuation taken as the global section.
  */
-import { cell, cellAt, cellSet, mergeCellSets, triple, tripleKey } from "@red-cup-engineering/signcell/cell";
+import { cell, cellAt, cellSet, mergeCellSets, triple, tripleKey } from "@red-cup-engineering/signcell";
 import { knowledgeLeq } from "@red-cup-engineering/signchain/bilattice";
 import { freeSite, site as siteOf } from "./site.mjs";
 

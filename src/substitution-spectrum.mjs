@@ -16,9 +16,10 @@
  * proves neither irreducible MINIMAL degree, Pisot growth, quasicrystal,
  * cohomological rank, nor any non-finite closure regime.
  */
-import { isMark } from "@red-cup-engineering/signcell/mark";
-import { isUtterance, traceOfArticulating } from "@red-cup-engineering/signcell/utterance";
-import { semanticId, admitCell, cellSet, measured, presence, recordOf } from "@red-cup-engineering/signcell/cell";
+import { isMark } from "@red-cup-engineering/signcell";
+import { isUtterance, traceOfArticulating } from "@red-cup-engineering/signcell";
+import { semanticId } from "@red-cup-engineering/semiotic-content-address-system";
+import { admitCell, cellSet, measured, presence, recordOf } from "@red-cup-engineering/signcell";
 import { charPoly, fromInts, toInt } from "@red-cup-engineering/metrologic/number/exact-number";
 import { cohomologyOfEdgeGraph } from "./cohomology.mjs";
 

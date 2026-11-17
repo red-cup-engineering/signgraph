@@ -8,10 +8,13 @@
  * organizations are SignChain's `chuMap`.
  */
 import {
-  address, admitCell, admitCellSequence, admitTripleSequence, assertInertCarrierSource, cellSet,
-  coincidenceKey, coincides, measured, presence, readSourceRecord, recordOf, retainedCarrier,
-  sameCell, semanticId, valueOf
-} from "@red-cup-engineering/signcell/cell";
+  address, admitCell, admitCellSequence, admitTripleSequence, cellSet, measured, presence, recordOf,
+  sameCell, knowledgeReading as valueOf,
+} from "@red-cup-engineering/signcell";
+import {
+  assertInertCarrierSource, coincidenceKey, coincides, readSourceRecord, retainedCarrier,
+  semanticId,
+} from "@red-cup-engineering/semiotic-content-address-system";
 import { natZero, natOne, natAdd, fromNatural } from "@red-cup-engineering/metrologic/number/exact-number";
 import { chuSpaceOfEntries } from "@red-cup-engineering/metrologic/chu";
 import {

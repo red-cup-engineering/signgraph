@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { computeCoverNerve, linkGraphNerve } from "../src/cohomology.mjs";
+import { computeCoverNerve, linkGraphNerve } from "@red-cup-engineering/signgraph/cohomology";
 
 test("cover-nerve readout reports a cycle and preserves isolated vertices", () => {
   const nerve = linkGraphNerve(["a", "b", "c", "d"], [

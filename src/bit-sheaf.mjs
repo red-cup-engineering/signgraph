@@ -6,7 +6,7 @@
  * operation, not an authentication of supplied patches or sovereign authority.
  * Cf. Obsmetrologia.Site.Basic / ProtectedCover.
  */
-import { isNiUri } from "@red-cup-engineering/signcell/ni";
+import { isNiUri } from "@red-cup-engineering/semiotic-content-address-system";
 
 export const MAX_BIT_SECTION = 32768;
 const natural = n => Number.isSafeInteger(n) && n >= 0;
