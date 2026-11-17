@@ -27,7 +27,8 @@ import { charPoly, fromInts, matmul, matTranspose, rank, toCount, toInt } from "
 import { createGraph, weaklyConnectedComponents } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { readingOfRecord, record, sidesOfReading, topMass } from "@red-cup-engineering/metrologic/four";
 import { coverNerve, h0Rank, h1Rank } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/coordination-cohomology";
-import { admitTripleSequence, coincides, coincidenceKey } from "@red-cup-engineering/signcell/cell";
+import { admitTripleSequence } from "@red-cup-engineering/signcell";
+import { coincides, coincidenceKey } from "@red-cup-engineering/semiotic-content-address-system";
 import { sourceIncidencePairs, sourceIsolatedEntities } from "./site.mjs";
 import { sixfoldMotion, sixfoldIdentity, sixfoldCompose, sixfoldInverse } from "./paths.mjs";
 

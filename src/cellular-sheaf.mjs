@@ -19,7 +19,9 @@
  * Deterministic: only + − × ÷ and Math.sqrt (IEEE correctly rounded), in a fixed summation
  * order; no transcendental functions.
  */
-import { canonicalCarrier, coincidenceKey, coincides } from "@red-cup-engineering/signcell/cell";
+import {
+  canonicalCarrier, coincidenceKey, coincides,
+} from "@red-cup-engineering/semiotic-content-address-system";
 import { isExactEntry, ratPairOfEntry, ratRank, ratSolve } from "@red-cup-engineering/metrologic/number/rational-matrix";
 import { rationalToFiniteNumber } from "@red-cup-engineering/metrologic/number/exact-number";
 import { rationalOfBigInts } from "@red-cup-engineering/metrologic/number/exact-number";

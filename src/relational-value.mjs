@@ -3,9 +3,15 @@
 // content address of its ascription. The term is a plain SignCell canonical
 // carrier (pair/mark/star arrays); its spelling is unchanged from the SEN
 // encoding it was first written in, so every identity is preserved.
-import { base64ToBytes, bytesCompare, bytesEqual, bytesToBase64, concatBytes, decodeSemantic as decodeCanonical, ownedBytes, utf8Bytes } from "@red-cup-engineering/signcell/content-address";
-import { makeNiUri, NI_URI_PATTERN } from "@red-cup-engineering/signcell/ni";
-import { canonicalizeSemioticJson, cell as predicationCell, cellSet, semanticBytes, semanticId } from "@red-cup-engineering/signcell/cell";
+import {
+  base64ToBytes, bytesCompare, bytesEqual, bytesToBase64, concatBytes,
+  decodeSemantic as decodeCanonical, ownedBytes, utf8Bytes,
+} from "@red-cup-engineering/semiotic-content-address-system";
+import { makeNiUri, NI_URI_PATTERN } from "@red-cup-engineering/semiotic-content-address-system";
+import {
+  canonicalizeSemioticJson, semanticBytes, semanticId,
+} from "@red-cup-engineering/semiotic-content-address-system";
+import { cell as predicationCell, cellSet } from "@red-cup-engineering/signcell";
 
 // A mark is a textual term; it does not introduce a nominal type.
 const MARK = ["base"];

@@ -1,6 +1,6 @@
 // Pure placement-independent SEN die material.
-import { NI_URI_PATTERN as NI } from "@red-cup-engineering/signcell/ni";
-import { canonicalEqual } from "@red-cup-engineering/signcell/canonical-cbor";
+import { NI_URI_PATTERN as NI } from "@red-cup-engineering/semiotic-content-address-system";
+import { canonicalEqual } from "@red-cup-engineering/semiotic-content-address-system";
 import {
   normalizeCircuitAssembly, normalizeHierarchicalCircuit, verifyCircuitAssembly,
 } from "./hierarchical-circuit.mjs";

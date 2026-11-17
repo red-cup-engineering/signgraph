@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/signgraph",
-  "version": "0.10.8-dev.0",
+  "version": "0.11.0-dev.0",
   "license": "MIT",
   "packageManager": "pnpm@11.28.5",
   "type": "module",
@@ -14,6 +14,9 @@
     "./feather-graph": "./src/feather-graph.mjs",
     "./mesh": "./src/mesh.mjs",
     "./graph": "./src/graph.mjs",
+    "./ports": "./src/ports.mjs",
+    "./dependency-cone": "./src/dependency-cone.mjs",
+    "./work-settlement": "./src/work-settlement.mjs",
     "./relation-adapters": "./src/relation-adapters.mjs",
     "./relational-value": "./src/relational-value.mjs",
     "./hierarchical-circuit": "./src/hierarchical-circuit.mjs",
@@ -33,20 +36,23 @@
     "./substitution-spectrum": "./src/substitution-spectrum.mjs",
     "./j26-surface": "./src/j26-surface.mjs",
     "./semantic-graph": "./src/semantic-graph.mjs",
-    "./semantic-graph-schema": "./src/semantic-graph-schema.mjs",
     "./cellular-sheaf-complex": "./src/cellular-sheaf-complex.mjs",
     "./keratin-graph": "./src/keratin-graph.mjs",
     "./alexandrov": "./src/alexandrov.mjs",
-    "./diagram": "./src/diagram.mjs",
     "./combinatorial-map": "./src/combinatorial-map.mjs",
-    "./coloring": "./src/coloring.mjs"
+    "./coloring": "./src/coloring.mjs",
+    "./typed-relations": "./src/typed-relations.mjs",
+    "./proof-path": "./src/proof-path.mjs"
   },
   "dependencies": {
     "@red-cup-engineering/metrologic": "^0.22.10",
-    "@red-cup-engineering/signcell": "^0.17.3",
-    "@red-cup-engineering/signchain": "^0.6.3"
+    "@red-cup-engineering/signcell": "0.18.0-dev.0",
+    "@red-cup-engineering/signchain": "0.7.0-dev.0",
+    "@red-cup-engineering/typed-content": "0.1.0-dev.0",
+    "@red-cup-engineering/semiotic-content-address-system": "0.1.7-dev.1"
   },
   "scripts": {
+    "test": "node --test",
     "check:keratin": "node --check src/feather-graph.mjs && node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs"
   },
   "repository": {

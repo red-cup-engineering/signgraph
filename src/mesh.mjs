@@ -12,7 +12,8 @@
  * its claims, how two subjects' readings relate, and the concepts subjects generate.
  */
 import { extent, intent, makeContext } from "@red-cup-engineering/metrologic/closure/formal-context";
-import { knowledgeReading, semanticId } from "@red-cup-engineering/signcell/cell";
+import { knowledgeReading } from "@red-cup-engineering/signcell";
+import { semanticId } from "@red-cup-engineering/semiotic-content-address-system";
 import { census } from "@red-cup-engineering/metrologic/four";
 
 const text = (value) => JSON.stringify(value);

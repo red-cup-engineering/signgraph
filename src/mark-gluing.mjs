@@ -5,15 +5,18 @@
  * Quot.sound is the proof transport for a proved equivalence, not an
  * automatically charged thermodynamic event.
  */
-import { utterance, isUtterance, formalBoundaryOfUtterance, markRoleIncidenceOfUtterance, traceOfArticulating, reattendArticulating, compareImmediateArticulating }
-  from "@red-cup-engineering/signcell/utterance";
+import {
+  utterance, isUtterance, formalBoundaryOfUtterance, markRoleIncidenceOfUtterance,
+  traceOfArticulating, reattendArticulating, compareImmediateArticulating,
+} from "@red-cup-engineering/signcell";
 import { cellular2Complex } from "./cohomology.mjs";
 import { createGraph, observedTwoStepPaths } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { kinematicDiamondSpaceOf } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/causal";
 import { subset, meet, join, le } from "@red-cup-engineering/metrologic/sheaf/topology/d-frame";
 import { finitePreorder, admitUpperOpen, finiteCoherentSectionSpace, finitePrefixIncidenceFactors } from "@red-cup-engineering/metrologic/models/order/finite-preorder";
-import { articulatedPredications } from "@red-cup-engineering/signcell/predication";
-import { address as cellAddress, semanticId } from "@red-cup-engineering/signcell/cell";
+import { articulatedPredications } from "@red-cup-engineering/signchain/predication";
+import { address as cellAddress } from "@red-cup-engineering/signcell";
+import { semanticId } from "@red-cup-engineering/semiotic-content-address-system";
 import * as chain from "@red-cup-engineering/signchain/bilattice";
 
 const KIND="signgraph.markGeneratedCellGluing.v1";

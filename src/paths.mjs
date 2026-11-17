@@ -9,7 +9,7 @@
  * injective); the residue of a round is the label sequences no single
  * predicate names — the part of a path that does not saturate back into a cell.
  */
-import { coincides } from "@red-cup-engineering/signcell/cell";
+import { coincides } from "@red-cup-engineering/semiotic-content-address-system";
 import { Disclination } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/affine-holonomy";
 
 const labels = (edge) => (Array.isArray(edge.predicate) ? edge.predicate : [edge.predicate]);

@@ -9,7 +9,7 @@
  * Cells and the cover are supplied by a source. No face, witness, or
  * inclusion is invented from a drawn line or an unordered relation.
  */
-import { canonicalCarrier, coincidenceKey } from '@red-cup-engineering/signcell/cell';
+import { canonicalCarrier, coincidenceKey } from "@red-cup-engineering/semiotic-content-address-system";
 import { cellular2Complex } from './cohomology.mjs';
 import { cellularSheaf, sheafSourceArray, sheafSourceField, sheafSourceScalar } from './cellular-sheaf.mjs';
 import { ratPairOfEntry, ratRank } from '@red-cup-engineering/metrologic/number/rational-matrix';

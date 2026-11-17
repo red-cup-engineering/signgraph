@@ -15,25 +15,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          run_install: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install suppliers from the committed pnpm lock and the Group registry
-        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Check source syntax
         run: find src -name '*.mjs' -print0 | xargs -0 -n1 node --check
-      - run: npm test
-      - name: Run the shipped quickstart in a clean consumer
+      - name: Test the packed library through its published exports
         run: |
           consumer=$(mktemp -d)
           trap 'rm -rf "$consumer"' EXIT
           archive=$(npm pack --silent --ignore-scripts --pack-destination "$consumer")
+          cp -R test "$consumer/test"
           cd "$consumer"
           npm install --ignore-scripts --no-audit --no-fund --registry=https://registry.561.group/ "./$archive"
-          cp node_modules/@red-cup-engineering/signgraph/examples/quickstart.test.mjs quickstart.test.mjs
-          node --test ./quickstart.test.mjs
+          node --test

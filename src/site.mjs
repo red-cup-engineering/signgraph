@@ -19,19 +19,18 @@
  * Terms are opaque values compared by SignCell coincidence (canonical bytes).
  * Evidence is not part of a site: a site is where values can be, not what they are.
  */
+import { admitTriple, cell, triple, tripleKey } from "@red-cup-engineering/signcell";
 import {
-  admitTriple, cell, coincidenceKey, coincides, readSourceArray, readSourceRecord,
-  retainedCarrier, triple, tripleKey,
-} from "@red-cup-engineering/signcell/cell";
+  coincidenceKey, coincides, readSourceArray, readSourceRecord, retainedCarrier,
+} from "@red-cup-engineering/semiotic-content-address-system";
 import { rule } from "@red-cup-engineering/signchain/rules";
 import { createGraph, reachable } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 
 // Retain the published names without keeping a second Cell admission owner.
 // Native graph consumers import these operations directly from SignCell.
 export {
-  admitCellSequence as sourceIncidenceCells,
-  admitTripleSequence as sourceIncidenceTriples,
-} from "@red-cup-engineering/signcell/cell";
+  admitCellSequence as sourceIncidenceCells, admitTripleSequence as sourceIncidenceTriples,
+} from "@red-cup-engineering/signcell";
 
 // Distinct values by coincidence, first occurrence kept, in one pass over canonical-byte keys
 // (comparing every value with every kept one was quadratic in the number of cells).

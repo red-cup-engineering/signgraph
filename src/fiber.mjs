@@ -10,7 +10,10 @@
  * residuum, and the generators' laws (pullback commuting with both, Frobenius
  * reciprocity for ∃) are checked on fibers.
  */
-import { canonicalCarrier, coincides, coincidenceKey, knowledgeReading } from "@red-cup-engineering/signcell/cell";
+import {
+  canonicalCarrier, coincides, coincidenceKey,
+} from "@red-cup-engineering/semiotic-content-address-system";
+import { knowledgeReading } from "@red-cup-engineering/signcell";
 import { evidenceAt } from "./valuation.mjs";
 import { reindex, existsAlong, forallAlong } from "@red-cup-engineering/metrologic/hyperdoctrine/adjoints";
 import { isReading, knowledgeBottom, samePoint, fusionReading, residuumReading } from "@red-cup-engineering/metrologic/four";
