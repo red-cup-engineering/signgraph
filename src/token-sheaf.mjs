@@ -177,7 +177,7 @@ export function inheritedClaim(frame, token, predicate, object) {
  * reader grant and source revision before using its next offset.
  */
 export function queryInheritedTellings(frame, selection = {}, page = {}) {
-  const admitted = (record, keys, label) => {
+  const validated = (record, keys, label) => {
     if (record === null || typeof record !== "object" || Array.isArray(record) ||
         ![Object.prototype, null].includes(Object.getPrototypeOf(record)))
       throw new TypeError("signgraph " + label + ": only declared plain data fields are admitted");
@@ -190,8 +190,8 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   };
   // Read a fixed inert set of OWN data coordinates. Destructuring raw input
   // would consult inherited source getters even when Reflect.ownKeys passed.
-  const chosen = admitted(selection, ["token", "predicate", "object", "reading", "cellNi"], "claim selection");
-  const requestedPage = admitted(page, ["offset", "limit"], "claim page");
+  const chosen = validated(selection, ["token", "predicate", "object", "reading", "cellNi"], "claim selection");
+  const requestedPage = validated(page, ["offset", "limit"], "claim page");
   const { token, predicate, object, reading, cellNi } = chosen;
   const { offset = 0, limit = 24 } = requestedPage;
   if (Reflect.ownKeys(chosen).some((key) => chosen[key] === undefined) ||
@@ -204,9 +204,9 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   // The original frame maker owns clone/merge/admission; this query never
   // re-interprets an in-flight mutation as one coherent historical source.
   const source = admitTokenFrame(frame);
-  const admittedTokens = top(source);
+  const validatedTokens = top(source);
   const scopedTokens = Object.hasOwn(chosen, "token")
-    ? admittedTokens.filter((known) => coincides(known, token)) : admittedTokens;
+    ? validatedTokens.filter((known) => coincides(known, token)) : validatedTokens;
   if (Object.hasOwn(chosen, "token") && scopedTokens.length === 0)
     generalizations(source, token); // original precise foreign-token refusal
   const exact = Object.hasOwn(chosen, "predicate") && Object.hasOwn(chosen, "object");
@@ -225,7 +225,7 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
         ? index.byPredicate.get(coincidenceKey(predicate))
         : index.byObject.get(coincidenceKey(object));
     const candidateKeys = new Set();
-    if (sources) for (const original of admittedTokens) {
+    if (sources) for (const original of validatedTokens) {
       if (!sources.has(coincidenceKey(original))) continue;
       for (const descendant of extent(source, original))
         candidateKeys.add(coincidenceKey(descendant));

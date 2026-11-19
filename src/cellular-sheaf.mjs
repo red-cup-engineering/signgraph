@@ -30,7 +30,7 @@ import { rankVanishing } from "./cohomology.mjs";
 const freezeMatrix = (matrix) => Object.freeze(matrix.map((row) => Object.freeze([...row])));
 // Locally constructed charts have already passed the original complete owner.
 // A transported JSON copy must instead reconstruct and match that same owner.
-const admittedCellularSheaves = new WeakSet();
+const validatedCellularSheaves = new WeakSet();
 
 /**
  * Read a supplied sheaf record by own enumerable data descriptor ONLY.
@@ -223,7 +223,7 @@ export function cellularSheaf(source) {
     fromIndex: Object.freeze(from), toIndex: Object.freeze(to),
     c0, c1, exact,
   });
-  admittedCellularSheaves.add(constructed);
+  validatedCellularSheaves.add(constructed);
   return constructed;
 }
 
@@ -237,8 +237,8 @@ export function cellularSheaf(source) {
  * and mathematical only; neither a copied carrier nor this builder proves an
  * external source's identity, observational truth or effect authority.
  */
-export function admitCellularSheaf(source) {
-  if (source && typeof source === "object" && admittedCellularSheaves.has(source))
+export function validateCellularSheaf(source) {
+  if (source && typeof source === "object" && validatedCellularSheaves.has(source))
     return source;
   const chart = sourceCoverRecord(source,
     ["kind","vertices","edges","vertexOffsets","edgeOffsets","fromIndex",
@@ -325,7 +325,7 @@ export function constantSheaf(vertexIds, edgeList, dim = 1) {
  * Witnesses, source authority and FOUR remain with their original owners.
  */
 export function cochain(sheaf, entries, options = {}) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   const missing = sheafSourceField(options,"missing",true) ?? "zero";
   if (!["zero", "refuse"].includes(missing))
     throw new TypeError("cochain: missing policy must be zero or refuse");
@@ -370,7 +370,7 @@ const rowOf = (map) => [...map.entries()].sort((a, b) => a[0] - b[0]);
 
 /** The coboundary δ⁰ : C⁰ → C¹ as a sparse block matrix. */
 export function coboundary(sheaf) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   const entries = [];
   sheaf.edges.forEach((edge, e) => {
     const f = sheaf.fromIndex[e], t = sheaf.toIndex[e];
@@ -419,7 +419,7 @@ const gramLaplacian = (sheaf, entries) => {
 
 /** The sheaf Laplacian L = δᵀδ on C⁰, sparse and symmetric. */
 export function sheafLaplacian(sheaf) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   return gramLaplacian(sheaf, coboundary(sheaf).entries);
 }
 
@@ -435,7 +435,7 @@ const edgeMetricFactors = (sheaf, metrics) => {
   // descriptor-only admission used for restriction matrices. Calling a
   // caller's .every/.map or raw numeric getter here lets a negative matrix
   // fabricate a positive definite replacement before Cholesky.
-  const admitted = sheafSourceArray(metrics, "weighted source metrics");
+  const validated = sheafSourceArray(metrics, "weighted source metrics");
   let slots = 0n;
   for (const edge of sheaf.edges) {
     slots += BigInt(edge.dim) * BigInt(edge.dim);
@@ -443,7 +443,7 @@ const edgeMetricFactors = (sheaf, metrics) => {
       throw new RangeError("weightedSheaf: metric coefficient work budget exceeded");
   }
   return sheaf.edges.map((edge, e) => {
-    const metric = admitted[e], d = edge.dim;
+    const metric = validated[e], d = edge.dim;
     if (!Array.isArray(metric) || metric.length !== d)
       throw new RangeError("weightedSheaf: an edge metric has the wrong stalk dimension");
     const rows = sheafSourceArray(metric, "weighted edge metric");
@@ -483,7 +483,7 @@ const edgeMetricFactors = (sheaf, metrics) => {
  * Uses (Cᵀδ)ᵀ(Cᵀδ) where W = CCᵀ; the existing coboundary preserves self-edge cancellation and
  * non-identity restrictions. Sparse columns and all sums follow sheaf edge/stalk order. */
 export function weightedSheafLaplacian(sheaf, metrics) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   const factors = edgeMetricFactors(sheaf, metrics), delta = coboundary(sheaf);
   const entries = [];
   sheaf.edges.forEach((edge, e) => {
@@ -506,7 +506,7 @@ export function weightedSheafLaplacian(sheaf, metrics) {
  * Returns the unweighted edge residual and its metric energy for attribution; these are numeric
  * energies, not probabilities. SPD weights preserve ker L = ker δ = H⁰. */
 export function weightedSheafDirichlet(sheaf, metrics, x) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   const vector = finiteNumericVectorSource(x, sheaf.c0,
     "weighted source cochain",
     "weightedSheafDirichlet: a finite 0-cochain of the sheaf dimension is required",
@@ -555,7 +555,7 @@ export const MAX_EXACT_COHOMOLOGY_RANK_SLOTS = 65_536;
  * caller-supplied 'exact', dimensions or incidence cannot bypass admission.
  */
 export function exactCohomologyRankWithinBudget(sheaf) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   const { c0, c1 } = sheaf;
   return Number.isSafeInteger(c0) && Number.isSafeInteger(c1) &&
     c0 >= 0 && c1 >= 0 &&
@@ -568,7 +568,7 @@ export function exactCohomologyRankWithinBudget(sheaf) {
  * Transported charts are reconstructed through the original owner.
  */
 export function cellularSheafCohomologyStatus(sheaf) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   if (!sheaf.exact) return "not-evaluated: nonexact source restrictions";
   return exactCohomologyRankWithinBudget(sheaf)
     ? "exact"
@@ -580,7 +580,7 @@ export function cellularSheafCohomologyStatus(sheaf) {
  * readout is reconstructed from actual restrictions, not trusted because
  * it carries matching 'exact' or degree labels. */
 export function cellularSheafCohomology(sheaf) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   const status = cellularSheafCohomologyStatus(sheaf);
   if (status === "not-evaluated: nonexact source restrictions")
     throw new RangeError("cellularSheafCohomology: restriction entries must be exact (integers, bigints, rational carriers or \"a/b\")");
@@ -626,7 +626,7 @@ function exactCoboundary(sheaf) {
  * the cell identities and equation sources used in the calculation.
  */
 export function extendCellularSheafSection(sheaf, observations = []) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   // The direct extension entry point must obey the SAME inert-source law as
   // glueCellularSheafPatches, which delegates to it. Otherwise an accessor in
   // one standalone observation can run before the original exact solver sees
@@ -765,7 +765,7 @@ const numericalSourceOptions=(source, allowed, label) => {
  * invoked, so one caller-owned getter cannot change its region or readings.
  */
 export function glueCellularSheafPatches(sheaf, patches) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   const chartKind=sheafSourceField(sheaf,"kind");
   const exact=sheafSourceField(sheaf,"exact");
   const stalks=sheafSourceArray(sheafSourceField(sheaf,"vertices"),"cover chart vertices");
@@ -779,7 +779,7 @@ export function glueCellularSheafPatches(sheaf, patches) {
   const byVertex=new Map(stalks.map(vertex=>[
     coincidenceKey(sheafSourceField(vertex,"id")),vertex]));
   // Qualify the COMPLETE transported cover before any local/global solving.
-  const admitted=sourcePatches.map(source=>{
+  const validated=sourcePatches.map(source=>{
     const patch=sourceCoverRecord(source,["region","sourceRef","vertices"],
       "cellularSheaf patch");
     if(typeof patch.region!=="string"||
@@ -805,7 +805,7 @@ export function glueCellularSheafPatches(sheaf, patches) {
   });
   const ids=new Set(),coveredVertices=new Set(),coveredEdges=new Set();
   const observations=[],localRegions=[];
-  for(const [index,patch] of admitted.entries()){
+  for(const [index,patch] of validated.entries()){
     const id=JSON.stringify([patch.sourceRef,patch.region]);
     if(ids.has(id))throw new TypeError("cellularSheaf cover repeats one source region");
     ids.add(id);
@@ -905,22 +905,22 @@ export function tensorCellularSheaves(factors) {
   if(!Array.isArray(factors) || factors.length<2 || factors.length>4)
     throw new TypeError("cellularSheaf tensor requires 2..4 exact source-attributed factors");
   const sourceFactors=sheafSourceArray(factors,"tensor factors");
-  const admittedFactors=sourceFactors.map(input=>{
+  const validatedFactors=sourceFactors.map(input=>{
     const factor=sourceCoverRecord(input,["sourceRef","sheaf"],"cellularSheaf tensor factor");
     if(typeof factor.sourceRef!=="string" || !factor.sourceRef.trim() ||
        factor.sourceRef.length>1024)
       throw new TypeError("cellularSheaf tensor requires a bounded original source reference");
-    const sheaf=admitCellularSheaf(factor.sheaf);
+    const sheaf=validateCellularSheaf(factor.sheaf);
     if(sheaf.exact!==true)
       throw new TypeError("cellularSheaf tensor requires 2..4 exact source-attributed factors");
     return Object.freeze({sourceRef:factor.sourceRef,sheaf});
   });
-  const source=admittedFactors[0].sheaf;
+  const source=validatedFactors[0].sheaf;
   // A sheaf's source identity is its witnessed vertex/edge incidence, not
   // its input-array enumeration. Multiple custodians may supply the same
   // lawful base chart in a different order. Align exact SignCell
   // coincidence keys rather than treating that order as physical geometry.
-  const aligned=admittedFactors.map(factor=>{
+  const aligned=validatedFactors.map(factor=>{
     const other=factor.sheaf;
     if(other.vertices.length!==source.vertices.length ||
        other.edges.length!==source.edges.length)
@@ -983,7 +983,7 @@ export function tensorCellularSheaves(factors) {
   const result=Object.freeze({...product,
     tensor:Object.freeze({
       kind:"signgraph.cellularSheaf.stalkwiseTensor.v1",
-      factors:Object.freeze(admittedFactors.map(f=>f.sourceRef)),
+      factors:Object.freeze(validatedFactors.map(f=>f.sourceRef)),
       base:"identical source-indexed oriented 1-skeleton",
       algebra:"exact rational stalk tensor with Kronecker restriction",
     })
@@ -992,7 +992,7 @@ export function tensorCellularSheaves(factors) {
   // The public augmented tensor is another issued in-process chart and must
   // be eligible for the same exact extension/gluing consumers. A foreign JSON
   // copy has no such custody: admitCellularSheaf must reconstruct/verify it.
-  admittedCellularSheaves.add(result);
+  validatedCellularSheaves.add(result);
   return result;
 }
 
@@ -1035,7 +1035,7 @@ export function gershgorinBound(laplacian) {
  *  { section, residual: ‖δx‖, gradient, steps, converged, firings, crossings }: `firings` are the steps at which
  *  some edge's residual ‖(δx)_e‖ crossed `tolerance`; `crossings` names those edges and directions. */
 export function diffuse(sheaf, x0, options = {}) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   const qualified=numericalSourceOptions(options,
     ["step","tolerance","maxSteps","fixed"], "diffuse options");
   const {step,tolerance=1e-12,maxSteps=100000,fixed=[]}=qualified;
@@ -1132,7 +1132,7 @@ export const harmonicProjection = (sheaf, x0, options = {}) => diffuse(sheaf, x0
  *  Numerically this reports residual-based approximate harmonicity, not a
  *  machine-checked proof of exact gluing. */
 export function hodgeCheck(sheaf, x0, options = {}) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   const qualified=numericalSourceOptions(options,
     ["step","tolerance","maxSteps","fixed"],"hodgeCheck options");
   const tolerance = qualified.tolerance ?? 1e-12;
@@ -1187,7 +1187,7 @@ export function rigiditySheaf(points, bars, dimension, { normalize = false } = {
 }
 
 /** The rigidity reading of a framework: infinitesimal motions, trivial motions d(d+1)/2, self-stresses, rigidity. */
-export function rigidityReceipt(points, bars, dimension, options = {}) {
+export function rigidityRecord(points, bars, dimension, options = {}) {
   const cohomology = cellularSheafCohomology(rigiditySheaf(points, bars, dimension, options));
   const trivial = (dimension * (dimension + 1)) / 2;
   return Object.freeze({
@@ -1228,8 +1228,8 @@ export function compareFixedCountRigidity({ before, after, dimension } = {}) {
   const a = shape(before, "before"), b = shape(after, "after");
   if (a.n !== b.n || a.m !== b.m)
     throw new RangeError("fixed-count rigidity comparison requires conserved vertex and bar counts");
-  const first = rigidityReceipt(before.points, before.bars, dimension);
-  const second = rigidityReceipt(after.points, after.bars, dimension);
+  const first = rigidityRecord(before.points, before.bars, dimension);
+  const second = rigidityRecord(after.points, after.bars, dimension);
   return Object.freeze({
     kind: "signgraph.fixedCountRigidityComparison",
     graphKind: "simple-embedded-bar-joint", dimension,
@@ -1366,7 +1366,7 @@ export function applyTranspose(matrix, y) {
  *  a 0-cochain in ker δ), never NaN. Returns { section: f, obstruction, residual: ‖obstruction‖, rhsNorm,
  *  steps, converged, consistent }. The option "floor" is a load scale below which a residual is round-off, not obstruction. */
 export function solveNormal(sheaf, rhs, options = {}) {
-  sheaf = admitCellularSheaf(sheaf);
+  sheaf = validateCellularSheaf(sheaf);
   const qualified=numericalSourceOptions(options,
     ["tolerance","consistency","floor","maxSteps"],"solveNormal options");
   const {tolerance=1e-12,consistency=1e-9,floor=0} = qualified;
@@ -1485,7 +1485,7 @@ export function bodyBarSheaf(bodyIds, constraints, { normalize = false } = {}) {
 /** The rigidity reading of rigid bodies joined by constraints: infinitesimal motions (H⁰), mechanisms
  *  (motions − 6 per connected piece), self-stresses (H¹), and the Maxwell identity
  *  mechanisms − selfStresses = 6·(bodies − pieces) − constraint rows. Exact over ℚ. */
-export function bodyBarReceipt(bodyIds, constraints, options = {}) {
+export function bodyBarRecord(bodyIds, constraints, options = {}) {
   const sheaf = bodyBarSheaf(bodyIds, constraints, { ...options, normalize: false });
   const cohomology = cellularSheafCohomology(sheaf);
   const parent = bodyIds.map((_, i) => i);
@@ -1549,7 +1549,7 @@ export function pullbackCellularSheaf(source, {base, map}={}) {
     baseEdges.add(id(edge.id));
   }
 
-  const admitted=(entries,baseKeys,sourceKeys,label)=>{
+  const validated=(entries,baseKeys,sourceKeys,label)=>{
     const result=new Map();
     for(const row of entries) {
       if(!row || typeof row!=="object" || Array.isArray(row) ||
@@ -1564,8 +1564,8 @@ export function pullbackCellularSheaf(source, {base, map}={}) {
       throw new TypeError("cellularSheaf pullback omits an original "+label+" cell image");
     return result;
   };
-  const vertexImages=admitted(map.vertices,baseVertices,new Set(srcVertices.keys()),"vertex");
-  const edgeImages=admitted(map.edges,baseEdges,new Set(srcEdges.keys()),"edge");
+  const vertexImages=validated(map.vertices,baseVertices,new Set(srcVertices.keys()),"vertex");
+  const edgeImages=validated(map.edges,baseEdges,new Set(srcEdges.keys()),"edge");
   const vertices=base.vertices.map(vertex=>{
     const original=srcVertices.get(id(vertexImages.get(id(vertex))));
     return {id:vertex,dim:original.dim};

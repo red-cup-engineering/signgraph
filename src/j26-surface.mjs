@@ -118,21 +118,21 @@ export function j26PunctureView({ removedFaces, retention } = {}) {
     edges,
     faces: faces.map(face => ({ id: face.id, boundary: face.boundary })),
   });
-  const retainedEdgeIds = new Set(edges.map(edge => edge.id));
-  const retainedVertices = new Set(vertices);
+  const keptEdgeIds = new Set(edges.map(edge => edge.id));
+  const keptVertices = new Set(vertices);
   return freeze({
     kind: "signgraph.j26.puncture-view.v1",
     source: "Obsmetrologia.AperiodicOrder.J26.faceVertices",
     retention,
     removedFaces: freeze(surface.faces.map(face => face.id).filter(id => removed.has(id))),
     retainedFaces: freeze(faces.map(face => face.id)),
-    droppedEdges: freeze(surface.edges.filter(edge => !retainedEdgeIds.has(edge.id)).map(edge => edge.id)),
-    droppedVertices: freeze(surface.vertices.filter(vertex => !retainedVertices.has(vertex))),
+    droppedEdges: freeze(surface.edges.filter(edge => !keptEdgeIds.has(edge.id)).map(edge => edge.id)),
+    droppedVertices: freeze(surface.vertices.filter(vertex => !keptVertices.has(vertex))),
     complex,
   });
 }
 
-const admittedRef = (ref, ids, faces, role) => {
+const validatedRef = (ref, ids, faces, role) => {
   if (ref === null || typeof ref !== "object" || Array.isArray(ref) ||
       !ids.has(ref.tile) || !faces.has(ref.face))
     throw new TypeError("j26 patch: " + role + " must address a listed tile and exterior face");
@@ -161,8 +161,8 @@ export function j26FacePatch({ tiles, interfaces = [] } = {}) {
     const id = identifier(item?.id,"interface");
     if (seen.has(id)) throw new TypeError("j26 patch: duplicate interface " + id);
     seen.add(id);
-    const left = admittedRef(item.left,ids,faces,"left");
-    const right = admittedRef(item.right,ids,faces,"right");
+    const left = validatedRef(item.left,ids,faces,"left");
+    const right = validatedRef(item.right,ids,faces,"right");
     if (left.tile === right.tile)
       throw new TypeError("j26 patch: a contact cannot join a tile to itself");
     const leftFace = faces.get(left.face), rightFace = faces.get(right.face);

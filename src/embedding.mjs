@@ -25,7 +25,7 @@ const cross = (a, b) => [
 const determinant = (a, b, c) => dot(a, cross(b, c));
 const equal = (a, b) => a.every((x, i) => x === b[i]);
 
-function admittedMetric(metric) {
+function validatedMetric(metric) {
   if (!metric || Array.isArray(metric) || !Array.isArray(metric.diagonal) ||
       metric.diagonal.length !== 3 ||
       !metric.diagonal.every(n => Number.isSafeInteger(n) && n > 0 && n <= MAX_COORD) ||
@@ -37,12 +37,12 @@ function admittedMetric(metric) {
     denominator: BigInt(metric.denominator),
   };
 }
-function admitted(positions, metric, vertexCount) {
+function validated(positions, metric, vertexCount) {
   if (!Array.isArray(positions) || positions.length !== vertexCount ||
       !positions.every(p => Array.isArray(p) && p.length === 3 &&
         p.every(n => Number.isSafeInteger(n) && Math.abs(n) <= MAX_COORD)))
     throw new TypeError("embedding: require one exact bounded 3D coordinate per vertex");
-  return { points: positions.map(p => p.map(BigInt)), ...admittedMetric(metric) };
+  return { points: positions.map(p => p.map(BigInt)), ...validatedMetric(metric) };
 }
 function normSquare(v, diagonal) {
   return v.reduce((total, x, i) => total + diagonal[i] * x * x, 0n);
@@ -59,7 +59,7 @@ export function metricSquareOfVector(vector, metric) {
   // Unlike geometry positions, a measured Burgers displacement can span
   // many unit cells. The exact BigInt metric must not falsely cap it at
   // the single-cell vertex position budget.
-  const { diagonal, denominator } = admittedMetric(metric);
+  const { diagonal, denominator } = validatedMetric(metric);
   return rationalOfBigInts(normSquare(vector.map(BigInt), diagonal), denominator * denominator);
 }
 
@@ -76,7 +76,7 @@ export function geometricReceiving(complex, positions, metric) {
       complex.vertices.length < 4 || complex.vertices.length > 64 ||
       complex.edges.length > 128 || complex.faces.length > 64)
     throw new TypeError("embedding: require one bounded, oriented three-cell solid");
-  const { points, diagonal, denominator } = admitted(positions, metric, complex.vertices.length);
+  const { points, diagonal, denominator } = validated(positions, metric, complex.vertices.length);
   const coeff = complex.coboundary.two[0];
   if (!Array.isArray(coeff) || coeff.length !== complex.faces.length ||
       !coeff.every(value => value === 1 || value === -1))

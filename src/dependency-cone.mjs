@@ -2,7 +2,7 @@ import { createGraph, reachable, subgraph, topologicalOrder, topologicalTiers } 
 import { costQuantale } from "@red-cup-engineering/metrologic/models/order/quantale";
 import { readSourceArray, readSourceRecord } from "@red-cup-engineering/semiotic-content-address-system";
 import { schemaOperationsCompose } from "@red-cup-engineering/signchain/contracts/contract-operation";
-import { projectSignGraphTopology } from "./graph.mjs";
+import { projectSignGraph } from "./graph.mjs";
 
 function nodeId(topology, source) {
   const { id, type } = readSourceRecord(source, "SignGraph typed reference");
@@ -14,7 +14,7 @@ function nodeId(topology, source) {
 function coneOf(source, root, predicates) {
   const selected = readSourceArray(predicates, "SignGraph cone predicates");
   if (selected.length === 0) throw new TypeError("SignGraph: a cone needs at least one predicate");
-  const graph = projectSignGraphTopology(source, selected);
+  const graph = projectSignGraph(source, selected);
   const start = nodeId(graph, root);
   const members = new Set([start, ...reachable(graph, start)]);
   const cone = subgraph(graph, members);
@@ -93,7 +93,7 @@ export function rollupAttemptCosts(source, root, options) {
 export function readEndeavor(source, root, options) {
   const { contains, aim, failed = [], abandoned = [] } = readSourceRecord(options);
   const { graph, start, members } = coneOf(source, root, contains);
-  const goals = projectSignGraphTopology(source, [aim]).outgoing(start).map(edge => edge.to);
+  const goals = projectSignGraph(source, [aim]).outgoing(start).map(edge => edge.to);
   const failures = readSourceArray(failed).map(ref => nodeId(graph, ref));
   const abandonments = readSourceArray(abandoned).map(ref => nodeId(graph, ref));
   const failedAims = [...new Set(goals)].filter(goal => failures.includes(goal) || abandonments.includes(goal)).sort();
@@ -113,7 +113,7 @@ export function readEndeavor(source, root, options) {
  */
 export function readWorkflow(source, root, options) {
   const { contains, realizedBy, precedes, entry, exit, boundaries = [] } = readSourceRecord(options);
-  const graph = projectSignGraphTopology(source, [contains, realizedBy, precedes]);
+  const graph = projectSignGraph(source, [contains, realizedBy, precedes]);
   const start = nodeId(graph, root);
   const members = new Set(graph.outgoing(start, { kind: contains }).map(edge => edge.to));
   const boundaryById = new Map();

@@ -8,7 +8,7 @@ import { createGraph, reachable, topologicalOrder } from "@red-cup-engineering/m
 import { admit, admitTypedMarkCarrier, referenceOf, typedMarkReferenceType } from "@red-cup-engineering/typed-content";
 
 const accepted = (value) => Object.freeze({ ok: true, value });
-const refused = (code, message) => Object.freeze({ ok: false, refusal: Object.freeze({ code, message }) });
+const rejected = (code, message) => Object.freeze({ ok: false, refusal: Object.freeze({ code, message }) });
 const kinds = ["subjectTypes", "objectTypes", "witnessTypes"];
 const roles = ["subject", "object", "witness"];
 const members = ["cells", "relations", "edges"];
@@ -29,12 +29,12 @@ function checkedTypes(input) {
 function checkedReference(cells, input, allowedTypes, role) {
   const reference = readSourceRecord(input, role);
   if (!hasFields(reference, ["id", "type"]) || !name(reference.id) || !name(reference.type))
-    return refused("invalid-" + role, `${role} must be a typed semantic reference`);
+    return rejected("invalid-" + role, `${role} must be a typed semantic reference`);
   const cell = cells.get(reference.id);
-  if (!cell) return refused("unknown-cell", `${role} ${reference.id} is not a cell in this graph`);
-  if (reference.type !== cell.type) return refused("type-mismatch", `${role} reference type does not match its cell`);
+  if (!cell) return rejected("unknown-cell", `${role} ${reference.id} is not a cell in this graph`);
+  if (reference.type !== cell.type) return rejected("type-mismatch", `${role} reference type does not match its cell`);
   if (allowedTypes && !allowedTypes.includes(cell.type))
-    return refused("type-mismatch", `${role} type ${cell.type} is outside this predicate declaration`);
+    return rejected("type-mismatch", `${role} type ${cell.type} is outside this predicate declaration`);
   return accepted(referenceOf(cell));
 }
 
@@ -43,18 +43,18 @@ export function createSignGraph(input) {
   let cellSources, relationSources, edgeSources;
   try {
     const source = readSourceRecord(input, "graph source");
-    if (!hasFields(source, members)) return refused("invalid-graph", "graph needs cells, relations, and edges");
+    if (!hasFields(source, members)) return rejected("invalid-graph", "graph needs cells, relations, and edges");
     [cellSources, relationSources, edgeSources] = members.map(key => readSourceArray(source[key], key));
   } catch (error) {
-    return refused("invalid-graph", error.message);
+    return rejected("invalid-graph", error.message);
   }
 
   const cells = new Map(), relations = new Map(), declarations = [], edges = [];
   for (const supplied of cellSources) {
     const checked = admitTypedMarkCarrier(supplied);
-    if (!checked.ok) return refused("invalid-cell", checked.refusal.message);
+    if (!checked.ok) return rejected("invalid-cell", checked.refusal.message);
     const cell = checked.value;
-    if (cells.has(cell.id)) return refused("duplicate-cell", `cell ${cell.id} appears more than once`);
+    if (cells.has(cell.id)) return rejected("duplicate-cell", `cell ${cell.id} appears more than once`);
     cells.set(cell.id, cell);
   }
   try {
@@ -62,26 +62,26 @@ export function createSignGraph(input) {
       const source = readSourceRecord(entry, "predicate declaration");
       const { id } = source;
       if (!hasFields(source, ["id", ...kinds]) || !name(id))
-        return refused("invalid-relation", "relations require an id and three type sets");
-      if (relations.has(id)) return refused("duplicate-relation", `relation ${id} appears more than once`);
+        return rejected("invalid-relation", "relations require an id and three type sets");
+      if (relations.has(id)) return rejected("duplicate-relation", `relation ${id} appears more than once`);
       const types = Object.fromEntries(kinds.map(kind => [kind, checkedTypes(source[kind])]));
       const declared = defineRelation({
         id, domain: typedMarkReferenceType, codomain: typedMarkReferenceType, witness: typedMarkReferenceType,
       });
-      if (!declared.ok) return refused("invalid-relation", declared.refusal.message);
+      if (!declared.ok) return rejected("invalid-relation", declared.refusal.message);
       relations.set(id, Object.freeze({ id, ...types }));
       declarations.push(declared.value);
     }
   } catch (error) {
-    return refused("invalid-relation", error.message);
+    return rejected("invalid-relation", error.message);
   }
   try {
     for (const entry of edgeSources) {
       const edge = readSourceRecord(entry, "graph edge");
       if (!hasFields(edge, ["predicate", ...roles]) || !name(edge.predicate))
-        return refused("invalid-edge", "edge requires a predicate and typed subject, object, and witness");
+        return rejected("invalid-edge", "edge requires a predicate and typed subject, object, and witness");
       const relation = relations.get(edge.predicate);
-      if (!relation) return refused("unknown-predicate", `edge predicate ${edge.predicate} is undeclared`);
+      if (!relation) return rejected("unknown-predicate", `edge predicate ${edge.predicate} is undeclared`);
       const normalized = { predicate: relation.id };
       for (const [index, role] of roles.entries()) {
         const checked = checkedReference(cells, edge[role], relation[kinds[index]], role);
@@ -91,12 +91,12 @@ export function createSignGraph(input) {
       edges.push(normalized);
     }
   } catch (error) {
-    return refused("invalid-edge", error.message);
+    return rejected("invalid-edge", error.message);
   }
   const checked = createRelationalField(declarations, edges);
-  if (!checked.ok) return refused("invalid-edge", checked.refusal.message);
+  if (!checked.ok) return rejected("invalid-edge", checked.refusal.message);
   const field = checked.value;
-  if (field.statements.length !== edges.length) return refused("duplicate-edge", "the same witnessed edge appears more than once");
+  if (field.statements.length !== edges.length) return rejected("duplicate-edge", "the same witnessed edge appears more than once");
   const addressed = ordered(field.statements.map(({ id, statement }) => Object.freeze({ id, edge: statement })));
   const content = {
     kind: "sign.graph", cells: ordered(cells.values()), relations: ordered(relations.values()), edges: addressed,
@@ -107,29 +107,29 @@ export function createSignGraph(input) {
 }
 
 /** Receive a portable cut by reconstructing its cells, incidences, and advertised EAVT addresses. */
-export function admitSignGraph(input) {
+export function validateSignGraph(input) {
   if (graphIndex.has(input)) return accepted(input);
   try {
     const graph = readSourceRecord(input, "graph cut");
     if (!hasFields(graph, ["id", "kind", ...members]) || graph.kind !== "sign.graph" || !name(graph.id))
-      return refused("invalid-graph", "expected a sign.graph cut with addressed edges");
+      return rejected("invalid-graph", "expected a sign.graph cut with addressed edges");
     const { id, ...content } = graph;
     const edges = readSourceArray(content.edges, "addressed edges").map(entry => {
       const row = readSourceRecord(entry, "addressed edge");
       if (!hasFields(row, ["id", "edge"]) || !name(row.id)) throw new TypeError("expected an addressed edge");
       return row.edge;
     });
-    const admitted = createSignGraph({ cells: content.cells, relations: content.relations, edges });
-    if (!admitted.ok) return admitted;
-    if (admitted.value.id !== id || semanticId(content) !== id)
-      return refused("identity-mismatch", "graph cut contents or edge addresses differ from the advertised identity");
-    return admitted;
+    const validated = createSignGraph({ cells: content.cells, relations: content.relations, edges });
+    if (!validated.ok) return validated;
+    if (validated.value.id !== id || semanticId(content) !== id)
+      return rejected("identity-mismatch", "graph cut contents or edge addresses differ from the advertised identity");
+    return validated;
   } catch (error) {
-    return refused("invalid-graph", error.message);
+    return rejected("invalid-graph", error.message);
   }
 }
 
-const throwRefusal = result => {
+const throwRejection = result => {
   if (result.ok) return result.value;
   const error = new TypeError(result.refusal.message);
   error.code = result.refusal.code;
@@ -138,7 +138,7 @@ const throwRefusal = result => {
 
 /** Receive a structural graph or throw its typed refusal at a read boundary. */
 export function receiveSignGraph(input) {
-  return throwRefusal(admitSignGraph(input));
+  return throwRejection(validateSignGraph(input));
 }
 
 /** Read a typed member even when no incidence mentions it. */
@@ -146,11 +146,11 @@ export function signGraphReference(graph, subject) {
   const index = graphIndex.get(receiveSignGraph(graph));
   try {
     const reference = admit(typedMarkReferenceType, readSourceRecord(subject, "query subject"));
-    if (reference.ok) return throwRefusal(checkedReference(index.cells, reference.value, undefined, "subject"));
+    if (reference.ok) return throwRejection(checkedReference(index.cells, reference.value, undefined, "subject"));
   } catch (error) {
     if (error.code) throw error;
   }
-  return throwRefusal(refused("invalid-subject", "query subject must be a typed semantic reference"));
+  return throwRejection(rejected("invalid-subject", "query subject must be a typed semantic reference"));
 }
 
 function queryScope(graph, subject, pattern) {
@@ -158,7 +158,7 @@ function queryScope(graph, subject, pattern) {
   const reference = signGraphReference(verified, subject);
   const selected = typeof pattern === "string" ? { predicate: pattern } : readSourceRecord(pattern, "query pattern");
   if (Object.hasOwn(selected, "subject") && !coincides(selected.subject, reference))
-    throwRefusal(refused("invalid-query", "query pattern cannot replace the admitted typed subject"));
+    throwRejection(rejected("invalid-query", "query pattern cannot replace the admitted typed subject"));
   return { verified, index: graphIndex.get(verified), selection: { ...selected, subject: reference } };
 }
 
@@ -181,8 +181,8 @@ export function querySignGraph(graph, subject, pattern = {}) {
  * in the requested predicate. Exact source reads remain available above.
  */
 export function createSignGraphPredicateReader(graph, declarations = {}) {
-  const admitted = receiveSignGraph(graph);
-  const { relations, field, edges: sources } = graphIndex.get(admitted);
+  const validated = receiveSignGraph(graph);
+  const { relations, field, edges: sources } = graphIndex.get(validated);
   const stated = readSourceRecord(declarations, "predicate reader declarations");
   if (!hasFields(stated, [], ["specializations", "converses"])) throw new TypeError("SignGraph: invalid predicate reader declarations");
   const { specializations = [], converses = [] } = stated;
@@ -220,7 +220,7 @@ export function createSignGraphPredicateReader(graph, declarations = {}) {
     }
   }
   return (subject, predicate, pattern = {}) => {
-    const reference = signGraphReference(admitted, subject);
+    const reference = signGraphReference(validated, subject);
     const selector = readSourceRecord(pattern);
     if (!relations.has(predicate) || Object.keys(selector).some(name => !["object", "witness"].includes(name)))
       throw new TypeError("SignGraph: predicate read requires a declared predicate and optional object and witness selectors");
@@ -255,10 +255,10 @@ export function createSignGraphPredicateReader(graph, declarations = {}) {
  * sources and sinks may be requested for a chosen subset of predicates.
  */
 export function inspectSignGraphKinds(graph, predicates = undefined) {
-  const admitted = receiveSignGraph(graph);
-  const kinds = new Set(admitted.cells.map(cell => cell.type));
+  const validated = receiveSignGraph(graph);
+  const kinds = new Set(validated.cells.map(cell => cell.type));
   const morphisms = [];
-  for (const { id, subjectTypes, objectTypes } of admitted.relations) {
+  for (const { id, subjectTypes, objectTypes } of validated.relations) {
     for (const from of subjectTypes) for (const to of objectTypes) {
       kinds.add(from); kinds.add(to);
       morphisms.push(Object.freeze({ predicate: id, from, to }));
@@ -268,7 +268,7 @@ export function inspectSignGraphKinds(graph, predicates = undefined) {
   const graphOf = edges => createGraph({ nodes, edges: edges.map(({ from, to, predicate }) => ({ from, to, kind: predicate })) });
   const full = graphOf(morphisms);
   const readPredicates = predicates === undefined ? undefined : new Set(readSourceArray(predicates));
-  if (readPredicates && [...readPredicates].some(predicate => !admitted.relations.some(relation => relation.id === predicate)))
+  if (readPredicates && [...readPredicates].some(predicate => !validated.relations.some(relation => relation.id === predicate)))
     throw new TypeError("SignGraph: structural predicates must be declared");
   const selected = predicates === undefined ? full : graphOf(morphisms.filter(edge => readPredicates.has(edge.predicate)));
   function uniquePaths(start, order, adjacent, endpoint) {
@@ -308,7 +308,7 @@ export function querySignGraphPage(graph, subject, pattern = {}, options = {}) {
     if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1))
       throw new TypeError("page limit must be a positive representable integer");
   } catch (error) {
-    throwRefusal(refused("invalid-page", error.message));
+    throwRejection(rejected("invalid-page", error.message));
   }
   const query = semanticId({ subject: selection.subject, pattern });
   if (cursor !== null) {
@@ -318,7 +318,7 @@ export function querySignGraphPage(graph, subject, pattern = {}, options = {}) {
           source.query !== query || !name(source.after)) throw new TypeError("cursor must belong to this graph and query");
       after = source.after;
     } catch (error) {
-      throwRefusal(refused("invalid-cursor", error.message));
+      throwRejection(rejected("invalid-cursor", error.message));
     }
   }
   const page = queryRelationalFieldPage(index.field, selection, { limit: limit ?? Number.MAX_SAFE_INTEGER, after });
@@ -339,18 +339,18 @@ export function validateSignGraphPage(graph, subject, pattern = {}, options = {}
  */
 export function glueSignGraphs(...graphs) {
   if (graphs.length === 1) {
-    const cut = admitSignGraph(graphs[0]);
+    const cut = validateSignGraph(graphs[0]);
     return cut.ok ? accepted(Object.freeze({ graph: cut.value, obstructions: Object.freeze([]) })) : cut;
   }
   const cells = new Map(), declarations = new Map(), edges = new Map();
   for (const input of graphs) {
-    const checked = admitSignGraph(input);
+    const checked = validateSignGraph(input);
     if (!checked.ok) return checked;
     const graph = checked.value;
     for (const cell of graph.cells) {
       const prior = cells.get(cell.id);
       if (prior && !coincides(prior, cell))
-        return refused("duplicate-cell", `cell ${cell.id} has conflicting content across graph cuts`);
+        return rejected("duplicate-cell", `cell ${cell.id} has conflicting content across graph cuts`);
       cells.set(cell.id, cell);
     }
     for (const relation of graph.relations) {

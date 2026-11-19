@@ -36,7 +36,7 @@ export function cellGraph(cells, observations, options = {}) {
 
 /** Build the existing symmetric projection from ONE detached, source-admitted
  * incidence presentation, without another input read or cell-set collapse. */
-function relationGraphOfAdmittedIncidences(incidences) {
+function relationGraphOfValidatedIncidences(incidences) {
     if (incidences.length === 0)
         throw new TypeError("an empty section presents no relation graph");
     // SignCell's canonical coincidence bytes, not host object identity or
@@ -83,7 +83,7 @@ function relationGraphOfAdmittedIncidences(incidences) {
  * different input on a second pass. Parallel source occurrences remain edges.
  */
 export function relationGraphOfCells(cells) {
-    return relationGraphOfAdmittedIncidences(admitTripleSequence(cells));
+    return relationGraphOfValidatedIncidences(admitTripleSequence(cells));
 }
 /** The relation graph of a section (its entries' cells). Delegates to {@link relationGraphOfCells}. */
 export function relationGraph(section) {
@@ -111,7 +111,7 @@ export function flowNetworkOfCells(cells) {
     // symmetric weights and oriented boundary. The old second read of
     // caller-owned cells could disagree with the first graph index.
     const incidences = admitTripleSequence(cells);
-    const graph = relationGraphOfAdmittedIncidences(incidences);
+    const graph = relationGraphOfValidatedIncidences(incidences);
     // The weighted and directed readers must use the SAME upstream canonical
     // coincidence classes. Avoid linear vertex rescans per oriented edge.
     const positions = new Map(graph.terms.map((term, index) => [coincidenceKey(term), index]));
@@ -290,16 +290,16 @@ export function sourceRecordTowerFlowOfCells(cells, towerOfCell) {
   }
   // A raw array and its elements are untrusted even when the callback is an
   // admitted producer. Read exactly one original, inert, source-ordered copy.
-  const admittedCells = admitCellSequence(cells);
-  const entries = admittedCells.map((admitted, sourceIndex) => {
-    const tower = receivedTower(towerOfCell(admitted));
-    const actualRecord = recordOf(admitted);
+  const validatedCells = admitCellSequence(cells);
+  const entries = validatedCells.map((validated, sourceIndex) => {
+    const tower = receivedTower(towerOfCell(validated));
+    const actualRecord = recordOf(validated);
     if (!tower || tower.kind !== "signcell.charge-record-tower.v1"
-        || tower.sourceAddress !== address(admitted)
-        || !tower.sourceCell || !coincides(admitCell(tower.sourceCell), admitted)
-        || tower.observedCharge !== presence(admitted)
-        || tower.valuedCharge !== valueOf(admitted)
-        || tower.measured !== measured(admitted)
+        || tower.sourceAddress !== address(validated)
+        || !tower.sourceCell || !coincides(admitCell(tower.sourceCell), validated)
+        || tower.observedCharge !== presence(validated)
+        || tower.valuedCharge !== valueOf(validated)
+        || tower.measured !== measured(validated)
         || !tower.record || tower.record.pos !== actualRecord.pos
         || tower.record.neg !== actualRecord.neg
         || !tower.minimumRecord || !tower.retainedSurplus
@@ -311,11 +311,11 @@ export function sourceRecordTowerFlowOfCells(cells, towerOfCell) {
     }
     return Object.freeze({
       sourceIndex,
-      cell: admitted,
+      cell: validated,
       sourceAddress: tower.sourceAddress,
       tower,
-      from: admitted.subject,
-      to: admitted.object
+      from: validated.subject,
+      to: validated.object
     });
   });
   // Use the existing oriented graph: subject -> object, self-links have no edge.

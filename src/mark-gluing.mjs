@@ -292,14 +292,14 @@ export function assembleMarkWallCellIncidence(raw){
     const to=validIndex(attachment.wall,n,"wall attachment");
     const expectedFrom="cell:"+from,expectedTo="wall:"+to;
     const original=attachment.judgment;
-    const admitted=chain.adjudicateCellEvidence(original);
+    const validated=chain.adjudicateCellEvidence(original);
     if(original?.subject!==expectedFrom||original?.predicate!=="attaches-to"||
        original?.object!==expectedTo)
       throw new TypeError("attaching judgment must name the precise source cell and wall occurrence");
-    if(!admitted.identification.eligibleForRelationProof)
+    if(!validated.identification.eligibleForRelationProof)
       throw new TypeError("unsupported, opposed, contested or unmeasured Mark attachment refuses incidence");
     edges.push(freeze({id:"attachment:"+i,from:expectedFrom,to:expectedTo}));
-    return freeze({id:"attachment:"+i,sourceCell:from,targetWall:to,judgment:admitted});
+    return freeze({id:"attachment:"+i,sourceCell:from,targetWall:to,judgment:validated});
   });
   const boundaries=faces.map(face=>{
     if(!keys(face,["boundary","id"])||!Array.isArray(face.boundary)||
@@ -516,7 +516,7 @@ export function generateHeadObservationGluing(raw) {
   if(source.trace.length+steps>16)
     throw new RangeError("source-generated observation exceeds the sixteen-layer finite capacity");
   let cursor=source.carrier;
-  const receipts=[];
+  const records=[];
   for(let i=0;i<steps;i++){
     const next=reattendArticulating(cursor,{maxLayers:16});
     const compared=compareImmediateArticulating(
@@ -524,7 +524,7 @@ export function generateHeadObservationGluing(raw) {
     if(!compared.comparison.headPresentationCoincides||
        !compared.comparison.constructedPresentationCoincides)
       throw new TypeError("native source-derived head relation failed the immediate constructor");
-    receipts.push(freeze({
+    records.push(freeze({
       step:i+1,
       fromArticulatingId:semanticId(cursor),
       toArticulatingId:semanticId(next.presented),
@@ -567,7 +567,7 @@ export function generateHeadObservationGluing(raw) {
       edges:final.edges,cohomology:final.cohomology,
     }),
     identification:freeze({
-      instruments:freeze(receipts),
+      instruments:freeze(records),
       sourceProvenHeadRelations:steps,
       candidateQuotSoundUses:steps,
       identifiedClaimPositions:freeze(Array.from({length:steps},(_,j)=>
@@ -606,7 +606,7 @@ export function generateHeadObservationGluing(raw) {
  * Lean/WitLedger receipt, Chalmers semantic reference, physics, actor
  * authority, or new necessary utterance before the Mark floor is claimed.
  */
-const generatedRouteReceipts=new WeakMap();
+const generatedRouteRecords=new WeakMap();
 
 export function derivePerformedObservationRoutes(raw) {
   const observation=generateHeadObservationGluing(raw);
@@ -664,7 +664,7 @@ export function derivePerformedObservationRoutes(raw) {
     scope:"finite source-generated re-attending and composable trace routes only; category is a downstream mathematical reading",
   });
   const key= (i,j) => i+":"+j;
-  generatedRouteReceipts.set(result,new Map(paths.map(p=>[key(p.first,p.last),p])));
+  generatedRouteRecords.set(result,new Map(paths.map(p=>[key(p.first,p.last),p])));
   return result;
 }
 
@@ -675,7 +675,7 @@ export function derivePerformedObservationRoutes(raw) {
  * Articulating before taking part; a matching hash is not a proof receipt.
  */
 export function composePerformedObservationRoutes(result,left,right) {
-  const received=generatedRouteReceipts.get(result);
+  const received=generatedRouteRecords.get(result);
   if(!received ||
      !left || !right ||
      received.get(left.first+":"+left.last)!==left ||
@@ -922,13 +922,13 @@ export function readPerformedSemioverseFiber(shadow, pointIndex) {
       pointIndex >= W.points.length)
     throw new TypeError("Semioverse fiber requires a generated shadow and an existing kinematic point");
   const point = W.points[pointIndex];
-  const admitted = semi.claimEntries.filter(entry =>
+  const validated = semi.claimEntries.filter(entry =>
     entry.firstOccurrenceIndex <= point.upperEventIndex &&
     entry.secondOccurrenceIndex <= point.upperEventIndex);
   return freeze({
     kind: "signgraph.performedSemioverseFiber.v1",
     pointIndex, point,
-    entries: freeze(admitted),
+    entries: freeze(validated),
     source: semi.continuedSourceId,
     scope: "projection of sourced utterance pairs at the kinematic upper prefix; a serialized shadow is not itself an authenticated source witness",
   });
@@ -1144,7 +1144,7 @@ export function readPerformedKinematicSectionSpace(shadow, { patches, sections }
   // after-the-fact claim address or an arbitrary chosen valuation.
   const fibers=Array.from({length:pointCount},(_,p)=>
     readPerformedSemioverseFiber(shadow,p).entries.map(entry=>entry.claimIndex));
-  const admitted=new Map(union.map(p=>[p,new Set(fibers[p])]));
+  const validated=new Map(union.map(p=>[p,new Set(fibers[p])]));
   const choicesOf=indices=>{
     // Do not construct a second finite reachability/section solver in this
     // sourced SignGraph consumer. The original Metrologic finite preorder
@@ -1178,7 +1178,7 @@ export function readPerformedKinematicSectionSpace(shadow, { patches, sections }
            row.pointIndex!==indices[j]||
            !Number.isSafeInteger(row.claimIndex)||row.claimIndex<0||
            row.claimIndex>=claimCount||
-           !admitted.get(row.pointIndex).has(row.claimIndex))
+           !validated.get(row.pointIndex).has(row.claimIndex))
           throw new TypeError("local section must select an ORIGINAL performed pair at its earned point");
         selections.set(row.pointIndex,row.claimIndex);
       }

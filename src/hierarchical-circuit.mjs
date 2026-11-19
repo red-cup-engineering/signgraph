@@ -570,7 +570,7 @@ export function encodeCircuitAssayRequest({ circuit, components = [], assembly }
 export function assayHierarchicalCircuitRequest(value) {
   if (!exactKeys(value, ["assembly", "circuit", "components", "kind"]) || value.kind !== "HierarchicalCircuitAssayRequest" || !Array.isArray(value.components)) fail("malformed-circuit", "hierarchical circuit assay request has an invalid shape");
   const verified = verifyCircuitAssembly(value.assembly, value.circuit, value.components), result = verified.family.verified.get(verified.family.rootIdentity);
-  const receipt = {
+  const record = {
     kind: "HierarchicalCircuitAssayReceipt",
     circuit: result.circuit,
     assembly: verified.assemblyIdentity,
@@ -578,8 +578,8 @@ export function assayHierarchicalCircuitRequest(value) {
     equivalent: true,
     components: [...verified.family.library.keys()].sort(utf8Compare),
   };
-  const encoded = encodeRelationalValue(receipt);
-  return { receipt, type: encoded.type, term: encoded.term };
+  const encoded = encodeRelationalValue(record);
+  return { receipt: record, type: encoded.type, term: encoded.term };
 }
 
 export function decodeCircuitAssayReceipt(type, term) {

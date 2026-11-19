@@ -11,8 +11,8 @@ export const CIRCUIT_TRACE_PROFILE = "org.emsenn.sen.hierarchical-circuit-trace.
 
 const CAIP10 = /^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}:[-.%a-zA-Z0-9]{1,128}$/u;
 const CAIP2 = /^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$/u;
-const RECEIPT_KEYS = ["chain", "chu", "connection", "contract", "economicCurrentAffinity", "orientation", "originatingSettlement", "priceErasure", "receiptDigest", "receiptId"];
-const DISPOSITIONS = new Set(["chu-seam-mismatch", "unpriced-irreversible-defect", "closed-flat", "translational-defect", "rotational-protected-border", "mixed-affine-defect"]);
+const RECORD_KEYS = ["chain", "chu", "connection", "contract", "economicCurrentAffinity", "orientation", "originatingSettlement", "priceErasure", "receiptDigest", "receiptId"];
+const DECISIONS = new Set(["chu-seam-mismatch", "unpriced-irreversible-defect", "closed-flat", "translational-defect", "rotational-protected-border", "mixed-affine-defect"]);
 
 function fail(code, message) { const error = new Error(message); error.code = code; throw error; }
 function exactKeys(value, keys) {
@@ -65,26 +65,26 @@ function normalizeBorderClass(source) {
   return { type: source.type, allowedHolonomy: source.allowedHolonomy };
 }
 
-function normalizeReceipt(source) {
-  if (!exactKeys(source, RECEIPT_KEYS)) fail("unresolved-receipt", "receipt must expose exactly its chain identity and four typed seam carriers");
-  const receipt = {
+function normalizeRecord(source) {
+  if (!exactKeys(source, RECORD_KEYS)) fail("unresolved-receipt", "receipt must expose exactly its chain identity and four typed seam carriers");
+  const record = {
     originatingSettlement: caip10(source.originatingSettlement),
     receiptId: ni(source.receiptId, "receipt identity"), receiptDigest: ni(source.receiptDigest, "receipt digest"),
     chain: source.chain, contract: ni(source.contract, "contract identity"), orientation: source.orientation,
     chu: source.chu, connection: source.connection, priceErasure: source.priceErasure,
     economicCurrentAffinity: source.economicCurrentAffinity,
   };
-  if (!CAIP2.test(receipt.chain ?? "")) fail("unresolved-receipt", "receipt chain must be a CAIP-2 identity");
-  if (![-1, 1].includes(receipt.orientation)) fail("malformed-request", "receipt orientation is invalid");
-  if (!exactKeys(receipt.chu, ["left", "right"])) fail("unknown-residue-kind", "Chu seam evidence must contain two FOUR values");
-  receipt.chu = { left: validateFour(receipt.chu.left), right: validateFour(receipt.chu.right) };
-  if (!exactKeys(receipt.connection, ["frame", "quarterTurns", "translation"]) || !NI.test(receipt.connection.frame ?? "") || !Number.isInteger(receipt.connection.quarterTurns) || receipt.connection.quarterTurns < 0 || receipt.connection.quarterTurns > 3) fail("unproved-group-law", "connection evidence must carry one named ambient frame and one C4 element");
-  receipt.connection = { frame: receipt.connection.frame, quarterTurns: receipt.connection.quarterTurns, translation: canonicalVector(receipt.connection.translation) };
-  if (!exactKeys(receipt.priceErasure, ["irreversibleAmount", "priceAmount", "unit"]) || !finiteText(receipt.priceErasure.unit, 64)) fail("unit-mismatch", "price/erasure evidence requires one exact unit");
-  nonnegativeInteger(receipt.priceErasure.irreversibleAmount); nonnegativeInteger(receipt.priceErasure.priceAmount);
-  if (!exactKeys(receipt.economicCurrentAffinity, ["affinity", "current"])) fail("unknown-residue-kind", "economic evidence requires separate current and affinity rationals");
-  rational(receipt.economicCurrentAffinity.current); rational(receipt.economicCurrentAffinity.affinity);
-  return receipt;
+  if (!CAIP2.test(record.chain ?? "")) fail("unresolved-receipt", "receipt chain must be a CAIP-2 identity");
+  if (![-1, 1].includes(record.orientation)) fail("malformed-request", "receipt orientation is invalid");
+  if (!exactKeys(record.chu, ["left", "right"])) fail("unknown-residue-kind", "Chu seam evidence must contain two FOUR values");
+  record.chu = { left: validateFour(record.chu.left), right: validateFour(record.chu.right) };
+  if (!exactKeys(record.connection, ["frame", "quarterTurns", "translation"]) || !NI.test(record.connection.frame ?? "") || !Number.isInteger(record.connection.quarterTurns) || record.connection.quarterTurns < 0 || record.connection.quarterTurns > 3) fail("unproved-group-law", "connection evidence must carry one named ambient frame and one C4 element");
+  record.connection = { frame: record.connection.frame, quarterTurns: record.connection.quarterTurns, translation: canonicalVector(record.connection.translation) };
+  if (!exactKeys(record.priceErasure, ["irreversibleAmount", "priceAmount", "unit"]) || !finiteText(record.priceErasure.unit, 64)) fail("unit-mismatch", "price/erasure evidence requires one exact unit");
+  nonnegativeInteger(record.priceErasure.irreversibleAmount); nonnegativeInteger(record.priceErasure.priceAmount);
+  if (!exactKeys(record.economicCurrentAffinity, ["affinity", "current"])) fail("unknown-residue-kind", "economic evidence requires separate current and affinity rationals");
+  rational(record.economicCurrentAffinity.current); rational(record.economicCurrentAffinity.affinity);
+  return record;
 }
 
 function normalizeTraceStep(source) {
@@ -92,7 +92,7 @@ function normalizeTraceStep(source) {
     || !exactKeys(source.sink, ["instance", "port"]) || !finiteText(source.sink.instance, 256) || !finiteText(source.sink.port, 256)) {
     fail("malformed-request", "each trace step must name one net, one internal sink endpoint, and one receipt");
   }
-  return { net: source.net.normalize("NFC"), sink: { instance: source.sink.instance.normalize("NFC"), port: source.sink.port.normalize("NFC") }, receipt: normalizeReceipt(source.receipt) };
+  return { net: source.net.normalize("NFC"), sink: { instance: source.sink.instance.normalize("NFC"), port: source.sink.port.normalize("NFC") }, receipt: normalizeRecord(source.receipt) };
 }
 
 export function normalizeCircuitTraceRequest(source) {
@@ -129,12 +129,12 @@ function traceRoute(request, verified) {
     const sink = net.sinks.find((candidate) => candidate.instance === step.sink.instance && candidate.port === step.sink.port);
     if (!sink) fail("unknown-pin", `trace sink ${step.sink.instance}.${step.sink.port} is not on net ${step.net}`);
     if (sink.instance === null) fail("open-trace", `trace net ${step.net} ends outside the assayed die`);
-    const receipt = step.receipt;
-    if (receipt.chain !== net.chain || receipt.contract !== net.contract) fail("seam-commitment-mismatch", `trace receipt does not attest net ${step.net}'s declared chain and contract`);
-    const forward = receipt.orientation === 1;
+    const record = step.receipt;
+    if (record.chain !== net.chain || record.contract !== net.contract) fail("seam-commitment-mismatch", `trace receipt does not attest net ${step.net}'s declared chain and contract`);
+    const forward = record.orientation === 1;
     const from = forward ? net.driver.instance : sink.instance, to = forward ? sink.instance : net.driver.instance;
-    if (receipt.originatingSettlement !== membraneAt(verified.assembly, [from])?.account) fail("authority-mismatch", `trace receipt origin does not control route origin ${from}`);
-    route.push({ from, to, net, receipt });
+    if (record.originatingSettlement !== membraneAt(verified.assembly, [from])?.account) fail("authority-mismatch", `trace receipt origin does not control route origin ${from}`);
+    route.push({ from, to, net, receipt: record });
   }
   for (let index = 0; index < route.length; index += 1) {
     const here = route[index], next = route[(index + 1) % route.length];
@@ -143,44 +143,44 @@ function traceRoute(request, verified) {
   return route;
 }
 
-export function assayCircuitTrace(source, { fuel = 64 } = {}) {
+export function checkCircuitTrace(source, { fuel = 64 } = {}) {
   const request = normalizeCircuitTraceRequest(source);
   if (!Number.isInteger(fuel) || fuel < 1 || fuel > 64) fail("malformed-request", "fuel must be an integer from 1 through 64");
   if (request.trace.length > fuel) fail("fuel-exceeded", `trace has ${request.trace.length} seams but fuel is ${fuel}`);
   const verified = verifyCircuitAssembly(request.assembly, request.circuit, request.components), route = traceRoute(request, verified);
   const identities = new Set(), chuMismatches = [], priceByUnit = new Map(); let holonomy = 0, economic = [0n, 1n], affine = { quarterTurns: 0, translation: [0n, 0n] }, frame = null;
-  for (const { receipt } of route) {
-    const identity = `${receipt.originatingSettlement}\u0000${receipt.receiptId}`;
-    if (identities.has(identity)) fail("receipt-replay", `receipt ${receipt.receiptId} is duplicated in the trace denominator`);
+  for (const { receipt: record } of route) {
+    const identity = `${record.originatingSettlement}\u0000${record.receiptId}`;
+    if (identities.has(identity)) fail("receipt-replay", `receipt ${record.receiptId} is duplicated in the trace denominator`);
     identities.add(identity);
-    if (!canonicalEqual(receipt.chu.left, receipt.chu.right)) chuMismatches.push(receipt.receiptId);
-    if (frame !== null && frame !== receipt.connection.frame) fail("frame-transport-mismatch", "every seam translation must already be transported into one declared ambient frame");
-    frame ??= receipt.connection.frame;
-    const edgeAffine = orientedAffine({ ...receipt.connection, translation: vector(receipt.connection.translation) }, receipt.orientation);
+    if (!canonicalEqual(record.chu.left, record.chu.right)) chuMismatches.push(record.receiptId);
+    if (frame !== null && frame !== record.connection.frame) fail("frame-transport-mismatch", "every seam translation must already be transported into one declared ambient frame");
+    frame ??= record.connection.frame;
+    const edgeAffine = orientedAffine({ ...record.connection, translation: vector(record.connection.translation) }, record.orientation);
     affine = composeAffine(edgeAffine, affine);
     holonomy = affine.quarterTurns;
-    const unit = receipt.priceErasure.unit, price = nonnegativeInteger(receipt.priceErasure.priceAmount), irreversible = nonnegativeInteger(receipt.priceErasure.irreversibleAmount);
+    const unit = record.priceErasure.unit, price = nonnegativeInteger(record.priceErasure.priceAmount), irreversible = nonnegativeInteger(record.priceErasure.irreversibleAmount);
     const aggregate = priceByUnit.get(unit) ?? { orientedPrice: 0n, irreversibleMagnitude: 0n, unpricedIrreversibleReceipts: [] };
-    aggregate.orientedPrice += BigInt(receipt.orientation) * price; aggregate.irreversibleMagnitude += irreversible;
-    if (irreversible > 0n && price === 0n) aggregate.unpricedIrreversibleReceipts.push(receipt.receiptId);
+    aggregate.orientedPrice += BigInt(record.orientation) * price; aggregate.irreversibleMagnitude += irreversible;
+    if (irreversible > 0n && price === 0n) aggregate.unpricedIrreversibleReceipts.push(record.receiptId);
     priceByUnit.set(unit, aggregate);
-    economic = addRational(economic, multiplyRational(rational(receipt.economicCurrentAffinity.current), rational(receipt.economicCurrentAffinity.affinity), receipt.orientation));
+    economic = addRational(economic, multiplyRational(rational(record.economicCurrentAffinity.current), rational(record.economicCurrentAffinity.affinity), record.orientation));
   }
   const priceErasureResidue = [...priceByUnit].sort(([left], [right]) => left.localeCompare(right)).map(([unit, value]) => ({
     unit, orientedPrice: value.orientedPrice.toString(), irreversibleMagnitude: value.irreversibleMagnitude.toString(), unpricedIrreversibleReceipts: value.unpricedIrreversibleReceipts,
   }));
   const unpriced = priceErasureResidue.flatMap((entry) => entry.unpricedIrreversibleReceipts);
-  let disposition;
-  if (chuMismatches.length > 0) disposition = "chu-seam-mismatch";
-  else if (unpriced.length > 0) disposition = "unpriced-irreversible-defect";
-  else if (holonomy === 0 && affine.translation[0] === 0n && affine.translation[1] === 0n && request.borderClass.type === "internal" && request.borderClass.allowedHolonomy === 0) disposition = "closed-flat";
-  else if (holonomy === 0 && (affine.translation[0] !== 0n || affine.translation[1] !== 0n)) disposition = "translational-defect";
-  else if (request.borderClass.type === "protected" && holonomy !== 0 && request.borderClass.allowedHolonomy === holonomy && affine.translation[0] === 0n && affine.translation[1] === 0n) disposition = "rotational-protected-border";
-  else if (holonomy !== 0 && (affine.translation[0] !== 0n || affine.translation[1] !== 0n)) disposition = "mixed-affine-defect";
+  let decision;
+  if (chuMismatches.length > 0) decision = "chu-seam-mismatch";
+  else if (unpriced.length > 0) decision = "unpriced-irreversible-defect";
+  else if (holonomy === 0 && affine.translation[0] === 0n && affine.translation[1] === 0n && request.borderClass.type === "internal" && request.borderClass.allowedHolonomy === 0) decision = "closed-flat";
+  else if (holonomy === 0 && (affine.translation[0] !== 0n || affine.translation[1] !== 0n)) decision = "translational-defect";
+  else if (request.borderClass.type === "protected" && holonomy !== 0 && request.borderClass.allowedHolonomy === holonomy && affine.translation[0] === 0n && affine.translation[1] === 0n) decision = "rotational-protected-border";
+  else if (holonomy !== 0 && (affine.translation[0] !== 0n || affine.translation[1] !== 0n)) decision = "mixed-affine-defect";
   else fail("undeclared-border-class", `C4 affine holonomy (${holonomy}, ${printVector(affine.translation).join(",")}) is not admitted by the declared border class`);
   return {
     kind: "HierarchicalCircuitTraceReceipt", profile: CIRCUIT_TRACE_PROFILE,
-    circuit: verified.family.rootIdentity, assembly: verified.assemblyIdentity, components: [...verified.family.library.keys()].sort(), disposition,
+    circuit: verified.family.rootIdentity, assembly: verified.assemblyIdentity, components: [...verified.family.library.keys()].sort(), disposition: decision,
     residues: {
       chuSeamDefect: { mismatchCount: chuMismatches.length, mismatchedReceipts: chuMismatches },
       connectionHolonomy: { group: "C4", quarterTurns: holonomy, identity: holonomy === 0 },
@@ -193,17 +193,17 @@ export function assayCircuitTrace(source, { fuel = 64 } = {}) {
   };
 }
 
-export function assayCircuitTraceRequest(value) {
-  const receipt = assayCircuitTrace(value), encoded = encodeRelationalValue(receipt);
-  return { receipt, type: encoded.type, term: encoded.term };
+export function checkCircuitTraceRequest(value) {
+  const record = checkCircuitTrace(value), encoded = encodeRelationalValue(record);
+  return { receipt: record, type: encoded.type, term: encoded.term };
 }
 
-export function decodeCircuitTraceReceipt(type, term) {
+export function decodeCircuitTraceRecord(type, term) {
   if (!canonicalEqual(type, RELATIONAL_VALUE_TYPE)) fail("malformed-request", "hierarchical circuit trace receipt must use the relational SEN type");
   const value = decodeRelationalValue(type, term);
   if (!exactKeys(value, ["assembly", "circuit", "components", "disposition", "fuelUsed", "kind", "profile", "receiptCount", "residues"])
     || value.kind !== "HierarchicalCircuitTraceReceipt" || value.profile !== CIRCUIT_TRACE_PROFILE || !NI.test(value.circuit ?? "") || !NI.test(value.assembly ?? "")
-    || !Array.isArray(value.components) || !value.components.every((identity) => NI.test(identity)) || !DISPOSITIONS.has(value.disposition)) {
+    || !Array.isArray(value.components) || !value.components.every((identity) => NI.test(identity)) || !DECISIONS.has(value.disposition)) {
     fail("malformed-request", "hierarchical circuit trace receipt is invalid");
   }
   return value;

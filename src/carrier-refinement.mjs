@@ -14,19 +14,19 @@ function exactKeys(value, keys) { return value && Object.getPrototypeOf(value) =
 function ni(value, field) { if (typeof value !== "string" || !NI.test(value)) fail(`${field} must be a SHA-256 ni URI`); return value; }
 function caip10(value, field) { if (typeof value !== "string" || !CAIP10.test(value)) fail(`${field} must be a chain-qualified EVM account`); return value; }
 
-export function normalizeCarrierRefinementReceipt(source) {
+export function normalizeCarrierRefinementRecord(source) {
   const fields = ["behavior", "carrier", "component", "customerMaterialMutated", "equivalent", "kind", "materialRoot", "observation", "producer", "profile", "proof", "proofProfile", "provider"];
   if (!exactKeys(source, fields) || source.kind !== "CircuitCarrierRefinementReceipt" || source.profile !== CARRIER_REFINEMENT_PROFILE || source.equivalent !== true || source.customerMaterialMutated !== false || typeof source.proofProfile !== "string" || source.proofProfile.length === 0 || source.proofProfile.length > 256) fail("carrier refinement receipt has an unknown, absent, legacy, or failed field");
   const provider = caip10(source.provider, "provider"), producer = caip10(source.producer, "producer");
   return { kind: source.kind, profile: source.profile, proofProfile: source.proofProfile.normalize("NFC"), provider, producer, component: ni(source.component, "component"), behavior: ni(source.behavior, "behavior"), carrier: ni(source.carrier, "carrier"), materialRoot: ni(source.materialRoot, "materialRoot"), observation: ni(source.observation, "observation"), proof: ni(source.proof, "proof"), equivalent: true, customerMaterialMutated: false };
 }
 
-export function encodeCarrierRefinementReceipt(source) {
-  const value = normalizeCarrierRefinementReceipt(source), encoded = encodeRelationalValue(value);
+export function encodeCarrierRefinementRecord(source) {
+  const value = normalizeCarrierRefinementRecord(source), encoded = encodeRelationalValue(value);
   return { value, type: encoded.type, term: encoded.term };
 }
 
-export function decodeCarrierRefinementReceipt(type, term) {
+export function decodeCarrierRefinementRecord(type, term) {
   if (JSON.stringify(type) !== JSON.stringify(RELATIONAL_VALUE_TYPE)) fail("carrier refinement receipt must use the relational SEN type");
-  return normalizeCarrierRefinementReceipt(decodeRelationalValue(type, term));
+  return normalizeCarrierRefinementRecord(decodeRelationalValue(type, term));
 }

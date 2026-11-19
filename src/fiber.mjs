@@ -22,21 +22,21 @@ import { orderOps } from "@red-cup-engineering/metrologic/hyperdoctrine/order";
 // Construction-origin receipts for this installed SignGraph module. These are
 // intentionally not serializable identity schemes, external attestation, actor
 // authority or evidence of a physical observation.
-const admittedFibers = new WeakSet();
-const admittedGenerators = new WeakSet();
-const admittedOrders = new WeakSet();
+const validatedFibers = new WeakSet();
+const validatedGenerators = new WeakSet();
+const validatedOrders = new WeakSet();
 const demandFiber = (fiber) => {
-  if (!fiber || typeof fiber !== "object" || !admittedFibers.has(fiber))
+  if (!fiber || typeof fiber !== "object" || !validatedFibers.has(fiber))
     throw new TypeError("fiber: original SignGraph predicate fiber is required");
   return fiber;
 };
 const demandGenerator = (generator) => {
-  if (!generator || typeof generator !== "object" || !admittedGenerators.has(generator))
+  if (!generator || typeof generator !== "object" || !validatedGenerators.has(generator))
     throw new TypeError("fiber: original SignGraph generator is required");
   return generator;
 };
 const demandOrder = (order) => {
-  if (!order || typeof order !== "object" || !admittedOrders.has(order))
+  if (!order || typeof order !== "object" || !validatedOrders.has(order))
     throw new TypeError("fiber: original SignGraph FOUR order is required");
   return order;
 };
@@ -44,9 +44,9 @@ const demandOrder = (order) => {
 /** An order over readings: join, meet, bottom, top. */
 const order = (name) => {
   const { join, meet, bottom, top } = orderOps(name);
-  const admitted = Object.freeze({ kind: "signgraph.order", name, join, meet, bottom, top });
-  admittedOrders.add(admitted);
-  return admitted;
+  const validated = Object.freeze({ kind: "signgraph.order", name, join, meet, bottom, top });
+  validatedOrders.add(validated);
+  return validated;
 };
 /** A graph order is Metrologic's canonical FOUR order, carried at a graph site. */
 export const knowledgeOrder = () => order("knowledge");
@@ -78,9 +78,9 @@ const sourcePairs = (values) => Object.freeze(sourceArray(values,"pairs").map(so
 
 /** Every ordered (subject, object) pair over an entity list. */
 export const allPairs = (entities) => {
-  const admitted = Object.freeze(sourceArray(entities,"entities").map(canonicalCarrier));
-  return Object.freeze(admitted.flatMap(subject =>
-    admitted.map(object => Object.freeze([subject,object]))));
+  const validated = Object.freeze(sourceArray(entities,"entities").map(canonicalCarrier));
+  return Object.freeze(validated.flatMap(subject =>
+    validated.map(object => Object.freeze([subject,object]))));
 };
 
 /** A fiber over `label`: `read(subject, object)` at each listed pair; unlisted pairs read absurd. */
@@ -122,9 +122,9 @@ export function predicateFiber(label, entities, read, pairs = allPairs(entities)
   }
   const at = (subject, object) =>
     readings.get(coincidenceKey(subject))?.get(coincidenceKey(object)) ?? knowledgeBottom();
-  const admitted = Object.freeze({ kind: "signgraph.fiber", label: canonicalCarrier(label), entities: domain, pairs: Object.freeze(slots), at });
-  admittedFibers.add(admitted);
-  return admitted;
+  const validated = Object.freeze({ kind: "signgraph.fiber", label: canonicalCarrier(label), entities: domain, pairs: Object.freeze(slots), at });
+  validatedFibers.add(validated);
+  return validated;
 }
 
 /** The fiber a valuation carries over one predicate, read in the knowledge order. */
@@ -143,7 +143,7 @@ const requireSharedContext = (left, right) => {
   // Inspect the in-process source owner before reading a caller's kind,
   // label, entities or programmable at() method. A JSON lookalike cannot
   // fabricate an admitted FOUR reading or a proof of fiber compatibility.
-  if (!admittedFibers.has(left) || !admittedFibers.has(right)) {
+  if (!validatedFibers.has(left) || !validatedFibers.has(right)) {
     throw new TypeError("fiber: two predicate fibers are required; original predicate fibers only");
   }
   // A fiber is indexed by its predicate as well as its entity context. To
@@ -255,7 +255,7 @@ function finiteGenerator(name, entities, ambient, local, imageOf) {
     source, target,
     map: (key) => images.get(key),
   });
-  const admitted = Object.freeze({
+  const validated = Object.freeze({
     kind: "signgraph.generator", generator: name, domain: targetSite, codomain: sourceSite,
     pullback: (fiber) => {
       requireSourceContext(fiber);
@@ -270,8 +270,8 @@ function finiteGenerator(name, entities, ambient, local, imageOf) {
       return onPairs(fiber, targetSite, forallAlong(morphism, indexedFiber(fiber, sourceSite), ord.name));
     },
   });
-  admittedGenerators.add(admitted);
-  return admitted;
+  validatedGenerators.add(validated);
+  return validated;
 }
 
 /** Converse is a bijective finite reindexing (both adjoints are its inverse). */

@@ -157,12 +157,12 @@ export function selectSourceMarkReactions(input) {
   const seed=word(input.seed,"seed");
   const target=word(input.target,"target");
   const sourceId=substrate.source.articulatingId;
-  const readoutAddress=ids=>semanticId(["mark-reaction-word/v1",sourceId,ids]);
+  const reportAddress=ids=>semanticId(["mark-reaction-word/v1",sourceId,ids]);
   const matches=ids=>ids.length===target.length&&ids.every((v,i)=>v===target[i]);
   const root=freeze({
     kind:"signgraph.sourceMarkReactionPath/v1",
     pathAddress:semanticId(["mark-reaction-root/v1",sourceId,seed]),
-    wordAddress:readoutAddress(seed),
+    wordAddress:reportAddress(seed),
     word:seed,depth:0,steps:freeze([]),
   });
   const candidates=[root], collisions=new Map([[root.wordAddress,[root.pathAddress]]]);
@@ -222,7 +222,7 @@ export function selectSourceMarkReactions(input) {
           ...rule.map(i=>alphabet[i]),
           ...candidate.word.slice(at+1),
         ]);
-        const nextAddress=readoutAddress(successor);
+        const nextAddress=reportAddress(successor);
         const originalUtteranceId=substrate.source.utteranceIds[ruleIndex];
         const reaction=freeze({
           kind:"signgraph.sourceMarkReactionStep/v1",

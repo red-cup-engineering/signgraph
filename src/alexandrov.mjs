@@ -13,7 +13,7 @@
 import {
   reachable, stronglyConnectedComponents, subgraph,
 } from '@red-cup-engineering/metrologic/models/graphs/directed-multigraph';
-import { projectSignGraphTopology, findSignGraphRoute } from './graph.mjs';
+import { projectSignGraph, findSignGraphRoute } from './graph.mjs';
 import { glueSignGraphs } from './semantic-graph.mjs';
 
 const MAX_POINTS = 256;
@@ -56,22 +56,22 @@ export function projectSignGraphAlexandrov(source, options) {
     error.code = checked.refusal.code;
     throw error;
   }
-  const admitted = checked.value.graph;
+  const validated = checked.value.graph;
 
-  const relation = admitted.relations.find(item => item.id === predicate);
+  const relation = validated.relations.find(item => item.id === predicate);
   if (!relation || relation.subjectTypes.length !== 1 ||
       relation.objectTypes.length !== 1 ||
       relation.subjectTypes[0] !== nodeType || relation.objectTypes[0] !== nodeType)
     invalid('predicate must be originally declared with exactly nodeType on both ends');
 
-  const points = frozen(admitted.cells.filter(cell => cell.type === nodeType)
+  const points = frozen(validated.cells.filter(cell => cell.type === nodeType)
     .map(cell => frozen({ id: cell.id, type: cell.type })).sort(sortIds));
   if (points.length > MAX_POINTS)
     throw new RangeError('SignGraph Alexandrov: ' + points.length +
       ' points exceed bounded ' + MAX_POINTS + ' point reading');
 
   const byId = new Map(points.map(ref => [ref.id, ref]));
-  const graph = subgraph(projectSignGraphTopology(admitted), new Set(byId.keys()));
+  const graph = subgraph(projectSignGraph(validated), new Set(byId.keys()));
   const futureIds = new Map(points.map(ref => [ref.id,
     new Set([ref.id, ...reachable(graph, ref.id, { kind: predicate })])]));
   const basis = frozen(points.map(point => frozen({
@@ -130,13 +130,13 @@ export function projectSignGraphAlexandrov(source, options) {
     const x = byId.get(pointId(from)), y = byId.get(pointId(to));
     // Original route readmission and edge witnesses, not an inferred signed
     // transitive edge. Only the selected homogeneous relation can occur.
-    return findSignGraphRoute(admitted, x, y, { predicate });
+    return findSignGraphRoute(validated, x, y, { predicate });
   };
 
-  const directEdges = frozen(admitted.edges.filter(entry => entry.edge.predicate === predicate));
+  const directEdges = frozen(validated.edges.filter(entry => entry.edge.predicate === predicate));
   return frozen({
     kind: 'signgraph.alexandrov.witnessed-reachability.v1',
-    graph: admitted.id,
+    graph: validated.id,
     nodeType, predicate,
     points, directEdges, basis, components,
     t0: components.every(component => component.length === 1),

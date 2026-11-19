@@ -145,8 +145,8 @@ export function closeSpecialization(base) {
   // Public closure is a receiving boundary, too: a direct caller need not
   // have entered through site(). Copy only inert own source fields, so spread
   // cannot execute a getter after the graph has already been traversed.
-  const admittedBase = readSourceRecord(base, "signgraph site: base");
-  const declarations = sourceList(admittedBase.specialization,
+  const validatedBase = readSourceRecord(base, "signgraph site: base");
+  const declarations = sourceList(validatedBase.specialization,
     "base.specialization").map(edge => {
       if (!isSpecializationMorphism(edge))
         throw new TypeError("signgraph site: invalid source specialization");
@@ -182,7 +182,7 @@ export function closeSpecialization(base) {
   for (const { id: from } of graph.nodes())
     for (const to of reachable(graph, from, { kind: "specializes" }))
       include(from, to);
-  return Object.freeze({ ...admittedBase, specialization: Object.freeze(edges) });
+  return Object.freeze({ ...validatedBase, specialization: Object.freeze(edges) });
 }
 
 /** Cohere a site: its cells, and the residue with specialization closed. */

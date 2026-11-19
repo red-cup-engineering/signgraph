@@ -25,7 +25,7 @@ function patchField(p, name) {
     fail("patch coordinates and bits require own data fields");
   return field.value;
 }
-function admitPatch(p) {
+function validatePatch(p) {
   if (p === null || typeof p !== "object")
     fail("a canonical NI address and bit values are required");
   const address = patchField(p, "address");
@@ -54,24 +54,24 @@ const patch = (address,totalBits,fromBit,bits) =>
 export function bitPatchOfBits(section,{fromBit=0}={}) {
   if (section === null || typeof section !== "object")
     fail("a canonical NI address and bit values are required");
-  return admitPatch({address:patchField(section,"address"),
+  return validatePatch({address:patchField(section,"address"),
     totalBits:patchField(section,"totalBits"),fromBit,bits:patchField(section,"bits")});
 }
 
 /** Functorial restriction to a contained interval of the same address. */
 export function restrictBitPatch(source,{fromBit,bitCount}) {
-  const admitted=admitPatch(source);
-  finiteInterval(fromBit,bitCount,admitted.totalBits);
-  if (fromBit<admitted.fromBit || fromBit+bitCount>admitted.fromBit+admitted.bits.length)
+  const validated=validatePatch(source);
+  finiteInterval(fromBit,bitCount,validated.totalBits);
+  if (fromBit<validated.fromBit || fromBit+bitCount>validated.fromBit+validated.bits.length)
     throw new RangeError("bit sheaf: restriction outside the patch");
-  const start=fromBit-admitted.fromBit;
-  return patch(admitted.address,admitted.totalBits,fromBit,admitted.bits.slice(start,start+bitCount));
+  const start=fromBit-validated.fromBit;
+  return patch(validated.address,validated.totalBits,fromBit,validated.bits.slice(start,start+bitCount));
 }
 const obstruction=(reason,extras={})=>Object.freeze({kind:"signgraph.bitSheaf:obstruction",reason,...extras});
 
 // A protected support is a requirement about an existing patch cover, not an
 // inferred claim about the contents or legal authority of the supplied bytes.
-function admitProtectedInterval(pair,start,end) {
+function validateProtectedInterval(pair,start,end) {
   if (!Array.isArray(pair) || pair.length!==2)
     throw new RangeError("bit sheaf: protected interval outside target");
   const left=Object.getOwnPropertyDescriptor(pair,"0"),right=Object.getOwnPropertyDescriptor(pair,"1");
@@ -83,7 +83,7 @@ function admitProtectedInterval(pair,start,end) {
   return Object.freeze([a,b]);
 }
 
-function admittedRequiredIntervals(single,many,start,end) {
+function validatedRequiredIntervals(single,many,start,end) {
   const inputs=[];
   if(single!==undefined) inputs.push(single);
   if(many!==undefined) {
@@ -98,16 +98,16 @@ function admittedRequiredIntervals(single,many,start,end) {
   }
   if(inputs.length>MAX_BIT_SECTION)
     throw new RangeError("bit sheaf: too many protected intervals");
-  return inputs.map(pair=>admitProtectedInterval(pair,start,end));
+  return inputs.map(pair=>validateProtectedInterval(pair,start,end));
 }
 
 /** For all required supports, find an actual whole covering patch.
  * Sorted sweep: O((P+R) log(P+R)) for P patches and R requirements,
  * rather than independently scanning every patch for every requirement.
  * The patch indices are witnesses about supplied local sections only. */
-function requiredCoverWitnesses(admitted,supports) {
+function requiredCoverWitnesses(validated,supports) {
   if(supports.length===0) return [];
-  const patches=admitted.map((p,i)=>({start:p.fromBit,end:p.fromBit+p.bits.length,i}))
+  const patches=validated.map((p,i)=>({start:p.fromBit,end:p.fromBit+p.bits.length,i}))
     .sort((a,b)=>a.start-b.start || a.i-b.i);
   const required=supports.map(([a,b],i)=>({a,b,i})).sort((a,b)=>a.a-b.a || a.i-b.i);
   const witnesses=new Array(supports.length);
@@ -140,12 +140,12 @@ function requiredCoverWitnesses(admitted,supports) {
  * Crucial: a minimum subset is NEVER used to suppress contradictory input
  * patches. This is a post-admission transport/reuse witness only.
  */
-function minimumCoverIndices(admitted,required,start,end) {
+function minimumCoverIndices(validated,required,start,end) {
   const demands=[];
   for(let at=start;at<end;at++) demands.push([at,at+1]);
   demands.push(...required);
   demands.sort((a,b)=>a[0]-b[0] || b[1]-a[1]);
-  const patches=admitted.map((p,i)=>({start:p.fromBit,end:p.fromBit+p.bits.length,i}))
+  const patches=validated.map((p,i)=>({start:p.fromBit,end:p.fromBit+p.bits.length,i}))
     .sort((a,b)=>a.start-b.start || a.i-b.i);
   const selected=[];
   let current=0,bestEnd=-1,bestIndex=-1,selectedReach=-1;
@@ -175,22 +175,22 @@ export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval,prote
     fail("a nonempty bounded family of patches is required");
   if (typeof minimumCover!=="boolean")
     fail("minimumCover must be a boolean");
-  const admitted=patches.map(admitPatch);
-  const {address,totalBits}=admitted[0];
-  if (admitted.some(p=>p.address!==address || p.totalBits!==totalBits))
+  const validated=patches.map(validatePatch);
+  const {address,totalBits}=validated[0];
+  if (validated.some(p=>p.address!==address || p.totalBits!==totalBits))
     return obstruction("different-source-content");
-  const start=fromBit??Math.min(...admitted.map(p=>p.fromBit));
+  const start=fromBit??Math.min(...validated.map(p=>p.fromBit));
   const end=bitCount===undefined
-    ?Math.max(...admitted.map(p=>p.fromBit+p.bits.length)):start+bitCount;
+    ?Math.max(...validated.map(p=>p.fromBit+p.bits.length)):start+bitCount;
   finiteInterval(start,end-start,totalBits);
-  const required=admittedRequiredIntervals(protectedInterval,protectedIntervals,start,end);
-  const witnesses=requiredCoverWitnesses(admitted,required);
+  const required=validatedRequiredIntervals(protectedInterval,protectedIntervals,start,end);
+  const witnesses=requiredCoverWitnesses(validated,required);
   for(let i=0;i<witnesses.length;i++) {
     if(witnesses[i]===null)
       return obstruction("protected-region-split",{protectedInterval:required[i],requirementIndex:i});
   }
   const values=new Array(end-start);
-  for (const local of admitted) {
+  for (const local of validated) {
     const left=Math.max(start,local.fromBit),right=Math.min(end,local.fromBit+local.bits.length);
     for(let at=left;at<right;at++) {
       const i=at-start,v=local.bits[at-local.fromBit];
@@ -201,9 +201,9 @@ export function glueBitPatches(patches,{fromBit,bitCount,protectedInterval,prote
   }
   const missing=values.findIndex(v=>v===undefined);
   if (missing!==-1) return obstruction("uncovered-bit",{atBit:start+missing});
-  const selected=minimumCover?minimumCoverIndices(admitted,required,start,end):null;
+  const selected=minimumCover?minimumCoverIndices(validated,required,start,end):null;
   return Object.freeze({...patch(address,totalBits,start,values),
-    kind:"signgraph.bitSheaf:section",coverCount:admitted.length,
+    kind:"signgraph.bitSheaf:section",coverCount:validated.length,
     ...(required.length ? {protectedCoverage:Object.freeze(witnesses)} : {}),
     ...(selected ? {minimumCover:Object.freeze({
       patchIndices:selected, cardinality:selected.length,

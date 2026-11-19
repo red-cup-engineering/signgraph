@@ -22,7 +22,7 @@ const compare = (left, right) => left < right ? -1 : left > right ? 1 : 0;
 const MAX_PREDICATIONS = 2048;
 const MAX_FORK_PAIRS = 8192;
 // A transported readout never acquires the in-process derivation witness by copying its JSON.
-const generatedReadouts = new WeakSet();
+const generatedReports = new WeakSet();
 
 function fail(message) { throw new TypeError(`feather graph: ${message}`); }
 /** Original source-position/claim admission shared with the downstream
@@ -101,7 +101,7 @@ export function featherGraphOfPredications(source, options = {}) {
     fail(`requires 1-${MAX_PREDICATIONS} original predication occurrences`);
   // Protect source occurrence iteration AND selectors before the original
   // graph can read any purported performed source position or relation.
-  const admittedSource = featherSourceArray(source, 'original predications', MAX_PREDICATIONS);
+  const validatedSource = featherSourceArray(source, 'original predications', MAX_PREDICATIONS);
   const selectors = featherSourceFields(options,
     ['axialPredicate', 'transversePredicate'], 'predicate selectors');
   const {axialPredicate, transversePredicate} = selectors;
@@ -116,7 +116,7 @@ export function featherGraphOfPredications(source, options = {}) {
       positions.set(role.key, role);
     return role.key;
   };
-  for (const rawOccurrence of admittedSource) {
+  for (const rawOccurrence of validatedSource) {
     const original = featherSourceFields(rawOccurrence,
       ['occurrence', 'sourceRecord', 'cell'], 'source occurrence');
     const predication = featherSourceFields(original.cell,
@@ -217,7 +217,7 @@ export function featherGraphOfPredications(source, options = {}) {
     routeComparisons: freeze(routes),
     // No source positions, directed edges or route equalities have been added.
   });
-  generatedReadouts.add(result);
+  generatedReports.add(result);
   return result;
 }
 
@@ -228,12 +228,12 @@ export function featherGraphOfPredications(source, options = {}) {
  * two opposed witnesses are not absence, and no claimed Charge is inferred.
  */
 export function positGraphOfFeather(feather, posits) {
-  if (!isRecord(feather) || !generatedReadouts.has(feather))
+  if (!isRecord(feather) || !generatedReports.has(feather))
     fail('posit reading requires an existing feather graph and posit testimony list');
   // Keep source testimony finite before inspection. The original graph's
   // existing 8192 candidate budget also bounds caller-reported posit rows
   // and individual testimony lanes; no new independent witness is inferred.
-  const admittedPosits = featherSourceArray(posits, 'posit testimony', MAX_FORK_PAIRS);
+  const validatedPosits = featherSourceArray(posits, 'posit testimony', MAX_FORK_PAIRS);
   const originals = new Set(feather.predications.map(item => item.occurrence));
   const told = new Set(), chargeOccurrences = [];
   // A bound on each row and lane alone is multiplicative: 8192 rows with
@@ -241,7 +241,7 @@ export function positGraphOfFeather(feather, posits) {
   // Share the established finite candidate budget across both testimony
   // sides and ALL source records, before retaining any new row.
   let witnessSlots = 0;
-  for (const sourcePosit of admittedPosits) {
+  for (const sourcePosit of validatedPosits) {
     const posit = featherSourceFields(sourcePosit,
       ['occurrence', 'sourceRecord', 'for', 'against'], 'posit testimony');
     const forSide = featherSourceArray(posit.for, 'posit for witnesses', MAX_FORK_PAIRS);

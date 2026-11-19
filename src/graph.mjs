@@ -5,7 +5,7 @@ import { hasFields, readSourceArray, readSourceRecord } from "@red-cup-engineeri
 import { querySignGraph, receiveSignGraph as receiveGraph, signGraphReference } from "./semantic-graph.mjs";
 
 /** Build a read-only topology of a closed cut, preserving parallel witnessed edges. */
-function topologyOf(source, predicates) {
+function graphOf(source, predicates) {
   const topology = createGraph();
   for (const at of source.cells) {
     topology.addNode(at.id, Object.freeze({ kind: at.kind, type: at.type }));
@@ -23,12 +23,12 @@ function topologyOf(source, predicates) {
 }
 
 /** Project original incidences for a finite selection of declared predicates. */
-export function projectSignGraphTopology(graph, predicates) {
-  const admitted = receiveGraph(graph);
+export function projectSignGraph(graph, predicates) {
+  const validated = receiveGraph(graph);
   const selected = predicates === undefined ? undefined : new Set(readSourceArray(predicates));
-  if (selected && [...selected].some(predicate => !admitted.relations.some(relation => relation.id === predicate)))
+  if (selected && [...selected].some(predicate => !validated.relations.some(relation => relation.id === predicate)))
     throw new TypeError("SignGraph: topology predicates must be declared");
-  return topologyOf(admitted, selected);
+  return graphOf(validated, selected);
 }
 
 /**
@@ -36,23 +36,23 @@ export function projectSignGraphTopology(graph, predicates) {
  * contains all matching original addressed edges, including contrary testimony.
  */
 export function findSignGraphRoute(graph, sourceReference, targetReference, supplied = {}) {
-  const admitted = receiveGraph(graph);
+  const validated = receiveGraph(graph);
   const options = readSourceRecord(supplied, "route options");
   if (!hasFields(options, [], ["predicate"])) throw new TypeError("SignGraph route options permit only predicate");
   const { predicate } = options;
-  const source = signGraphReference(admitted, sourceReference);
-  const target = signGraphReference(admitted, targetReference);
-  const topology = projectSignGraphTopology(admitted, predicate === undefined ? undefined : [predicate]);
+  const source = signGraphReference(validated, sourceReference);
+  const target = signGraphReference(validated, targetReference);
+  const topology = projectSignGraph(validated, predicate === undefined ? undefined : [predicate]);
   const route = shortestPath(topology, source.id, target.id);
   const nodes = Object.freeze((route?.path ?? []).map(id => Object.freeze({ id, type: topology.node(id).data.type })));
   const hops = Object.freeze(nodes.slice(1).map((target, index) => {
     const source = nodes[index];
-    const edges = querySignGraph(admitted, source, { object: target, ...(predicate === undefined ? {} : { predicate }) });
+    const edges = querySignGraph(validated, source, { object: target, ...(predicate === undefined ? {} : { predicate }) });
     return Object.freeze({ source, target, edges });
   }));
   return Object.freeze({
     kind: "signgraph.shortestWitnessedRoute.v1",
-    graph: admitted.id,
+    graph: validated.id,
     source,
     target,
     predicate: predicate ?? null,
@@ -536,11 +536,11 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
   const structural=new Set(["relations","proposedWitnessExchangeIds",
     "proposedObservedCompartmentIds","proposedObservedCompartmentIdsByResource",
     "hypotheticalErrorCeilings"]);
-  const admittedOptions=Object.freeze(Object.fromEntries(Object.entries(sourceOptions)
+  const validatedOptions=Object.freeze(Object.fromEntries(Object.entries(sourceOptions)
     .map(([key,value])=>[key,structural.has(key)?sourcePlacementCopy(value,key):value])));
-  const proposals = admittedOptions.proposedWitnessExchangeIds ?? [];
-  const vertices = admittedOptions.proposedObservedCompartmentIds;
-  const scopedVertices = admittedOptions.proposedObservedCompartmentIdsByResource;
+  const proposals = validatedOptions.proposedWitnessExchangeIds ?? [];
+  const vertices = validatedOptions.proposedObservedCompartmentIds;
+  const scopedVertices = validatedOptions.proposedObservedCompartmentIdsByResource;
   if (!Array.isArray(proposals) || proposals.length > 4096 ||
       proposals.some(id => typeof id !== "string" || !id.length) ||
       new Set(proposals).size !== proposals.length)
@@ -568,7 +568,7 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
          new Set(ids).size !== ids.length) ||
        scopedEntries.reduce((total,[,ids])=>total+ids.length,0) > 8192))
     throw new TypeError("flow witness placement requires unique resource-scoped endpoint IDs (at most 8192 total)");
-  const reading = channelResourceIncidence(graph, admittedOptions);
+  const reading = channelResourceIncidence(graph, validatedOptions);
   const original = new Map(), grouped = new Map(), endpoints = new Set();
   for (const transfer of reading.transfers) {
     const exchangeId = transfer.exchange.id;
@@ -608,7 +608,7 @@ export function channelFlowWitnessPlacement(graph, options = {}) {
   }
   const proposed = new Set(proposals);
   // Proposed error ceilings are design constraints, NEVER actual sensor readings.
-  const ceilings = admittedOptions.hypotheticalErrorCeilings;
+  const ceilings = validatedOptions.hypotheticalErrorCeilings;
   const plain = value => value !== null && typeof value === "object" &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype ||
