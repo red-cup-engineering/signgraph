@@ -1,0 +1,106 @@
+{
+  "id": "signgraph-meets-then-beats-sqlite-and-couchdb",
+  "name": "SignGraph meets then beats SQLite and CouchDB over flat files",
+  "kind": "requirement",
+  "raised-by": "emsenn",
+  "asks": "Continue researching feather graphs, add them to signgraph, since posit graphs are feather graphs.\n\nWe want signgraph to meet then beat more things like sqlite and couchdb, yes even though it's all flatfile, that's what the proof path addressing technologies are meant to be for :O",
+  "comparison": {
+    "required-of": "561-group",
+    "subject": {
+      "kind": "package",
+      "name": "@red-cup-engineering/signgraph"
+    },
+    "relation": "meet-then-beat",
+    "against": [
+      {
+        "name": "SQLite",
+        "domain": "embedded indexed queries, transactions, rollback, crash recovery"
+      },
+      {
+        "name": "Apache CouchDB",
+        "domain": "document revisions and conflicts, changes feed, checkpointed replication"
+      }
+    ]
+  },
+  "met-when": [
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-sqlite-indexed-queries",
+      "target": "held",
+      "says": "Over cells kept as flat files addressed by proof path, a point lookup, a range scan and a join of two relations return the same rows as SQLite, against a pinned release of the peer, run on the same input in the same CI job, and read a number of files that grows with the logarithm of the number of cells, counted at the store argument.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-sqlite-indexed-queries.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-sqlite-transactions",
+      "target": "held",
+      "says": "A batch of writes is all present or all absent after it returns, and a batch that is refused leaves the previous root address current, as SQLite's COMMIT and ROLLBACK do, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-sqlite-transactions.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-sqlite-crash-recovery",
+      "target": "held",
+      "says": "A store whose last write was cut off at any byte opens at its last complete root address with every earlier cell readable.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-sqlite-crash-recovery.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-couchdb-revisions-and-conflicts",
+      "target": "held",
+      "says": "Two edits of one document made without sight of each other are both kept as revisions and the conflict is reported, as CouchDB reports it, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-couchdb-revisions-and-conflicts.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-couchdb-changes",
+      "target": "held",
+      "says": "The changes since a given checkpoint are listed in order, each once, as CouchDB's changes feed lists them, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-couchdb-changes.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:meet-couchdb-replication",
+      "target": "held",
+      "says": "Replicating between two stores, in either direction and resumed from a checkpoint after interruption, leaves both with the same documents and revisions, as CouchDB's replication does, against a pinned release of the peer, run on the same input in the same CI job.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/meet-couchdb-replication.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:beat-stores-that-agree-have-one-address",
+      "target": "held",
+      "says": "Two stores holding the same cells have the same root address however their writes were ordered, so agreement is checked by comparing one address. Claimed only after every meet condition holds.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/beat-stores-that-agree-have-one-address.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:beat-answers-check-without-the-store",
+      "target": "held",
+      "says": "A query's answer comes with the proof paths of the cells it read, and a reader holding only the answer and the root address can verify it. Claimed only after every meet condition holds.",
+      "command": "node --test test/requirements/signgraph-meets-then-beats-sqlite-and-couchdb/beat-answers-check-without-the-store.test.mjs",
+      "expected-exit": 0
+    }
+  ],
+  "x-provenance": {
+    "recorded-by": "claude",
+    "recorded-on": "2026-11-10",
+    "sources": [
+      {
+        "words": "We want signgraph to meet then beat more things like sqlite and couchdb, yes even though it's all flatfile, that's what the proof path addressing technologies are meant to be for :O",
+        "from": "the Leader, quoted in the requirement record of 2026-10-15"
+      }
+    ],
+    "conditions-not-in-the-leaders-words": [
+      {
+        "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:beat-stores-that-agree-have-one-address",
+        "derived-by": "claude",
+        "derived-from": "the Leader's words that proof-path addressing is what makes flat files sufficient"
+      },
+      {
+        "cell": "signgraph-meets-then-beats-sqlite-and-couchdb:beat-answers-check-without-the-store",
+        "derived-by": "claude",
+        "derived-from": "the Leader's words that proof-path addressing is what makes flat files sufficient"
+      }
+    ],
+    "acceptance": "Each command names one test file in this repository. A test file that does not exist yet fails its command, so the condition reads unmet until the test is written and passes."
+  }
+}

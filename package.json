@@ -1,0 +1,65 @@
+{
+  "name": "@red-cup-engineering/signgraph",
+  "version": "0.11.1-dev.0",
+  "license": "MIT",
+  "packageManager": "pnpm@11.28.5",
+  "type": "module",
+  "description": "Relations, sites, fibers and sheaves organizing SignCell cells and SignChain orderings.",
+  "files": [
+    "src"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./cell-graph": "./src/cell-graph.mjs",
+    "./feather-graph": "./src/feather-graph.mjs",
+    "./mesh": "./src/mesh.mjs",
+    "./graph": "./src/graph.mjs",
+    "./ports": "./src/ports.mjs",
+    "./dependency-cone": "./src/dependency-cone.mjs",
+    "./work-settlement": "./src/work-settlement.mjs",
+    "./relation-adapters": "./src/relation-adapters.mjs",
+    "./relational-value": "./src/relational-value.mjs",
+    "./hierarchical-circuit": "./src/hierarchical-circuit.mjs",
+    "./circuit-trace": "./src/circuit-trace.mjs",
+    "./carrier-refinement": "./src/carrier-refinement.mjs",
+    "./site": "./src/site.mjs",
+    "./token-sheaf": "./src/token-sheaf.mjs",
+    "./valuation": "./src/valuation.mjs",
+    "./fiber": "./src/fiber.mjs",
+    "./cohomology": "./src/cohomology.mjs",
+    "./paths": "./src/paths.mjs",
+    "./cellular-sheaf": "./src/cellular-sheaf.mjs",
+    "./operations": "./src/operations.mjs",
+    "./embedding": "./src/embedding.mjs",
+    "./bit-sheaf": "./src/bit-sheaf.mjs",
+    "./mark-gluing": "./src/mark-gluing.mjs",
+    "./substitution-spectrum": "./src/substitution-spectrum.mjs",
+    "./j26-surface": "./src/j26-surface.mjs",
+    "./semantic-graph": "./src/semantic-graph.mjs",
+    "./cellular-sheaf-complex": "./src/cellular-sheaf-complex.mjs",
+    "./keratin-graph": "./src/keratin-graph.mjs",
+    "./alexandrov": "./src/alexandrov.mjs",
+    "./combinatorial-map": "./src/combinatorial-map.mjs",
+    "./coloring": "./src/coloring.mjs",
+    "./typed-relations": "./src/typed-relations.mjs",
+    "./proof-path": "./src/proof-path.mjs"
+  },
+  "dependencies": {
+    "@red-cup-engineering/metrologic": "^0.22.10",
+    "@red-cup-engineering/signcell": "^0.18.0",
+    "@red-cup-engineering/signchain": "^0.7.0",
+    "@red-cup-engineering/typed-content": "^0.1.0",
+    "@red-cup-engineering/semiotic-content-address-system": "^0.1.7"
+  },
+  "scripts": {
+    "check:keratin": "node --check src/feather-graph.mjs && node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/red-cup-engineering/signgraph.git"
+  },
+  "private": false,
+  "engines": {
+    "node": ">=24.2.0"
+  }
+}

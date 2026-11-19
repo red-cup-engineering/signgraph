@@ -1,0 +1,41 @@
+{
+  "id": "signgraph-holds-all-our-files-as-cells-of-one-graph",
+  "name": "All our files, read in as cells, share one graph",
+  "kind": "requirement",
+  "raised-by": "emsenn",
+  "asks": "read in all our files as cells sharing the same graph",
+  "met-when": [
+    {
+      "cell": "signgraph-holds-all-our-files-as-cells-of-one-graph:one-graph",
+      "target": "held",
+      "says": "Cells that codecs produce from files of different formats are added to one graph, and a cell two files both yield is one cell of that graph, by its address.",
+      "command": "node --test test/requirements/signgraph-holds-all-our-files-as-cells-of-one-graph/one-graph.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-holds-all-our-files-as-cells-of-one-graph:relations-across-files",
+      "target": "held",
+      "says": "A relation from a cell of one file to a cell of another is a relation of the graph like any other and is found by the same queries.",
+      "command": "node --test test/requirements/signgraph-holds-all-our-files-as-cells-of-one-graph/relations-across-files.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-holds-all-our-files-as-cells-of-one-graph:the-forest-loads",
+      "target": "held",
+      "says": "Every tracked file of the bare-cedar-fog superproject and its sections that a codec can read is added to one graph in one run by a downstream loader; SignGraph itself opens no file.",
+      "command": "node --test test/requirements/signgraph-holds-all-our-files-as-cells-of-one-graph/the-forest-loads.test.mjs",
+      "expected-exit": 0
+    }
+  ],
+  "x-provenance": {
+    "recorded-by": "claude",
+    "recorded-on": "2026-11-10",
+    "sources": [
+      {
+        "words": "read in all our files as cells sharing the same graph",
+        "from": "the Leader's requirement as quoted in the 2026-11-07 Sign family plan; the original utterance has not been located"
+      }
+    ],
+    "acceptance": "Each command names one test file in this repository. A test file that does not exist yet fails its command, so the condition reads unmet until the test is written and passes."
+  }
+}

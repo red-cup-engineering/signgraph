@@ -1,0 +1,287 @@
+/**
+ * SignGraph — the sheaf of tellings over a token frame.
+ *
+ * The construction runs one way. SignCell's token frame is the Heyting algebra of a token order, each
+ * token embedded as its extent; SignChain's token fiber reads a claim at every token in FOUR; this
+ * module glues. Its sections are tellings: the section at a token t is what is told of t, the cells
+ * whose subject is t. Restriction runs along specialization: t ≤ g sends what is told of g to t, so
+ * whatever is told of a type is told of everything of that type. The inherited section at t is the
+ * gluing of the sections of t's generalizations, its cover ↑t, by knowledge join: each cell (t, p, o)
+ * carries every witness told for or against (g, p, o) at any generalization g.
+ *
+ * Where the cover disagrees, one generalization telling for and another against, the glued cell is
+ * contested (⊤). The contradiction is held and reported with the generalizations on each side, never
+ * resolved by which is nearer; the contested cells are the obstruction to gluing that cover. Read one
+ * claim at a time, the inherited section is the fiber SignChain's possibilizing gives: gluing over ↑t
+ * is ◇. The object position is reached through the converse generator.
+ */
+import {
+  address, cell, cellSetAddress, claimCoordinate, evidence as evidenceOf, knowledgeReading, merge,
+  told as evidenceTold,
+} from "@red-cup-engineering/signcell";
+import {
+  coincidenceKey, coincides, retainedCarrier, semanticId,
+} from "@red-cup-engineering/semiotic-content-address-system";
+import {
+  admitTokenFrame, cacheableTokenFrame, extent, generalizations, top,
+} from "@red-cup-engineering/signchain/token-frame";
+import { isNiUri } from "@red-cup-engineering/semiotic-content-address-system";
+
+const INHERITED = "signgraph.inherited-tellings";
+const frozen = (values) => Object.freeze([...values]);
+const byKey = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
+const sections = new WeakMap();
+const claimSections = new WeakMap();
+// The same canonical predicate/object coordinate already used by SignChain's
+// token fiber: its null-subject cell is ONLY a private index key. It is never
+// emitted as an observed cell or represented as an admitted witness.
+// Predicate/object identity comes from SignCell, not another SignGraph codec.
+
+// Preserve the original direct section index for the common full-section
+// reader. A claim index is materialized only when a caller selects a claim.
+function sectionsOf(frame) {
+  if (!cacheableTokenFrame(frame) || !sections.has(frame)) {
+    const bySubject = new Map();
+    for (const at of frame.cells) {
+      if (coincides(at.predicate, frame.predicate)) continue;
+      const token = coincidenceKey(at.subject);
+      if (!bySubject.has(token)) bySubject.set(token, []);
+      bySubject.get(token).push(at);
+    }
+    if (cacheableTokenFrame(frame)) sections.set(frame, bySubject);
+    else return bySubject;
+  }
+  return sections.get(frame);
+}
+
+function claimSectionsOf(frame) {
+  if (!cacheableTokenFrame(frame) || !claimSections.has(frame)) {
+    const byToken = new Map(), byClaim = new Map();
+    const byPredicate = new Map(), byObject = new Map();
+    const add = (index, key, token) => {
+      if (!index.has(key)) index.set(key, new Set());
+      index.get(key).add(token);
+    };
+    for (const [token, tellings] of sectionsOf(frame)) {
+      const claims = new Map();
+      for (const telling of tellings) {
+        const claim = claimCoordinate(telling.predicate, telling.object);
+        if (!claims.has(claim)) claims.set(claim, []);
+        claims.get(claim).push(telling);
+        add(byClaim, claim, token);
+        add(byPredicate, coincidenceKey(telling.predicate), token);
+        add(byObject, coincidenceKey(telling.object), token);
+      }
+      byToken.set(token, claims);
+    }
+    const index = { byToken, byClaim, byPredicate, byObject };
+    if (cacheableTokenFrame(frame)) claimSections.set(frame, index);
+    else return index;
+  }
+  return claimSections.get(frame);
+}
+
+/** An existing section of an already-generated token, not an empty foreign one. */
+const directTellings = (frame, token) => frozen(sectionsOf(frame).get(coincidenceKey(token)) ?? []);
+const directClaim = (frame, token, claim) =>
+  claimSectionsOf(frame).byToken.get(coincidenceKey(token))?.get(claim) ?? [];
+/** The section at a token: what is told of it directly. */
+export const tellingsAt = (frame, token) => {
+  const source = admitTokenFrame(frame);
+  generalizations(source, token); // the frame owns the membership law
+  return directTellings(source, token);
+};
+
+/**
+ * What is told of `token`, inherited from every generalization: the gluing of the sections over its
+ * cover. Each cell is (token, p, o) with the knowledge join of the evidence told of (g, p, o) over the
+ * generalizations g; `sources` lists, per cell, the generalizations that told it and their cells;
+ * `contested` lists the cells told both for and against, with the generalizations on each side.
+ */
+function glueInherited(frame, token, selectedClaim) {
+  // A cover is generated by this site's cells. No external token acquires an
+  // empty local section by asking the model to describe it.
+  const cover = generalizations(frame, token);
+  const merged = new Map();
+  const from = new Map();
+  for (const general of [...cover].sort((left, right) => byKey(coincidenceKey(left), coincidenceKey(right)))) {
+    const tellings = selectedClaim === undefined
+      ? directTellings(frame, general) : directClaim(frame, general, selectedClaim);
+    for (const telling of tellings) {
+      const at = cell(token, telling.predicate, telling.object, evidenceOf(telling));
+      const slot = address(at);
+      merged.set(slot, merged.has(slot) ? merge(merged.get(slot), at) : at);
+      if (!from.has(slot)) from.set(slot, []);
+      from.get(slot).push(Object.freeze({ token: general, cell: telling }));
+    }
+  }
+  const slots = [...merged.keys()].sort(byKey);
+  const cells = frozen(slots.map((slot) => merged.get(slot)));
+  const sources = frozen(slots.map((slot) => frozen(from.get(slot))));
+  const contested = [];
+  slots.forEach((slot, index) => {
+    // SignCell's Valued.value is NOT its witness presence when a Cell has
+    // been presumed, met or otherwise valued. An explicit stable value with
+    // no source tellings is not a source contradiction; an explicit absurd
+    // value cannot erase actually told opposite witnesses. Use SignCell's
+    // original source-evidence reader, never the FOUR-value side reader.
+    const [toldFor, toldAgainst] = evidenceTold(cells[index]);
+    if (!(toldFor && toldAgainst)) return;
+    const side = (which) => frozen(sources[index].filter(
+      (source) => evidenceTold(source.cell)[which]).map((source) => source.token));
+    contested.push(Object.freeze({ cell: cells[index], for: side(0), against: side(1) }));
+  });
+  return Object.freeze({ kind: INHERITED, token, cells, sources, contested: frozen(contested) });
+}
+
+/** The whole inherited section, over the original token frame's actual cover. */
+export function inherited(frame, token) {
+  return glueInherited(admitTokenFrame(frame), token);
+}
+
+/**
+ * Query one (token, predicate, object) fiber of the same inherited section.
+ * This does NOT scan or materialize all other claims when answering a query.
+ * Witnesses remain source-attached on both sides; disagreement is not
+ * discarded. Unknown claims have zero cells, not a fabricated negative fact.
+ *
+ * The returned shape is the same source-preserving gluing projection as
+ * inherited(), with at most one cell. A foreign token still refuses through
+ * the original frame's membership law. Context/reader admission is the
+ * responsibility of the owner supplying this frame, not this pure function.
+ */
+export function inheritedClaim(frame, token, predicate, object) {
+  const source = admitTokenFrame(frame);
+  // Check actual token membership before even interpreting a claim coordinate.
+  generalizations(source, token);
+  return glueInherited(source, token, claimCoordinate(predicate, object));
+}
+
+/**
+ * Navigate the ACTUAL source-told sheaf, not a textual document index.
+ *
+ * The caller supplies a frame already scoped to the current legitimate
+ * reader. The exact NI of a witnessed claim Cell may filter the same finite
+ * source query for reversible SignCraft compact-page expansion; a content
+ * address does not grant source authorization. Token, predicate, object and
+ * FOUR reading still select
+ * its witnessed cells; without a token this walks all admitted frame tokens.
+ * The optimized exact-claim path uses the same SignCell claim-coordinate
+ * index as inheritedClaim. Predicate-only/broad selections use the existing
+ * whole-section gluing, never another synthetic relation engine.
+ *
+ * Unsaid claims are not returned as negative evidence. An explicitly
+ * source-authored zero-evidence cell may read absurd, but missing cells do
+ * not materialize into rows. Pagination has stable meaning only over an
+ * unchanged source frame; a host serving remote pages must bind the actual
+ * reader grant and source revision before using its next offset.
+ */
+export function queryInheritedTellings(frame, selection = {}, page = {}) {
+  const admitted = (record, keys, label) => {
+    if (record === null || typeof record !== "object" || Array.isArray(record) ||
+        ![Object.prototype, null].includes(Object.getPrototypeOf(record)))
+      throw new TypeError("signgraph " + label + ": only declared plain data fields are admitted");
+    const descriptors = Object.getOwnPropertyDescriptors(record);
+    if (Reflect.ownKeys(descriptors).some((key) => typeof key !== "string" ||
+        !keys.includes(key) || !descriptors[key].enumerable ||
+        !Object.hasOwn(descriptors[key], "value")))
+      throw new TypeError("signgraph " + label + ": only declared plain data fields are admitted");
+    return Object.fromEntries(Object.entries(descriptors).map(([key, slot]) => [key, slot.value]));
+  };
+  // Read a fixed inert set of OWN data coordinates. Destructuring raw input
+  // would consult inherited source getters even when Reflect.ownKeys passed.
+  const chosen = admitted(selection, ["token", "predicate", "object", "reading", "cellNi"], "claim selection");
+  const requestedPage = admitted(page, ["offset", "limit"], "claim page");
+  const { token, predicate, object, reading, cellNi } = chosen;
+  const { offset = 0, limit = 24 } = requestedPage;
+  if (Reflect.ownKeys(chosen).some((key) => chosen[key] === undefined) ||
+      !Number.isSafeInteger(offset) || offset < 0 ||
+      !Number.isSafeInteger(limit) || limit < 1 || limit > 128 ||
+      (reading !== undefined && !["absurd", "potential", "active", "stable"].includes(reading)) ||
+      (cellNi !== undefined && !isNiUri(cellNi)))
+    throw new TypeError("signgraph claim query: noncanonical coordinate, reading or page");
+  // Materialize one immutable, owned cut of any mutable wire presentation.
+  // The original frame maker owns clone/merge/admission; this query never
+  // re-interprets an in-flight mutation as one coherent historical source.
+  const source = admitTokenFrame(frame);
+  const admittedTokens = top(source);
+  const scopedTokens = Object.hasOwn(chosen, "token")
+    ? admittedTokens.filter((known) => coincides(known, token)) : admittedTokens;
+  if (Object.hasOwn(chosen, "token") && scopedTokens.length === 0)
+    generalizations(source, token); // original precise foreign-token refusal
+  const exact = Object.hasOwn(chosen, "predicate") && Object.hasOwn(chosen, "object");
+
+  // A source-told claim becomes available at its source and at positively
+  // witnessed specializations. Use the original frame's extent law to select
+  // only those candidate tokens BEFORE gluing their sections. A nonexistent
+  // claim does not require asking each token whether it has been denied.
+  const indexed = Object.hasOwn(chosen, "predicate") || Object.hasOwn(chosen, "object");
+  let tokens = scopedTokens;
+  if (indexed) {
+    const index = claimSectionsOf(source);
+    const sources = exact
+      ? index.byClaim.get(claimCoordinate(predicate, object))
+      : Object.hasOwn(chosen, "predicate")
+        ? index.byPredicate.get(coincidenceKey(predicate))
+        : index.byObject.get(coincidenceKey(object));
+    const candidateKeys = new Set();
+    if (sources) for (const original of admittedTokens) {
+      if (!sources.has(coincidenceKey(original))) continue;
+      for (const descendant of extent(source, original))
+        candidateKeys.add(coincidenceKey(descendant));
+    }
+    tokens = scopedTokens.filter((known) => candidateKeys.has(coincidenceKey(known)));
+  }
+  // Count the complete source selection, but retain only the requested page.
+  // A small page must not keep every off-page gluing and witness carrier live.
+  // This bounds the retained result window, not the source frame or scan work.
+  const entries = [];
+  let total = 0;
+  for (const selectedToken of tokens) {
+    const section = exact
+      ? inheritedClaim(source, selectedToken, predicate, object)
+      : inherited(source, selectedToken);
+    const contests = new Map(section.contested.map((entry) => [address(entry.cell), entry]));
+    for (let i = 0; i < section.cells.length; i++) {
+      const at = section.cells[i];
+      if ((Object.hasOwn(chosen, "predicate") && !coincides(at.predicate, predicate)) ||
+          (Object.hasOwn(chosen, "object") && !coincides(at.object, object))) continue;
+      const value = knowledgeReading(at);
+      if (reading !== undefined && value !== reading) continue;
+      // SignCraft's existing Hydra source-claim @id is semanticId(at).
+      // Resolve it against the SAME admitted original frame, including
+      // source/against testimony. No alternate index or authority is minted.
+      if (cellNi !== undefined && semanticId(at) !== cellNi) continue;
+      const position = total++;
+      if (position < offset || entries.length === limit) continue;
+      entries.push(Object.freeze({
+        token: selectedToken, cell: at, reading: value,
+        sources: section.sources[i],
+        contested: contests.get(address(at)) ?? null,
+      }));
+    }
+  }
+  if (offset > total)
+    throw new RangeError("signgraph claim query: page outside admitted source readings");
+  const window = Object.freeze(entries);
+  // A cut of original cells is NOT itself the identity of its interpreted
+  // token frame: the declared specialization predicate determines which
+  // source relations generate inheritance. Bind BOTH to the query snapshot,
+  // so an actor cannot resume a page from a differently interpreted frame
+  // merely because both presentations happened to contain the same cells.
+  // Use the shared semantic content address, not local JSON/hash conventions.
+  const sourceCells = cellSetAddress(source.cells);
+  const snapshot = semanticId({
+    kind: "signgraph.token-frame-reading/v1",
+    sourceCells,
+    specializationPredicate: source.predicate,
+  });
+  return Object.freeze({
+    kind: "signgraph.inherited-telling-query", version: 1,
+    snapshot, sourceCells,
+    selection: retainedCarrier(chosen),
+    total, offset, limit,
+    next: offset + window.length < total ? offset + window.length : null,
+    entries: window,
+  });
+}

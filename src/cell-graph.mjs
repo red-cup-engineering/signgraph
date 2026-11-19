@@ -1,0 +1,339 @@
+/**
+ * cell-graph — SignCell's cells organized as a Chu space.
+ *
+ * Points are cells; states are observations (attributes, queries, indexes) over
+ * them, each a named, total evaluator `(cell) => reading`. The organization is
+ * SignChain's Chu space over FOUR, with SignCell's coincidence as point sameness
+ * and observation-name equality as state sameness; Chu maps between two
+ * organizations are SignChain's `chuMap`.
+ */
+import {
+  address, admitCell, admitCellSequence, admitTripleSequence, cellSet, measured, presence, recordOf,
+  sameCell, knowledgeReading as valueOf,
+} from "@red-cup-engineering/signcell";
+import {
+  assertInertCarrierSource, coincidenceKey, coincides, readSourceRecord, retainedCarrier,
+  semanticId,
+} from "@red-cup-engineering/semiotic-content-address-system";
+import { natZero, natOne, natAdd, fromNatural } from "@red-cup-engineering/metrologic/number/exact-number";
+import { chuSpaceOfEntries } from "@red-cup-engineering/metrologic/chu";
+import {
+  createGraph, distances, shortestPathWithSourceEdges
+} from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
+
+/** The Chu space of a cell set under a list of named observations. */
+export function cellGraph(cells, observations, options = {}) {
+  // A SignCell point is the triple, not the current evidence presentation.
+  // First join coincident tellings into one point, retaining both evidence sides.
+  // This is an extensional graph projection, NOT a substitute for original
+  // Articulating occurrences: their separately carried histories remain upstream.
+  const points = cellSet(cells);
+  const entries = points.flatMap((point) => observations.map((observation) => [point, observation.name, observation.evaluate(point)]));
+  return chuSpaceOfEntries(points, observations.map((observation) => observation.name), entries, {
+    absent: options.absent, samePoint: sameCell, sameState: (left, right) => left === right,
+  });
+}
+
+/** Build the existing symmetric projection from ONE detached, source-admitted
+ * incidence presentation, without another input read or cell-set collapse. */
+function relationGraphOfAdmittedIncidences(incidences) {
+    if (incidences.length === 0)
+        throw new TypeError("an empty section presents no relation graph");
+    // SignCell's canonical coincidence bytes, not host object identity or
+    // JSON.stringify. Every original term is retained in first-seen order.
+    // Each incident endpoint is classified once in O(1) expected map access.
+    const terms = [];
+    const positions = new Map();
+    const indexOf = (term) => {
+        const key = coincidenceKey(term);
+        const prior = positions.get(key);
+        if (prior !== undefined) return prior;
+        const position = terms.length;
+        terms.push(term);
+        positions.set(key, position);
+        return position;
+    };
+    const pairs = [];
+    for (const at of incidences) {
+        const subject = indexOf(at.subject);
+        const object = indexOf(at.object);
+        if (subject !== object)
+            pairs.push([subject, object]);
+    }
+    // Accumulate each unoriented relation exactly once, preserving multiplicity.
+    // The old implementation rescanned the entire edge list once for each
+    // matrix entry, costing O(entities² × cells). The output is necessarily
+    // dense, but this construction requires only O(cells + entities²) work.
+    // Reuse the exact-number tower; never sum host floats or reimplement ℕ.
+    const counts = Array.from({ length: terms.length }, () => Array(terms.length).fill(natZero));
+    for (const [a, b] of pairs) {
+        counts[a][b] = natAdd(counts[a][b], natOne);
+        counts[b][a] = natAdd(counts[b][a], natOne);
+    }
+    const weights = counts.map(row => row.map(fromNatural));
+    return Object.freeze({
+        kind: "signgraph.relationGraph",
+        terms: Object.freeze(terms),
+        weights: Object.freeze(weights.map((row) => Object.freeze(row))),
+    });
+}
+/** The source-admitted, symmetric relation graph of predication Cells/triples.
+ * Both bare source triples and full SignCells use the ORIGINAL site's source
+ * boundary; a new Graph reader may neither evaluate a getter nor invent a
+ * different input on a second pass. Parallel source occurrences remain edges.
+ */
+export function relationGraphOfCells(cells) {
+    return relationGraphOfAdmittedIncidences(admitTripleSequence(cells));
+}
+/** The relation graph of a section (its entries' cells). Delegates to {@link relationGraphOfCells}. */
+export function relationGraph(section) {
+    return relationGraphOfCells(section.entries.map((entry) => entry.cell));
+}
+
+/**
+ * The same oriented flow network as flowNetwork(section), directly from held
+ * SignCells rather than a separately materialized SectionCarrier. In contrast
+ * to the symmetric relationGraphOfCells, this retains the sign of the boundary
+ * operator: each edge is subject -> object, fromIndex -> toIndex.
+ *
+ * This matters for causal proof graphs. A symmetric Laplacian can answer
+ * connectivity or diffusion questions, but it cannot distinguish "source
+ * proves conclusion" from the reversed (and generally invalid) claim.
+ * The flow is still a SignGraph READING of existing cells, not a new journal,
+ * an authenticated source, an inference, or authority to produce an order.
+ *
+ * Reflexive predications remain vertices but have zero boundary and therefore
+ * no directed edge. Duplicate predications remain distinct incidence edges,
+ * as they already do in flowNetwork(section).
+ */
+export function flowNetworkOfCells(cells) {
+    // Use precisely the same detached source positions for both the
+    // symmetric weights and oriented boundary. The old second read of
+    // caller-owned cells could disagree with the first graph index.
+    const incidences = admitTripleSequence(cells);
+    const graph = relationGraphOfAdmittedIncidences(incidences);
+    // The weighted and directed readers must use the SAME upstream canonical
+    // coincidence classes. Avoid linear vertex rescans per oriented edge.
+    const positions = new Map(graph.terms.map((term, index) => [coincidenceKey(term), index]));
+    const indexOf = (term) => positions.get(coincidenceKey(term));
+    const edges = [];
+    for (const value of incidences) {
+        const fromIndex = indexOf(value.subject);
+        const toIndex = indexOf(value.object);
+        if (fromIndex === toIndex) continue;
+        edges.push(Object.freeze({
+            kind: "signgraph.flowNetwork.edge",
+            from: graph.terms[fromIndex], to: graph.terms[toIndex],
+            fromIndex, toIndex,
+        }));
+    }
+    return Object.freeze({
+        kind: "signgraph.flowNetwork",
+        graph, terms: graph.terms, edges: Object.freeze(edges),
+    });
+}
+
+/** The flow network of a section delegates to its SignCell source carrier. */
+export function flowNetwork(section) {
+    return flowNetworkOfCells(section.entries.map((entry) => entry.cell));
+}
+
+/**
+ * Finite structural navigation over one original ordered SignCell source cut.
+ * The mathematical traversal is Metrologic's existing directed multigraph;
+ * SignGraph retains the Cells, their witness lanes and source occurrences.
+ *
+ * `incoming` and `either` permit reverse TRAVERSAL, never a converse assertion.
+ * Reflexive and parallel source incidences remain visible even when a shortest
+ * route needs neither. A hop limit bounds the neighborhood. Failure to reach a
+ * target is known to be unreachable only after the reachable set closes under traversal.
+ *
+ * Terms and distances do not grant a relation, proof, permission, physical
+ * metric or layout. A view supplies its own explicit term-to-object mapping.
+ */
+export function cellNavigationOfCells(cells, supplied) {
+  const options = readSourceRecord(supplied, "SignGraph cell navigation options");
+  if (!Object.hasOwn(options, "focus") || options.focus === undefined ||
+      Object.keys(options).some(name => !["focus", "target", "direction", "maxHops"].includes(name)))
+    throw new TypeError("SignGraph cell navigation requires focus and permits target, direction and maxHops");
+  const direction = options.direction ?? "outgoing";
+  if (!["outgoing", "incoming", "either"].includes(direction))
+    throw new TypeError("SignGraph cell navigation direction must be outgoing, incoming or either");
+  if (Object.hasOwn(options, "direction") && options.direction === null)
+    throw new TypeError("SignGraph cell navigation direction must be outgoing, incoming or either");
+  assertInertCarrierSource(options.focus);
+  const hasTarget = Object.hasOwn(options, "target");
+  if (hasTarget) assertInertCarrierSource(options.target);
+  if (Object.hasOwn(options, "maxHops") &&
+      (!Number.isSafeInteger(options.maxHops) || options.maxHops < 0 || options.maxHops > 32767))
+    throw new RangeError("SignGraph cell navigation maxHops must be an integer from 0 through 32767");
+
+  // Reuse the existing source budget and admission, without joining repeated
+  // source positions or forgetting contrary evidence before projection.
+  const sourceCells = admitCellSequence(cells, { maxItems: 16384, maxWitnesses: 16384 });
+  if (sourceCells.length === 0)
+    throw new TypeError("SignGraph cell navigation requires a nonempty Cell source");
+  const nodes = [], indexByKey = new Map();
+  const indexOf = term => {
+    const key = coincidenceKey(term);
+    let index = indexByKey.get(key);
+    if (index !== undefined) return index;
+    index = nodes.length;
+    nodes.push(Object.freeze({ index, key, term }));
+    indexByKey.set(key, index);
+    return index;
+  };
+  const incidences = Object.freeze(sourceCells.map((cell, sourceIndex) => Object.freeze({
+    sourceIndex, address: address(cell), cell,
+    fromIndex: indexOf(cell.subject), toIndex: indexOf(cell.object),
+  })));
+  Object.freeze(nodes);
+  const memberIndex = (term, label) => {
+    const index = indexByKey.get(coincidenceKey(term));
+    if (index === undefined)
+      throw new TypeError(`SignGraph cell navigation ${label} is not an original endpoint`);
+    return index;
+  };
+  const focusIndex = memberIndex(options.focus, "focus");
+  const targetIndex = hasTarget ? memberIndex(options.target, "target") : null;
+  const maxHops = options.maxHops ?? nodes.length - 1;
+  const topology = createGraph();
+  for (const { index } of nodes) topology.addNode(String(index));
+  const addTraversal = (incidence, fromIndex, toIndex, traversal) => topology.addEdge({
+    from: String(fromIndex), to: String(toIndex),
+    // The original source position prevents duplicate Cell addresses from
+    // collapsing into one arc. No witness is synthesized by reversing an arc.
+    data: { sourceIndex: incidence.sourceIndex, direction: traversal },
+  });
+  for (const incidence of incidences) {
+    if (direction !== "incoming")
+      addTraversal(incidence, incidence.fromIndex, incidence.toIndex, "forward");
+    if (direction !== "outgoing")
+      addTraversal(incidence, incidence.toIndex, incidence.fromIndex, "reverse");
+  }
+  const reached = distances(topology, String(focusIndex), { maxDepth: maxHops });
+  const neighborhood = Object.freeze([...reached].map(([id, distance]) =>
+    Object.freeze({ nodeIndex: Number(id), distance })));
+  const complete = [...reached.keys()].every(id =>
+    topology.outgoing(id).every(edge => reached.has(edge.to)));
+  let route = null;
+  if (hasTarget) {
+    const path = reached.has(String(targetIndex))
+      ? shortestPathWithSourceEdges(topology, String(focusIndex), String(targetIndex)) : null;
+    const edges = path === null ? [] : topology.edges();
+    route = Object.freeze({
+      targetIndex,
+      status: path !== null ? "reached" : complete ? "unreachable" : "not-reached-within-bound",
+      distance: path?.cost ?? null,
+      nodeIndices: Object.freeze(path === null ? [] : path.path.map(Number)),
+      steps: Object.freeze(path === null ? [] : path.sourceEdgeIndices.map(index => {
+        const edge = edges[index];
+        return Object.freeze({ sourceIndex: edge.data.sourceIndex,
+          fromIndex: Number(edge.from), toIndex: Number(edge.to), direction: edge.data.direction });
+      })),
+    });
+  }
+  return Object.freeze({
+    kind: "signgraph.cellNavigation.v1",
+    sourceId: semanticId(sourceCells), sourceCells, nodes, incidences,
+    focusIndex, direction, maxHops, neighborhood, complete, route,
+  });
+}
+
+// — Receive (not recreate) the original SignCell FOUR ⇄ Record adjunction. —
+
+/**
+ * Bring a source-witnessed SignCell charge/record tower into the ORIGINAL
+ * oriented SignGraph flow. The second argument is the actual producer
+ * exported as SignCell ./charge-spin#chargeRecordTowerOfCell. It is injected
+ * until that additive, draft SignCell export is published at a fixed version;
+ * SignGraph deliberately does not import an unreleased npm subpath.
+ *
+ * One entry is retained PER supplied cell presentation. The existing
+ * flowNetworkOfCells also retains parallel incidence edges. An address
+ * coincidence DOES NOT erase source testimony or mint new independent WITs.
+ *
+ * The returned records are evidence counts, NOT authenticated actors,
+ * accepted physical charges, a Scott/aperiodic closure ordinal, a sheaf,
+ * electromagnetic fields, or a physical metric. Source and original
+ * for/against/posited-value distinctions remain in every entry.
+ */
+// The original SignCell/FOUR supplier defines these exact source positions.
+// Presentation with added metadata cannot confer independent testimony.
+const TOWER_FIELDS = Object.freeze([
+  "kind", "sourceAddress", "sourceCell", "record", "observedCharge",
+  "valuedCharge", "measured", "minimumRecord", "retainedSurplus"
+]);
+const malformedTower = () => new TypeError(
+  "signgraph: rejected foreign, stale or inconsistent source tower readout");
+const receivedTower = source => {
+  if (!source || typeof source !== "object" || Array.isArray(source) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(source)))
+    throw malformedTower();
+  const slots = Object.getOwnPropertyDescriptors(source);
+  if (Reflect.ownKeys(slots).length !== TOWER_FIELDS.length ||
+      !TOWER_FIELDS.every(name => slots[name] && slots[name].enumerable &&
+        Object.hasOwn(slots[name], "value")))
+    throw malformedTower();
+  // The existing SignCell carrier owns nested identity, byte encoding and
+  // immutable original representations; never reinterpret JSON as an issuer.
+  return retainedCarrier(Object.fromEntries(
+    TOWER_FIELDS.map(name => [name, slots[name].value])));
+};
+
+export function sourceRecordTowerFlowOfCells(cells, towerOfCell) {
+  if (!Array.isArray(cells) || cells.length === 0 || cells.length > 1024) {
+    throw new TypeError("signgraph: source tower flow requires 1..1024 source cells");
+  }
+  if (typeof towerOfCell !== "function") {
+    throw new TypeError("signgraph: a source-owned SignCell tower reader is required");
+  }
+  // A raw array and its elements are untrusted even when the callback is an
+  // admitted producer. Read exactly one original, inert, source-ordered copy.
+  const admittedCells = admitCellSequence(cells);
+  const entries = admittedCells.map((admitted, sourceIndex) => {
+    const tower = receivedTower(towerOfCell(admitted));
+    const actualRecord = recordOf(admitted);
+    if (!tower || tower.kind !== "signcell.charge-record-tower.v1"
+        || tower.sourceAddress !== address(admitted)
+        || !tower.sourceCell || !coincides(admitCell(tower.sourceCell), admitted)
+        || tower.observedCharge !== presence(admitted)
+        || tower.valuedCharge !== valueOf(admitted)
+        || tower.measured !== measured(admitted)
+        || !tower.record || tower.record.pos !== actualRecord.pos
+        || tower.record.neg !== actualRecord.neg
+        || !tower.minimumRecord || !tower.retainedSurplus
+        || tower.minimumRecord.pos !== Number(actualRecord.pos > 0)
+        || tower.minimumRecord.neg !== Number(actualRecord.neg > 0)
+        || tower.retainedSurplus.pos !== actualRecord.pos - tower.minimumRecord.pos
+        || tower.retainedSurplus.neg !== actualRecord.neg - tower.minimumRecord.neg) {
+      throw new TypeError("signgraph: rejected foreign, stale or inconsistent source tower readout");
+    }
+    return Object.freeze({
+      sourceIndex,
+      cell: admitted,
+      sourceAddress: tower.sourceAddress,
+      tower,
+      from: admitted.subject,
+      to: admitted.object
+    });
+  });
+  // Use the existing oriented graph: subject -> object, self-links have no edge.
+  const flow = flowNetworkOfCells(entries.map((entry) => entry.cell));
+  const extensionalCells = cellSet(entries.map((entry) => entry.cell));
+  // Existing native Chu reader, now distinguishing evidence presence from the
+  // posited FOUR value. It is intentionally a LOSSY extensional projection:
+  // original entry witnesses and tally multiplicities stay above in entries.
+  const chu = cellGraph(extensionalCells, [
+    { name: "source-evidence-charge", evaluate: presence },
+    { name: "posited-charge", evaluate: valueOf }
+  ]);
+  return Object.freeze({
+    kind: "signgraph.source-record-tower-flow.v1",
+    flow,
+    chu,
+    entries: Object.freeze(entries),
+    extensionalCells
+  });
+}
+

@@ -1,0 +1,52 @@
+{
+  "id": "signgraph-holds-feather-graphs",
+  "name": "SignGraph holds feather graphs, and a posit graph is a feather graph",
+  "kind": "requirement",
+  "raised-by": "emsenn",
+  "asks": "Continue researching feather graphs, add them to signgraph, since posit graphs are feather graphs.\n\nWe want signgraph to meet then beat more things like sqlite and couchdb, yes even though it's all flatfile, that's what the proof path addressing technologies are meant to be for :O",
+  "met-when": [
+    {
+      "cell": "signgraph-holds-feather-graphs:feather-graph-of-predications",
+      "target": "held",
+      "says": "A feather graph is built from performed predications, each with its source positions; its sites are derived from those positions, and no site or relation is present that no supplied predication performed.",
+      "command": "node --test test/requirements/signgraph-holds-feather-graphs/feather-graph-of-predications.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-holds-feather-graphs:posit-graphs-are-feather-graphs",
+      "target": "held",
+      "says": "Every function that takes a feather graph takes a posit graph and gives the result it gives for the feather graph the posit graph is.",
+      "command": "node --test test/requirements/signgraph-holds-feather-graphs/posit-graphs-are-feather-graphs.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-holds-feather-graphs:display-is-not-identity",
+      "target": "held",
+      "says": "Two source positions with the same display are two positions unless an identification of them is supplied; no function merges positions by their display.",
+      "command": "node --test test/requirements/signgraph-holds-feather-graphs/display-is-not-identity.test.mjs",
+      "expected-exit": 0
+    },
+    {
+      "cell": "signgraph-holds-feather-graphs:no-feather-format",
+      "target": "held",
+      "says": "SignGraph reads and writes no feather graph file or wire format. The FEATHER-G reader and writer are in their consumer and import SignGraph.",
+      "command": "node --test test/requirements/signgraph-holds-feather-graphs/no-feather-format.test.mjs",
+      "expected-exit": 0
+    }
+  ],
+  "x-provenance": {
+    "recorded-by": "claude",
+    "recorded-on": "2026-11-10",
+    "sources": [
+      {
+        "words": "Continue researching feather graphs, add them to signgraph, since posit graphs are feather graphs.",
+        "from": "the Leader, quoted in the requirement record of 2026-10-15"
+      },
+      {
+        "words": "much that belongs to downstream consumers, such as the feather graph codecs",
+        "from": "the Leader's brief of 2026-11-10, item 3"
+      }
+    ],
+    "acceptance": "Each command names one test file in this repository. A test file that does not exist yet fails its command, so the condition reads unmet until the test is written and passes."
+  }
+}
