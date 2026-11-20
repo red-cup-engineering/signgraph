@@ -18,7 +18,7 @@ import { rationalToFiniteNumber } from '@red-cup-engineering/metrologic/number/e
 
 // Matrix exchange is a capability of actually admitted in-process cochain
 // readings; JSON-shaped forged structs cannot turn into certified operators.
-const validatedReadings = new WeakSet();
+const admittedReadings = new WeakSet();
 const rational = entry => rationalOfBigInts(...ratPairOfEntry(sheafSourceScalar(entry)));
 const fraction = value => {
   const [num, den] = rationalParts(value);
@@ -67,7 +67,7 @@ export function cellular2Sheaf(source) {
   const edgeIndex = new Map(sheaf.edges.map((edge, i) => [coincidenceKey(edge.id), i]));
   let c2 = 0;
   const faceOffsets = [];
-  const validatedFaces = sourceFaces.map((face, index) => {
+  const admittedFaces = sourceFaces.map((face, index) => {
     const dim = nonnegative(face.dim, 'face stalk dimension');
     faceOffsets.push(c2);
     c2 += dim;
@@ -102,7 +102,7 @@ export function cellular2Sheaf(source) {
       });
       return fraction(sum);
     }));
-  for (const face of validatedFaces) {
+  for (const face of admittedFaces) {
     const byEdge = new Map(), byVertex = new Map();
     for (const step of face.boundary) {
       const e = edgeIndex.get(coincidenceKey(step.edge));
@@ -132,7 +132,7 @@ export function cellular2Sheaf(source) {
     }
   });
   const one = matrixOf(c2, sheaf.c1);
-  validatedFaces.forEach((face, f) => face.boundary.forEach(step => {
+  admittedFaces.forEach((face, f) => face.boundary.forEach(step => {
     const e = edgeIndex.get(coincidenceKey(step.edge));
     step.restrict.forEach((row, i) => row.forEach((entry, j) => {
       const k = faceOffsets[f] + i, l = sheaf.edgeOffsets[e] + j;
@@ -154,15 +154,15 @@ export function cellular2Sheaf(source) {
     throw new RangeError('cellular2Sheaf: inconsistent rational cohomology dimensions');
   const result = Object.freeze({
     kind: 'signgraph.cellular2Sheaf', sheaf, complex,
-    faces: Object.freeze(validatedFaces), c0: sheaf.c0, c1: sheaf.c1, c2,
+    faces: Object.freeze(admittedFaces), c0: sheaf.c0, c1: sheaf.c1, c2,
     coboundary: Object.freeze({ zero: frozenRows(zero), one: frozenRows(one) }),
     basis: Object.freeze({
-      zero: basisOf(sheaf.vertices), one: basisOf(sheaf.edges), two: basisOf(validatedFaces),
+      zero: basisOf(sheaf.vertices), one: basisOf(sheaf.edges), two: basisOf(admittedFaces),
     }),
     rank: Object.freeze({ zero: r0, one: r1 }),
     cohomology: Object.freeze({ h0, h1, h2 }),
   });
-  validatedReadings.add(result);
+  admittedReadings.add(result);
   return result;
 }
 
@@ -175,7 +175,7 @@ export function cellular2Sheaf(source) {
  * admitted sheaf, because Matrix Market carries matrices, not typed cells.
  */
 export function matrixMarketCoboundary(reading, degree) {
-  if (!validatedReadings.has(reading) || (degree !== 0 && degree !== 1))
+  if (!admittedReadings.has(reading) || (degree !== 0 && degree !== 1))
     throw new TypeError('matrixMarketCoboundary: provide an admitted cellular2Sheaf and degree 0 or 1');
   const rows = degree === 0 ? reading.c1 : reading.c2;
   const cols = degree === 0 ? reading.c0 : reading.c1;

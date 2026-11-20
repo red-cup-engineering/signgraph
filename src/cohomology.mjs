@@ -166,7 +166,7 @@ export function cohomologyLaplacian(cohomology) {
 }
 
 /** The cohomology receipt of a list of cells: H⁰ and H¹ ranks, H¹'s vanishing, and the Laplacian. */
-export function cohomologyRecordOfCells(cells, extraEntities = []) {
+export function cohomologyReceiptOfCells(cells, extraEntities = []) {
   const cohomology = cohomologyOfCells(cells, extraEntities);
   return Object.freeze({
     h0: cohomology.zeroCohomology.rank,

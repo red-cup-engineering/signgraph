@@ -19,7 +19,7 @@ const isRecord = value => value !== null && typeof value === "object" && !Array.
 /** Typed relation admission and page projection. */
 
 const relationFailure = (key, value, message) => Object.freeze({ ok: false, refusal: Object.freeze({ [key]: value, message }) });
-const rejected = (code, message) => relationFailure("code", code, message);
+const refused = (code, message) => relationFailure("code", code, message);
 const thingError = (kind, message) => relationFailure("kind", kind, message);
 const exact = (value, keys) => isRecord(value) && hasFields(value, keys);
 const byId = (a, b) => relationOrder(a.id, b.id);
@@ -34,43 +34,43 @@ function defineRelation(input) {
     if (typeof id !== "string" || !id.trim()) throw new TypeError("relation id must be nonempty");
     relation = Object.freeze({ id, domain, codomain, witness });
   } catch (error) {
-    return rejected("invalid-relation", relationMessage(error));
+    return refused("invalid-relation", relationMessage(error));
   }
   const types = collectTypeSystem([relation.domain, relation.codomain, relation.witness]);
-  if (!types.ok) return rejected("invalid-relation-types", types.refusal.message);
+  if (!types.ok) return refused("invalid-relation-types", types.refusal.message);
   relations.add(relation);
   return relationAccepted(relation);
 }
 
 function checkStatement(relation, statement) {
-  if (!exact(statement, positions)) return rejected("invalid-statement", "expected subject, predicate, object, witness");
-  if (statement.predicate !== relation.id) return rejected("wrong-predicate", "statement names another predicate");
+  if (!exact(statement, positions)) return refused("invalid-statement", "expected subject, predicate, object, witness");
+  if (statement.predicate !== relation.id) return refused("wrong-predicate", "statement names another predicate");
   const { subject: e, predicate: a, object: v, witness: t } = statement;
   for (const [position, type] of [["subject", relation.domain], ["object", relation.codomain], ["witness", relation.witness]]) {
     const checked = admit(type, statement[position]);
     if (!checked.ok)
-      return rejected(`invalid-${position}`, checked.refusal.issues.map(issue => `${issue.path || "/"} ${issue.message}`).join("; "));
+      return refused(`invalid-${position}`, checked.refusal.issues.map(issue => `${issue.path || "/"} ${issue.message}`).join("; "));
   }
   return relationAccepted(Object.freeze({ id: exactIdentity({ e, a, v, t }), statement }));
 }
 
-function validateStatement(relation, input) {
-  if (!relations.has(relation)) return rejected("unknown-relation", "relation was not established by defineRelation");
+function admitStatement(relation, input) {
+  if (!relations.has(relation)) return refused("unknown-relation", "relation was not established by defineRelation");
   try { return checkStatement(relation, snapshotFiniteJson(input)); }
-  catch (error) { return rejected("invalid-statement", relationMessage(error)); }
+  catch (error) { return refused("invalid-statement", relationMessage(error)); }
 }
 
 function prepareCatalog(declarations) {
   const predicates = new Map();
   try {
     for (const relation of readSourceArray(declarations, "relation declarations")) {
-      if (!relations.has(relation)) return rejected("unknown-relation", "field contains an undeclared relation");
-      if (predicates.has(relation.id)) return rejected("duplicate-relation", `duplicate relation ${relation.id}`);
+      if (!relations.has(relation)) return refused("unknown-relation", "field contains an undeclared relation");
+      if (predicates.has(relation.id)) return refused("duplicate-relation", `duplicate relation ${relation.id}`);
       predicates.set(relation.id, relation);
     }
     const types = collectTypeSystem([...predicates.values()].flatMap(({ domain, codomain, witness }) => [domain, codomain, witness]));
     const document = types.ok ? typeSystemDocument(types.value) : types;
-    if (!document.ok) return rejected("invalid-field-types", document.refusal.message);
+    if (!document.ok) return refused("invalid-field-types", document.refusal.message);
     const ordered = Object.freeze([...predicates.values()].sort(byId));
     const catalogIdentity = exactIdentity({
       typeSystem: document.value.identity,
@@ -78,17 +78,17 @@ function prepareCatalog(declarations) {
     });
     return relationAccepted({ catalogIdentity, ordered, predicates });
   } catch (error) {
-    return rejected("invalid-field-types", relationMessage(error));
+    return refused("invalid-field-types", relationMessage(error));
   }
 }
 
 function addRow(catalog, rows, statement, advertisedId) {
   const relation = catalog.predicates.get(statement?.predicate);
-  if (!relation) return rejected("unknown-predicate", "statement predicate is not declared in this field");
+  if (!relation) return refused("unknown-predicate", "statement predicate is not declared in this field");
   const checked = checkStatement(relation, statement);
   if (!checked.ok) return checked;
   if (advertisedId !== undefined && advertisedId !== checked.value.id)
-    return rejected("statement-identity-mismatch", "statement bytes do not match the advertised identity");
+    return refused("statement-identity-mismatch", "statement bytes do not match the advertised identity");
   rows.set(checked.value.id, checked.value);
 }
 
@@ -113,7 +113,7 @@ function createRelationalField(declarations, values = []) {
     }
     return buildField(catalog.value, rows);
   } catch (error) {
-    return rejected("invalid-statement", relationMessage(error));
+    return refused("invalid-statement", relationMessage(error));
   }
 }
 
@@ -121,29 +121,29 @@ function relationalFieldDocument(field) {
   return Object.freeze({ version: 1, catalogIdentity: field.catalogIdentity, statements: field.statements });
 }
 
-function validateDocumentRows(catalog, rows, input) {
+function admitDocumentRows(catalog, rows, input) {
   const document = snapshotFiniteJson(input);
   if (!exact(document, ["version", "catalogIdentity", "statements"]) || document.version !== 1 ||
       typeof document.catalogIdentity !== "string" || !Array.isArray(document.statements))
-    return rejected("invalid-field-document", "expected version 1, catalogIdentity and statements");
+    return refused("invalid-field-document", "expected version 1, catalogIdentity and statements");
   if (document.catalogIdentity !== catalog.catalogIdentity)
-    return rejected("catalog-mismatch", "replicas use different relation or type declarations");
+    return refused("catalog-mismatch", "replicas use different relation or type declarations");
   for (const entry of document.statements) {
     if (!exact(entry, ["id", "statement"]) || typeof entry.id !== "string")
-      return rejected("invalid-field-document", "expected an id and a statement");
+      return refused("invalid-field-document", "expected an id and a statement");
     const issue = addRow(catalog, rows, entry.statement, entry.id);
     if (issue) return issue;
   }
 }
 
-function validateRelationalFieldDocument(declarations, input) {
+function admitRelationalFieldDocument(declarations, input) {
   const catalog = prepareCatalog(declarations);
   if (!catalog.ok) return catalog;
   const rows = new Map();
   try {
-    return validateDocumentRows(catalog.value, rows, input) ?? buildField(catalog.value, rows);
+    return admitDocumentRows(catalog.value, rows, input) ?? buildField(catalog.value, rows);
   } catch (error) {
-    return rejected("invalid-field-document", relationMessage(error));
+    return refused("invalid-field-document", relationMessage(error));
   }
 }
 
@@ -157,13 +157,13 @@ function mergeRelationalFields(declarations, ...fields) {
       if (fieldIndexes.has(source) && field.catalogIdentity === catalog.value.catalogIdentity) {
         for (const entry of field.statements) rows.set(entry.id, entry);
       } else {
-        const issue = validateDocumentRows(catalog.value, rows, relationalFieldDocument(field));
+        const issue = admitDocumentRows(catalog.value, rows, relationalFieldDocument(field));
         if (issue) return issue;
       }
     }
     return buildField(catalog.value, rows);
   } catch (error) {
-    return rejected("invalid-field-document", relationMessage(error));
+    return refused("invalid-field-document", relationMessage(error));
   }
 }
 
@@ -337,12 +337,12 @@ function projectTypedThingCells(input = {}) {
       catch (error) { return thingError("invalid-thing-relational-field", relationMessage(error)); }
       if (!exact(relationInput, ["declarations", "document"]))
         return thingError("invalid-thing-relational-field", "expected relation declarations and a field document");
-      const validated = validateRelationalFieldDocument(relationInput.declarations, relationInput.document);
-      if (!validated.ok) return thingError("invalid-thing-relational-field", validated.refusal.message);
-      for (const { id, statement: { subject, predicate, object, witness } } of validated.value.statements) {
+      const admitted = admitRelationalFieldDocument(relationInput.declarations, relationInput.document);
+      if (!admitted.ok) return thingError("invalid-thing-relational-field", admitted.refusal.message);
+      for (const { id, statement: { subject, predicate, object, witness } } of admitted.value.statements) {
         if (!things.has(subject) || !things.has(object))
           return thingError("foreign-thing-relation", "relation endpoints must identify admitted Things");
-        add(subject, predicate, object, { kind: "signcell.original-thing-relation/v1", field: validated.value.catalogIdentity, statement: id, witness });
+        add(subject, predicate, object, { kind: "signcell.original-thing-relation/v1", field: admitted.value.catalogIdentity, statement: id, witness });
       }
     }
   } catch (error) {
@@ -360,23 +360,23 @@ function projectTypedThingCells(input = {}) {
 
 function deriveThingQualityContext({ things, field, predicate } = {}) {
   if (!Array.isArray(things) || !things.length || !fieldIndexes.has(field) || typeof predicate !== "string" || !predicate)
-    return rejected("invalid-quality-context", "expected Thing presentations, an admitted field and a predicate");
+    return refused("invalid-quality-context", "expected Thing presentations, an admitted field and a predicate");
   if (!field.relations.some(relation => relation.id === predicate))
-    return rejected("unknown-quality-predicate", "quality predicate is not declared");
+    return refused("unknown-quality-predicate", "quality predicate is not declared");
 
   const presentations = [], entities = new Map(), attributes = new Map(), supporting = [], opposing = [];
   for (const input of things) {
     const result = deriveThingFromUtterance(input);
-    if (!result.ok) return rejected("invalid-quality-thing", result.refusal.message ?? "Thing presentation was not admitted");
+    if (!result.ok) return refused("invalid-quality-thing", result.refusal.message ?? "Thing presentation was not admitted");
     const { thing, source } = result.value;
     if (!entities.has(thing.id)) entities.set(thing.id, thing);
     presentations.push(Object.freeze({ thingId: thing.id, source }));
   }
   for (const { id, statement: { subject, object, witness } } of queryRelationalField(field, predicate)) {
-    if (!entities.has(subject)) return rejected("foreign-quality-subject", "statement subject is not an admitted Thing");
+    if (!entities.has(subject)) return refused("foreign-quality-subject", "statement subject is not an admitted Thing");
     if (!isRecord(witness) || !/^ni:\/\/\/sha-256;[A-Za-z0-9_-]{43}$/u.test(witness.source) ||
         !["for", "against"].includes(witness.side) || !["observed", "inferred"].includes(witness.status))
-      return rejected("incomplete-quality-witness", "witness requires a source address, side and status");
+      return refused("incomplete-quality-witness", "witness requires a source address, side and status");
 
     const coordinate = claimCoordinate(predicate, object);
     if (!attributes.has(coordinate)) attributes.set(coordinate, { coordinate, predicate, object, witnesses: [] });
@@ -393,7 +393,7 @@ function deriveThingQualityContext({ things, field, predicate } = {}) {
 }
 
 export {
-  validateRelationalFieldDocument, validateStatement, createRelationalField, defineRelation,
+  admitRelationalFieldDocument, admitStatement, createRelationalField, defineRelation,
   deriveThingFromUtterance, deriveThingQualityContext, makeThing, mergeRelationalFields,
   projectTypedThingCells, queryRelationalField, queryRelationalFieldPage, relationalFieldDocument,
 };

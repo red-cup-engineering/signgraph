@@ -69,11 +69,11 @@ export function compareReadings({ readings, overlap = () => null } = {}) {
     const left = profiled[i], right = profiled[j];
     const textOverlap = overlap(left.key, right.key);
     const claimOverlap = jaccard(left.claims, right.claims);
-    const result = textOverlap !== null && textOverlap >= 0.5 ? "copies"
+    const verdict = textOverlap !== null && textOverlap >= 0.5 ? "copies"
       : claimOverlap >= 0.6 && left.claims.size >= 3 && right.claims.size >= 3 ? "same-concept"
       : (textOverlap === null || textOverlap < 0.15) && claimOverlap < 0.1 ? "unconnected"
       : "related";
-    pairs.push(Object.freeze({ left: left.key, right: right.key, textOverlap, claimOverlap: Number(claimOverlap.toFixed(3)), verdict: result,
+    pairs.push(Object.freeze({ left: left.key, right: right.key, textOverlap, claimOverlap: Number(claimOverlap.toFixed(3)), verdict,
       shared: Object.freeze([...left.claims].filter((claim) => right.claims.has(claim)).sort().map((claim) => JSON.parse(claim))) }));
   }
   return Object.freeze({

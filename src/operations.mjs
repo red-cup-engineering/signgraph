@@ -314,7 +314,7 @@ export const operations = Object.freeze({
           boundary: Object.freeze(face.boundary.map(step =>
             Object.freeze({ edge: step.edge, direction: step.direction }))),
         })));
-      const record = {
+      const receipt = {
         kind: "signgraph.j26.puncture-receipt.v1",
         source: view.source,
         retention: view.retention,
@@ -340,10 +340,10 @@ export const operations = Object.freeze({
             throw new TypeError("J26 puncture edgeField must have one unique original edge identity and vector");
           byId.set(entry.edge, entry.vector);
         }
-        record.burgers = burgersOfComplex(view.complex,
+        receipt.burgers = burgersOfComplex(view.complex,
           edges.map(edge => byId.get(edge.id)));
       }
-      return Object.freeze(record);
+      return Object.freeze(receipt);
     },
   }),
   observedHeadGluing: Object.freeze({

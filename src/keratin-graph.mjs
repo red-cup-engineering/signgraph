@@ -23,7 +23,7 @@ const isRecord = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 const named = x => typeof x === 'string' && x.length > 0;
 const ordered = (a,b) => a < b ? -1 : a > b ? 1 : 0;
 const frozen = values => freeze([...values]);
-const validated = new WeakSet();
+const admitted = new WeakSet();
 const analysisOwners = new WeakMap();
 const linearOwners = new WeakMap();
 const MAX_POSITIONS = 128, MAX_RELATIONS = 256, MAX_FACES = 32;
@@ -215,7 +215,7 @@ export function keratinGraphOfPredications(input = {}) {
     observers:frozen(observerRecords),
     status:'downstream finite model; not proven source-to-keratin or causal shroud transport',
   });
-  validated.add(graph);
+  admitted.add(graph);
   return graph;
 }
 
@@ -230,7 +230,7 @@ export function keratinGraphOfPredications(input = {}) {
  * SignGraph #17/Obsmetrologia receiving obligation, not a hidden inference.
  */
 export function keratinLinearSheaf(graph, options = {}) {
-  if(!validated.has(graph))fail('linear sheaf requires original in-process graph');
+  if(!admitted.has(graph))fail('linear sheaf requires original in-process graph');
   // Read source options before destructuring. Getter-backed properties must not
   // execute in order to propose a stalk or restriction matrix.
   const qualified=fields(options,['vertexStalks','relationStalks'],'linear sheaf options');
@@ -454,7 +454,7 @@ function solveSectionScopes(domains, constraints, {limit=DEFAULT_ASSIGNMENT_BUDG
 export function analyzeKeratinGraph(graph, options={}) {
   const qualified=fields(options,['maxAssignments'],'analysis options');
   const {maxAssignments=DEFAULT_ASSIGNMENT_BUDGET}=qualified;
-  if(!validated.has(graph))fail('analysis requires the original in-process generated reading');
+  if(!admitted.has(graph))fail('analysis requires the original in-process generated reading');
   if(!Number.isSafeInteger(maxAssignments)||maxAssignments<1||maxAssignments>2000000)
     fail('analysis maxAssignments must be a positive safe number <= 2000000');
   const excluded=new Map(graph.stalks.map(s=>[s.position,new Set()]));
@@ -518,7 +518,7 @@ export function analyzeKeratinGraph(graph, options={}) {
 const dot = value => JSON.stringify(String(value));
 /** Render a standard Graphviz DOT graph, with *annotation-only* hole/face glyphs. */
 export function keratinGraphToDot(graph, analysis) {
-  if(!validated.has(graph))fail('Graphviz projection requires original generated keratin reading');
+  if(!admitted.has(graph))fail('Graphviz projection requires original generated keratin reading');
   if(analysis !== undefined && analysisOwners.get(analysis)!==graph)
     fail('Graphviz analysis must be an analysis receipt from this particular keratin graph');
   const nodes=graph.feather.positions;

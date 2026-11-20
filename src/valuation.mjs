@@ -38,16 +38,16 @@ export const sameValuation = (left, right) => valuationLeqKnowledge(left, right)
 /** Posit a valuation over its site: the presheaf with the valuation as its first trace.
  *  Refuses a valuation carrying a cell outside the site. */
 export function posit(site, valuation) {
-  const validated = cellSet(valuation);
-  if (validated.length > 0) {
+  const admitted = cellSet(valuation);
+  if (admitted.length > 0) {
     // Membership is the same canonical triple coincidence that constructs a
     // site. Index once instead of re-encoding its cells for every telling;
     // the admitted evidence, including untold cells and written values, stays
     // in the original SignCell set below.
     const members = new Set(site.cells.map(tripleKey));
-    if (validated.some((told) => !members.has(tripleKey(told)))) throw new TypeError("posit: the valuation tells a cell outside its site");
+    if (admitted.some((told) => !members.has(tripleKey(told)))) throw new TypeError("posit: the valuation tells a cell outside its site");
   }
-  return Object.freeze({ kind: "signgraph.presheaf", site, traces: Object.freeze([validated]) });
+  return Object.freeze({ kind: "signgraph.presheaf", site, traces: Object.freeze([admitted]) });
 }
 
 /** A presheaf's latest valuation. */
