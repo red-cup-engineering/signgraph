@@ -1,3 +1,4 @@
+import { isNonEmptyString, isRecord } from "@red-cup-engineering/signcell/values";
 /**
  * Source-positioned feather presentations over ORIGINAL performed predications.
  *
@@ -16,8 +17,8 @@
  */
 
 const freeze = Object.freeze;
-const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const named = value => typeof value === 'string' && value.length > 0;
+
+
 const compare = (left, right) => left < right ? -1 : left > right ? 1 : 0;
 const MAX_PREDICATIONS = 2048;
 const MAX_FORK_PAIRS = 8192;
@@ -78,7 +79,7 @@ export function featherSourceArray(values, context, maximum = 256, scope = 'feat
 }
 function positionOf(value) {
   const position = featherSourceFields(value, ['performed', 'side', 'display'], 'source-position role');
-  if (!named(position.performed) || !['token', 'claim'].includes(position.side))
+  if (!isNonEmptyString(position.performed) || !['token', 'claim'].includes(position.side))
     fail('each endpoint must be a source-position role {performed,side}');
   if (Object.hasOwn(position, 'display') && typeof position.display !== 'string')
     fail('a Mark display must be an opaque text readout, not an identity');
@@ -105,7 +106,7 @@ export function featherGraphOfPredications(source, options = {}) {
   const selectors = featherSourceFields(options,
     ['axialPredicate', 'transversePredicate'], 'predicate selectors');
   const {axialPredicate, transversePredicate} = selectors;
-  if (!named(axialPredicate) || !named(transversePredicate) || axialPredicate === transversePredicate)
+  if (!isNonEmptyString(axialPredicate) || !isNonEmptyString(transversePredicate) || axialPredicate === transversePredicate)
     fail('distinct axialPredicate and transversePredicate selectors are required');
   const ids = new Set(), positions = new Map(), predications = [];
   const remember = role => {
@@ -121,8 +122,8 @@ export function featherGraphOfPredications(source, options = {}) {
       ['occurrence', 'sourceRecord', 'cell'], 'source occurrence');
     const predication = featherSourceFields(original.cell,
       ['subject', 'predicate', 'object'], 'source predication cell');
-    if (!named(original.occurrence) || !named(original.sourceRecord) ||
-        !named(predication.predicate))
+    if (!isNonEmptyString(original.occurrence) || !isNonEmptyString(original.sourceRecord) ||
+        !isNonEmptyString(predication.predicate))
       fail('each occurrence needs identity, source record, and predicate');
     if (ids.has(original.occurrence)) fail('duplicate original occurrence identity');
     ids.add(original.occurrence);
@@ -249,8 +250,8 @@ export function positGraphOfFeather(feather, posits) {
     if (forSide.length + againstSide.length > MAX_FORK_PAIRS - witnessSlots)
       fail(`posit testimony aggregate witness budget exceeds ${MAX_FORK_PAIRS} source entries`);
     witnessSlots += forSide.length + againstSide.length;
-    if (!originals.has(posit.occurrence) || !named(posit.sourceRecord) ||
-        !forSide.every(named) || !againstSide.every(named))
+    if (!originals.has(posit.occurrence) || !isNonEmptyString(posit.sourceRecord) ||
+        !forSide.every(isNonEmptyString) || !againstSide.every(isNonEmptyString))
       fail('each posit must charge an original predication with explicit for/against witnesses');
     const id = JSON.stringify([posit.occurrence, posit.sourceRecord]);
     if (told.has(id)) fail('duplicate original posit testimony');

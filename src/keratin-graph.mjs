@@ -1,3 +1,4 @@
+import { isNonEmptyString, isRecord } from "@red-cup-engineering/signcell/values";
 /**
  * Keratin Graph: a finite, source-positioned graphing and compatibility workbench.
  *
@@ -19,8 +20,8 @@ import { apply, coboundary, cochain, cellularSheaf, cellularSheafCohomology, cel
 import { readingOfSides } from '@red-cup-engineering/metrologic/four';
 
 const freeze = Object.freeze;
-const isRecord = x => x !== null && typeof x === 'object' && !Array.isArray(x);
-const named = x => typeof x === 'string' && x.length > 0;
+
+
 const ordered = (a,b) => a < b ? -1 : a > b ? 1 : 0;
 const frozen = values => freeze([...values]);
 const admitted = new WeakSet();
@@ -44,12 +45,12 @@ function unique(xs, context) {
   if (set.size !== xs.length) fail(`${context}: duplicate identity`);
   return set;
 }
-const requireName = (x, context) => { if (!named(x)) fail(`${context}: nonempty source identity required`); return x; };
+const requireName = (x, context) => { if (!isNonEmptyString(x)) fail(`${context}: nonempty source identity required`); return x; };
 const nameList = (xs, context, max = 256, {allowEmpty = false} = {}) => {
   if (!Array.isArray(xs) || xs.length > max || (!allowEmpty && xs.length === 0))
     fail(`${context}: invalid named list or exceeded work limit`);
   const received=sourceArray(xs, context, max);
-  if(!received.every(named))
+  if(!received.every(isNonEmptyString))
     fail(`${context}: invalid named list or exceeded work limit`);
   unique(received, context);
   return received;
@@ -311,7 +312,7 @@ export function assessKeratinLinearObservations(reading, observations, options={
     if(!Array.isArray(values)||values.length>64)
       fail('linear observation '+side+' testimony must be a bounded witness list');
     const names=sourceArray(values,'linear observation '+side+' testimony requires material source identities',64);
-    if(!names.every(named))
+    if(!names.every(isNonEmptyString))
       fail('linear observation '+side+' testimony requires material source identities');
     unique(names,'linear observation '+side+' testimony');
     return names;

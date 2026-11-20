@@ -1,3 +1,4 @@
+import { isRecord } from "@red-cup-engineering/signcell/values";
 import {
   hasFields, readSourceRecord, exactIdentity, readSourceArray, coincidenceKey, semanticId,
 } from "@red-cup-engineering/semiotic-content-address-system";
@@ -15,7 +16,7 @@ import {
 const relationAccepted = value => Object.freeze({ ok: true, value });
 const relationMessage = error => error instanceof Error ? error.message : String(error);
 const relationOrder = (left, right) => left < right ? -1 : left > right ? 1 : 0;
-const isRecord = value => value !== null && typeof value === "object" && !Array.isArray(value);
+
 /** Typed relation admission and page projection. */
 
 const relationFailure = (key, value, message) => Object.freeze({ ok: false, refusal: Object.freeze({ [key]: value, message }) });
