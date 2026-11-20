@@ -23,7 +23,7 @@ import {
   coincidenceKey, coincides, retainedCarrier, semanticId,
 } from "@red-cup-engineering/semiotic-content-address-system";
 import {
-  validateTokenFrame, cacheableTokenFrame, extent, generalizations, top,
+  admitTokenFrame, cacheableTokenFrame, extent, generalizations, top,
 } from "@red-cup-engineering/signchain/token-frame";
 import { isNiUri } from "@red-cup-engineering/semiotic-content-address-system";
 
@@ -87,7 +87,7 @@ const directClaim = (frame, token, claim) =>
   claimSectionsOf(frame).byToken.get(coincidenceKey(token))?.get(claim) ?? [];
 /** The section at a token: what is told of it directly. */
 export const tellingsAt = (frame, token) => {
-  const source = validateTokenFrame(frame);
+  const source = admitTokenFrame(frame);
   generalizations(source, token); // the frame owns the membership law
   return directTellings(source, token);
 };
@@ -136,7 +136,7 @@ function glueInherited(frame, token, selectedClaim) {
 
 /** The whole inherited section, over the original token frame's actual cover. */
 export function inherited(frame, token) {
-  return glueInherited(validateTokenFrame(frame), token);
+  return glueInherited(admitTokenFrame(frame), token);
 }
 
 /**
@@ -151,7 +151,7 @@ export function inherited(frame, token) {
  * responsibility of the owner supplying this frame, not this pure function.
  */
 export function inheritedClaim(frame, token, predicate, object) {
-  const source = validateTokenFrame(frame);
+  const source = admitTokenFrame(frame);
   // Check actual token membership before even interpreting a claim coordinate.
   generalizations(source, token);
   return glueInherited(source, token, claimCoordinate(predicate, object));
@@ -203,7 +203,7 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   // Materialize one immutable, owned cut of any mutable wire presentation.
   // The original frame maker owns clone/merge/admission; this query never
   // re-interprets an in-flight mutation as one coherent historical source.
-  const source = validateTokenFrame(frame);
+  const source = admitTokenFrame(frame);
   const validatedTokens = top(source);
   const scopedTokens = Object.hasOwn(chosen, "token")
     ? validatedTokens.filter((known) => coincides(known, token)) : validatedTokens;
