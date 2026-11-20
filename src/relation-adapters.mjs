@@ -5,15 +5,28 @@ const assertRecords = (records, label) => {
 const observation = (subject, predicate, object, evidence, datum) => Object.freeze({ subject, predicate, object, ...(datum === undefined ? {} : { datum }), evidence: Object.freeze(evidence) });
 
 /** Project already-parsed Markdown frontmatter; parsing and filesystem I/O remain upstream. */
-export function markdownFrontmatterClaims(documents, { relations } = {}) {
+export function markdownFrontmatterClaims(documents, { relations, predicateIds = {} } = {}) {
   if (relations === null || typeof relations !== "object" || Array.isArray(relations)) throw new TypeError("Markdown projection requires an explicit relations policy object");
+  if (predicateIds === null || typeof predicateIds !== "object" ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(predicateIds))) {
+    throw new TypeError("Markdown predicate identities must be a record");
+  }
+  const aliases = new Map(Object.entries(predicateIds));
+  for (const [field, id] of aliases) {
+    if (!Object.hasOwn(relations, field) || typeof id !== "string" || !id.trim() || id !== id.trim()) {
+      throw new TypeError("Markdown predicate identity must name a configured field and an exact nonempty identifier");
+    }
+  }
   const claims = [];
   for (const document of assertRecords(documents, "Markdown")) {
     if (document?.id === undefined || document.frontmatter === null || typeof document.frontmatter !== "object") throw new TypeError("Markdown records require id and frontmatter object");
-    for (const [predicate, datum] of Object.entries(relations)) {
-      const raw = document.frontmatter[predicate];
+    for (const [field, datum] of Object.entries(relations)) {
+      if (!Object.hasOwn(document.frontmatter, field)) continue;
+      const raw = document.frontmatter[field];
       if (raw === undefined || raw === null) continue;
-      for (const object of Array.isArray(raw) ? raw : [raw]) claims.push(observation(document.id, predicate, object, { substrate: "markdown-frontmatter", resource: document.id }, datum));
+      const predicate = aliases.get(field) ?? field;
+      const evidence = { substrate: "markdown-frontmatter", resource: document.id, ...(aliases.has(field) ? { field } : {}) };
+      for (const object of Array.isArray(raw) ? raw : [raw]) claims.push(observation(document.id, predicate, object, { ...evidence }, datum));
     }
   }
   return Object.freeze(claims);
