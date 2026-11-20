@@ -13,7 +13,7 @@ import { cellular2Complex } from "./cohomology.mjs";
 import { createGraph, observedTwoStepPaths } from "@red-cup-engineering/metrologic/models/graphs/directed-multigraph";
 import { kinematicDiamondSpaceOf } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/causal";
 import { subset, meet, join, le } from "@red-cup-engineering/metrologic/sheaf/topology/d-frame";
-import { finitePreorder, validateUpperOpen, finiteCoherentSectionSpace, finitePrefixIncidenceFactors } from "@red-cup-engineering/metrologic/models/order/finite-preorder";
+import { finitePreorder, admitUpperOpen, finiteCoherentSectionSpace, finitePrefixIncidenceFactors } from "@red-cup-engineering/metrologic/models/order/finite-preorder";
 import { articulatedPredications } from "@red-cup-engineering/signchain/predication";
 import { address as cellAddress } from "@red-cup-engineering/signcell";
 import { semanticId } from "@red-cup-engineering/semiotic-content-address-system";
@@ -1134,7 +1134,7 @@ export function readPerformedKinematicSectionSpace(shadow, { patches, sections }
       throw new TypeError("kinematic cover patch "+index+" needs canonical sorted earned loci");
     // Metrologic, not SignGraph, owns transitive Alexandrov upper-opens.
     // Exact original Articulating emitted all these endpoint sequencing pairs.
-    try{return validateUpperOpen(frame,source);}
+    try{return admitUpperOpen(frame,source);}
     catch(error){throw new TypeError("patch "+index+" is not a source-generated upper-open region: "+error.message);}
 
   });
