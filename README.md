@@ -11,6 +11,16 @@ Relations, sites, fibers and sheaves organizing SignCell cells and SignChain ord
 
 ## Receiving a graph
 
+`markdownFrontmatterClaims` from `@red-cup-engineering/signgraph/relation-adapters`
+reads only configured, directly authored frontmatter fields. Use `predicateIds`
+when a document field is a readable name for a separate canonical predicate
+identifier. For example, with `relations: { instantiates: undefined }` and
+`predicateIds: { instantiates: "urn:example:predicate:instantiates" }`, the
+adapter emits the canonical predicate and records `instantiates` as the source
+field in the evidence. If no identity is configured, the field name remains
+the predicate. A nested field, inherited property, or similar label such as
+`specialization` does not supply the configured relation.
+
 Use `createSignGraph` to construct a closed cut and `admitSignGraph` to qualify
 a portable cut. Queries and routes return the original addressed incidences.
 `querySignGraphPage` binds cursors to their original cut and selection.
