@@ -1,3 +1,4 @@
+import { compareText } from "@red-cup-engineering/semiotic-content-address-system";
 /**
  * Colourings of a labelled directed graph that reveal its structure.
  *
@@ -20,7 +21,7 @@
 import { properColoring as properColoringOfWeights } from "@red-cup-engineering/metrologic/articulation/predicating/positing/settling/analysis/coloring";
 import { intOne, intZero } from "@red-cup-engineering/metrologic/number/exact-number";
 
-const byName = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
 
 /**
  * Colour refinement from an initial colouring, to the stable partition.
@@ -39,10 +40,10 @@ export function refineColors({ nodes, edges, initial = new Map(), maxRounds = 64
       const parts = [
         ...(out.get(n) ?? []).map((e) => `>${e.label ?? ""}:${color.get(e.to) ?? "·"}`),
         ...(inn.get(n) ?? []).map((e) => `<${e.label ?? ""}:${color.get(e.from) ?? "·"}`),
-      ].sort(byName);
+      ].sort(compareText);
       described.set(n, `${color.get(n)}|${parts.join(",")}`);
     }
-    const names = [...new Set(described.values())].sort(byName), number = new Map(names.map((d, i) => [d, `c${i}`]));
+    const names = [...new Set(described.values())].sort(compareText), number = new Map(names.map((d, i) => [d, `c${i}`]));
     color = new Map(nodes.map((n) => [n, number.get(described.get(n))]));
     if (names.length === classes) break; // stable: refining no longer splits a class
     classes = names.length;
@@ -54,7 +55,7 @@ export function refineColors({ nodes, edges, initial = new Map(), maxRounds = 64
 export function numberClasses(color) {
   const count = new Map();
   for (const c of color.values()) count.set(c, (count.get(c) ?? 0) + 1);
-  const order = [...count.keys()].sort((a, b) => count.get(b) - count.get(a) || byName(String(a), String(b)));
+  const order = [...count.keys()].sort((a, b) => count.get(b) - count.get(a) || compareText(String(a), String(b)));
   const index = new Map(order.map((c, i) => [c, i]));
   return { index: new Map([...color].map(([t, c]) => [t, index.get(c)])), sizes: order.map((c) => count.get(c)), keys: order };
 }

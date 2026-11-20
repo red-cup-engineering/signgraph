@@ -1,3 +1,4 @@
+import { compareText } from "@red-cup-engineering/semiotic-content-address-system";
 import { isNonEmptyString, isRecord } from "@red-cup-engineering/signcell/values";
 /**
  * Keratin Graph: a finite, source-positioned graphing and compatibility workbench.
@@ -22,7 +23,7 @@ import { readingOfSides } from '@red-cup-engineering/metrologic/four';
 const freeze = Object.freeze;
 
 
-const ordered = (a,b) => a < b ? -1 : a > b ? 1 : 0;
+
 const frozen = values => freeze([...values]);
 const admitted = new WeakSet();
 const analysisOwners = new WeakMap();
@@ -206,8 +207,8 @@ export function keratinGraphOfPredications(input = {}) {
   const graph=freeze({
     kind:'signgraph.keratinGraph.finiteFiberHoleReading.v1',
     feather,
-    stalks:frozen([...stalkMap.values()].sort((a,b)=>ordered(a.position,b.position))),
-    contacts:frozen([...contactMap.values()].sort((a,b)=>ordered(a.occurrence,b.occurrence))),
+    stalks:frozen([...stalkMap.values()].sort((a,b)=>compareText(a.position,b.position))),
+    contacts:frozen([...contactMap.values()].sort((a,b)=>compareText(a.occurrence,b.occurrence))),
     locks:frozen(lockLog),
     filledFaces:frozen(faceRecords),
     candidateHoles:frozen(holeRecords),
@@ -409,7 +410,7 @@ export function assessKeratinLinearObservations(reading, observations, options={
 }
 
 function solveSectionScopes(domains, constraints, {limit=DEFAULT_ASSIGNMENT_BUDGET,samples=2,visible=[]}={}) {
-  const names=[...domains.keys()].sort(ordered);
+  const names=[...domains.keys()].sort(compareText);
   const product=names.reduce((n,key)=>n*BigInt(domains.get(key).length),1n);
   if (product>BigInt(limit)) return freeze({status:'not-evaluated: finite assignment budget exceeded',
     assignmentsUpperBound:String(product), count:null, examples:frozen([]), projections:null});
@@ -461,7 +462,7 @@ export function analyzeKeratinGraph(graph, options={}) {
   const excluded=new Map(graph.stalks.map(s=>[s.position,new Set()]));
   for(const lock of graph.locks)for(const state of lock.excludes)excluded.get(lock.position).add(state);
   const domains=new Map(graph.stalks.map(s=>[s.position,s.states.filter(v=>!excluded.get(s.position).has(v))]));
-  const reported=graph.observers.map(o=>[...o.visiblePositions].sort(ordered));
+  const reported=graph.observers.map(o=>[...o.visiblePositions].sort(compareText));
   const sections=solveSectionScopes(domains,graph.contacts,{limit:maxAssignments,visible:reported});
   const observers=graph.observers.map((o,i)=>{
     const scope=new Map(reported[i].map(p=>[p,domains.get(p)]));
@@ -502,7 +503,7 @@ export function analyzeKeratinGraph(graph, options={}) {
     assignmentsUpperBound:sections.assignmentsUpperBound,
     sampleSections:sections.examples,
     localStalks:frozen([...domains].map(([position,states])=>freeze({position,
-      permitted:frozen(states),excluded:frozen([...excluded.get(position)].sort(ordered))}))),
+      permitted:frozen(states),excluded:frozen([...excluded.get(position)].sort(compareText))}))),
     unsatisfiableContactCore:conflictCore,
     emptyStalks:frozen(locallyEmpty),
     actualComplexBetti:graph.topology.betti,

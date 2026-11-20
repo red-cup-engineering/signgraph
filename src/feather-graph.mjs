@@ -1,3 +1,4 @@
+import { compareText } from "@red-cup-engineering/semiotic-content-address-system";
 import { isNonEmptyString, isRecord } from "@red-cup-engineering/signcell/values";
 /**
  * Source-positioned feather presentations over ORIGINAL performed predications.
@@ -19,7 +20,7 @@ import { isNonEmptyString, isRecord } from "@red-cup-engineering/signcell/values
 const freeze = Object.freeze;
 
 
-const compare = (left, right) => left < right ? -1 : left > right ? 1 : 0;
+
 const MAX_PREDICATIONS = 2048;
 const MAX_FORK_PAIRS = 8192;
 // A transported readout never acquires the in-process derivation witness by copying its JSON.
@@ -135,7 +136,7 @@ export function featherGraphOfPredications(source, options = {}) {
       subject: subject.key, predicate: predication.predicate, object: object.key,
     }));
   }
-  predications.sort((a, b) => compare(a.occurrence, b.occurrence));
+  predications.sort((a, b) => compareText(a.occurrence, b.occurrence));
   const axial = predications.filter(item => item.predicate === axialPredicate);
   const transverse = predications.filter(item => item.predicate === transversePredicate);
   const axialByFrom = new Map(), successors = new Map();
@@ -178,7 +179,7 @@ export function featherGraphOfPredications(source, options = {}) {
   }
   const forks = [], routes = [];
   let pairs = 0;
-  for (const [root, outgoing] of [...axialByFrom.entries()].sort(([a], [b]) => compare(a, b))) {
+  for (const [root, outgoing] of [...axialByFrom.entries()].sort(([a], [b]) => compareText(a, b))) {
     for (let i = 0; i < outgoing.length; i++) for (let j = i + 1; j < outgoing.length; j++) {
       const first = outgoing[i], second = outgoing[j];
       if (first.object === second.object || descendants(first.object).has(second.object) ||
@@ -212,7 +213,7 @@ export function featherGraphOfPredications(source, options = {}) {
     sourceQualification: 'conditional: supplied source-record identifiers are not authenticated here',
     semanticStatus: 'candidate: ancestry-to-object-language predication bridge remains a Science proof obligation',
     selectors: freeze({axialPredicate, transversePredicate}),
-    positions: freeze([...positions.values()].sort((a, b) => compare(a.key, b.key))),
+    positions: freeze([...positions.values()].sort((a, b) => compareText(a.key, b.key))),
     predications: freeze(predications),
     forks: freeze(forks),
     routeComparisons: freeze(routes),
@@ -261,7 +262,7 @@ export function positGraphOfFeather(feather, posits) {
       for: freeze(forSide), against: freeze(againstSide),
     }));
   }
-  chargeOccurrences.sort((a, b) => compare(a.occurrence, b.occurrence) || compare(a.sourceRecord, b.sourceRecord));
+  chargeOccurrences.sort((a, b) => compareText(a.occurrence, b.occurrence) || compareText(a.sourceRecord, b.sourceRecord));
   return freeze({
     kind: 'signgraph.positGraph.featherReading.v1',
     feather, // Same sites, fork/contact incidence, and ORIGINAL route occurrences.

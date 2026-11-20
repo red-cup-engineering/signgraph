@@ -1,3 +1,4 @@
+import { compareText } from "@red-cup-engineering/semiotic-content-address-system";
 import { isRecord } from "@red-cup-engineering/signcell/values";
 import {
   hasFields, readSourceRecord, exactIdentity, readSourceArray, coincidenceKey, semanticId,
@@ -15,7 +16,7 @@ import {
 
 const relationAccepted = value => Object.freeze({ ok: true, value });
 const relationMessage = error => error instanceof Error ? error.message : String(error);
-const relationOrder = (left, right) => left < right ? -1 : left > right ? 1 : 0;
+
 
 /** Typed relation admission and page projection. */
 
@@ -23,7 +24,7 @@ const relationFailure = (key, value, message) => Object.freeze({ ok: false, refu
 const refused = (code, message) => relationFailure("code", code, message);
 const thingError = (kind, message) => relationFailure("kind", kind, message);
 const exact = (value, keys) => isRecord(value) && hasFields(value, keys);
-const byId = (a, b) => relationOrder(a.id, b.id);
+const byId = (a, b) => compareText(a.id, b.id);
 const relations = new WeakSet();
 const fieldIndexes = new WeakMap();
 const positions = ["subject", "predicate", "object", "witness"];

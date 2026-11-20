@@ -1,3 +1,4 @@
+import { compareText } from "@red-cup-engineering/semiotic-content-address-system";
 /**
  * Hypothetical cut-error budgets for ORIGINAL source-admitted Resource exchanges.
  * Caller MUST first run channelResourceIncidence / channelFlowWitnessPlacement
@@ -7,7 +8,7 @@
  * Science #215, section7.23. Exact nonnegative integer atoms avoid floating-point
  * rounding of worst-case ceilings. One resource / one declared unit at a time.
  */
-const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+
 const plain = value => value !== null && typeof value === "object" &&
   !Array.isArray(value) && (Object.getPrototypeOf(value) === Object.prototype ||
   Object.getPrototypeOf(value) === null);
@@ -16,7 +17,7 @@ function exactBudgets(raw, permitted, label, shared) {
   if (!plain(raw) || Object.keys(raw).length > 8192)
     throw new TypeError(`${label}: expected bounded ID-to-exact-error-ceiling object`);
   const entries = new Map();
-  for (const id of Object.keys(raw).sort(compare)) {
+  for (const id of Object.keys(raw).sort(compareText)) {
     if (!permitted.has(id))
       throw new TypeError(`${label}: error ceiling names no proposed original observation`);
     const q = raw[id];
@@ -42,7 +43,7 @@ export function conditionalFlowCutErrorBudgets(transfers, {
   proposedObservedCompartmentIds,
   hypotheticalErrorCeilings,
 }) {
-  const edges = [...transfers].sort((a,b) => compare(a.exchange.id,b.exchange.id));
+  const edges = [...transfers].sort((a,b) => compareText(a.exchange.id,b.exchange.id));
   const meterIds = new Set(edges
     .filter(e => proposedWitnessExchangeIds.has(e.exchange.id))
     .map(e => e.exchange.id));
@@ -79,7 +80,7 @@ export function conditionalFlowCutErrorBudgets(transfers, {
   const sideBudget = (side) => {
     const missing = [];
     let total = 0n;
-    for (const v of [...side].sort(compare)) {
+    for (const v of [...side].sort(compareText)) {
       if (!observed.has(v)) return null; // not an eligible cut side
       if (!vertices.has(v)) missing.push(`vertex:${v}`);
       else total += vertices.get(v);
@@ -90,7 +91,7 @@ export function conditionalFlowCutErrorBudgets(transfers, {
       else total += meters.get(e.exchange.id);
     }
     return {atoms:missing.length ? null : total,
-      missing:missing.sort(compare),side:[...side].sort(compare)};
+      missing:missing.sort(compareText),side:[...side].sort(compareText)};
   };
   const results = unmetered.map(e => {
     // Whole-graph full rank is sufficient for all edges, not necessary for
@@ -103,9 +104,9 @@ export function conditionalFlowCutErrorBudgets(transfers, {
     const possibilities = [sideBudget(left),sideBudget(right)]
       .filter(Boolean)
       .sort((a,b) => a.atoms === null ? (b.atoms === null ?
-        compare(a.side.join("\u0000"),b.side.join("\u0000")) : 1) :
+        compareText(a.side.join("\u0000"),b.side.join("\u0000")) : 1) :
         b.atoms === null ? -1 : a.atoms < b.atoms ? -1 : a.atoms > b.atoms ? 1 :
-        compare(a.side.join("\u0000"),b.side.join("\u0000")));
+        compareText(a.side.join("\u0000"),b.side.join("\u0000")));
     const winner = possibilities[0];
     if (!winner) return Object.freeze({exchange:e.exchange,
       status:"structurally-undetermined",radius:null});

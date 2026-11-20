@@ -1,3 +1,4 @@
+import { compareText } from "@red-cup-engineering/semiotic-content-address-system";
 /**
  * SignGraph — the sheaf of tellings over a token frame.
  *
@@ -29,7 +30,7 @@ import { isNiUri } from "@red-cup-engineering/semiotic-content-address-system";
 
 const INHERITED = "signgraph.inherited-tellings";
 const frozen = (values) => Object.freeze([...values]);
-const byKey = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
+
 const sections = new WeakMap();
 const claimSections = new WeakMap();
 // The same canonical predicate/object coordinate already used by SignChain's
@@ -104,7 +105,7 @@ function glueInherited(frame, token, selectedClaim) {
   const cover = generalizations(frame, token);
   const merged = new Map();
   const from = new Map();
-  for (const general of [...cover].sort((left, right) => byKey(coincidenceKey(left), coincidenceKey(right)))) {
+  for (const general of [...cover].sort((left, right) => compareText(coincidenceKey(left), coincidenceKey(right)))) {
     const tellings = selectedClaim === undefined
       ? directTellings(frame, general) : directClaim(frame, general, selectedClaim);
     for (const telling of tellings) {
@@ -115,7 +116,7 @@ function glueInherited(frame, token, selectedClaim) {
       from.get(slot).push(Object.freeze({ token: general, cell: telling }));
     }
   }
-  const slots = [...merged.keys()].sort(byKey);
+  const slots = [...merged.keys()].sort(compareText);
   const cells = frozen(slots.map((slot) => merged.get(slot)));
   const sources = frozen(slots.map((slot) => frozen(from.get(slot))));
   const contested = [];
