@@ -33,6 +33,8 @@ const frozen = (values) => Object.freeze([...values]);
 
 const sections = new WeakMap();
 const claimSections = new WeakMap();
+const snapshotIdentities = new WeakMap();
+const pagePlans = new WeakMap();
 // The same canonical predicate/object coordinate already used by SignChain's
 // token fiber: its null-subject cell is ONLY a private index key. It is never
 // emitted as an observed cell or represented as an admitted witness.
@@ -205,82 +207,113 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   // The original frame maker owns clone/merge/admission; this query never
   // re-interprets an in-flight mutation as one coherent historical source.
   const source = admitTokenFrame(frame);
-  const admittedTokens = top(source);
-  const scopedTokens = Object.hasOwn(chosen, "token")
-    ? admittedTokens.filter((known) => coincides(known, token)) : admittedTokens;
-  if (Object.hasOwn(chosen, "token") && scopedTokens.length === 0)
-    generalizations(source, token); // original precise foreign-token refusal
+  const selected = retainedCarrier(chosen);
+  const selector = coincidenceKey(selected);
   const exact = Object.hasOwn(chosen, "predicate") && Object.hasOwn(chosen, "object");
-
-  // A source-told claim becomes available at its source and at positively
-  // witnessed specializations. Use the original frame's extent law to select
-  // only those candidate tokens BEFORE gluing their sections. A nonexistent
-  // claim does not require asking each token whether it has been denied.
-  const indexed = Object.hasOwn(chosen, "predicate") || Object.hasOwn(chosen, "object");
-  let tokens = scopedTokens;
-  if (indexed) {
-    const index = claimSectionsOf(source);
-    const sources = exact
-      ? index.byClaim.get(claimCoordinate(predicate, object))
-      : Object.hasOwn(chosen, "predicate")
-        ? index.byPredicate.get(coincidenceKey(predicate))
-        : index.byObject.get(coincidenceKey(object));
-    const candidateKeys = new Set();
-    if (sources) for (const original of admittedTokens) {
-      if (!sources.has(coincidenceKey(original))) continue;
-      for (const descendant of extent(source, original))
-        candidateKeys.add(coincidenceKey(descendant));
-    }
-    tokens = scopedTokens.filter((known) => candidateKeys.has(coincidenceKey(known)));
-  }
-  // Count the complete source selection, but retain only the requested page.
-  // A small page must not keep every off-page gluing and witness carrier live.
-  // This bounds the retained result window, not the source frame or scan work.
   const entries = [];
-  let total = 0;
-  for (const selectedToken of tokens) {
+  // Both paths use the same gluing, filtering and provenance. On a replay, only
+  // sections intersecting the requested window are glued.
+  const scan = (selectedToken, first) => {
     const section = exact
       ? inheritedClaim(source, selectedToken, predicate, object)
       : inherited(source, selectedToken);
-    const contests = new Map(section.contested.map((entry) => [address(entry.cell), entry]));
+    let contests;
+    let position = first;
     for (let i = 0; i < section.cells.length; i++) {
       const at = section.cells[i];
       if ((Object.hasOwn(chosen, "predicate") && !coincides(at.predicate, predicate)) ||
           (Object.hasOwn(chosen, "object") && !coincides(at.object, object))) continue;
       const value = knowledgeReading(at);
       if (reading !== undefined && value !== reading) continue;
-      // SignCraft's existing Hydra source-claim @id is semanticId(at).
-      // Resolve it against the SAME admitted original frame, including
-      // source/against testimony. No alternate index or authority is minted.
+      // The NI selects the same witnessed Cell, including both sides.
       if (cellNi !== undefined && semanticId(at) !== cellNi) continue;
-      const position = total++;
-      if (position < offset || entries.length === limit) continue;
+      const index = position++;
+      if (index < offset || entries.length === limit) continue;
+      contests ??= new Map(section.contested.map(entry => [address(entry.cell), entry]));
       entries.push(Object.freeze({
-        token: selectedToken, cell: at, reading: value,
-        sources: section.sources[i],
+        token: selectedToken, cell: at, reading: value, sources: section.sources[i],
         contested: contests.get(address(at)) ?? null,
       }));
     }
+    return position;
+  };
+  let plan = pagePlans.get(source);
+  if (plan?.selector === selector) {
+    // The first section to visit has an exclusive matching end above offset.
+    const { sections, total } = plan;
+    if (offset > total)
+      throw new RangeError("signgraph claim query: page outside admitted source readings");
+    let lo = 0, hi = sections.length;
+    while (lo < hi) {
+      const mid = lo + Math.floor((hi - lo) / 2);
+      if (sections[mid].end <= offset) lo = mid + 1;
+      else hi = mid;
+    }
+    for (let i = lo; i < sections.length && entries.length < limit; i++) {
+      scan(sections[i].token, i === 0 ? 0 : sections[i - 1].end);
+    }
+  } else {
+    const admittedTokens = top(source);
+    const scopedTokens = Object.hasOwn(chosen, "token")
+      ? admittedTokens.filter((known) => coincides(known, token)) : admittedTokens;
+    if (Object.hasOwn(chosen, "token") && scopedTokens.length === 0)
+      generalizations(source, token); // original precise foreign-token refusal
+
+    // A source-told claim becomes available at its source and at positively
+    // witnessed specializations. Use the original frame's extent law to select
+    // only those candidate tokens BEFORE gluing their sections. A nonexistent
+    // claim does not require asking each token whether it has been denied.
+    const indexed = Object.hasOwn(chosen, "predicate") || Object.hasOwn(chosen, "object");
+    let tokens = scopedTokens;
+    if (indexed) {
+      const index = claimSectionsOf(source);
+      const sources = exact
+        ? index.byClaim.get(claimCoordinate(predicate, object))
+        : Object.hasOwn(chosen, "predicate")
+          ? index.byPredicate.get(coincidenceKey(predicate))
+          : index.byObject.get(coincidenceKey(object));
+      const candidateKeys = new Set();
+      if (sources) for (const original of admittedTokens) {
+        if (!sources.has(coincidenceKey(original))) continue;
+        for (const descendant of extent(source, original))
+          candidateKeys.add(coincidenceKey(descendant));
+      }
+      tokens = scopedTokens.filter((known) => candidateKeys.has(coincidenceKey(known)));
+    }
+    // Retain only matching token intervals, never off-page Cells or witnesses.
+    // One most recent selection per immutable admitted frame; mutable wire
+    // presentations are admitted to a fresh frame by the original owner.
+    const sections = [];
+    let total = 0;
+    for (const selectedToken of tokens) {
+      const end = scan(selectedToken, total);
+      if (end > total) sections.push({ token: selectedToken, end });
+      total = end;
+    }
+    if (offset > total)
+      throw new RangeError("signgraph claim query: page outside admitted source readings");
+    plan = { selector, sections, total };
+    pagePlans.set(source, plan);
   }
-  if (offset > total)
-    throw new RangeError("signgraph claim query: page outside admitted source readings");
+  const { total } = plan;
   const window = Object.freeze(entries);
-  // A cut of original cells is NOT itself the identity of its interpreted
-  // token frame: the declared specialization predicate determines which
-  // source relations generate inheritance. Bind BOTH to the query snapshot,
-  // so an actor cannot resume a page from a differently interpreted frame
-  // merely because both presentations happened to contain the same cells.
-  // Use the shared semantic content address, not local JSON/hash conventions.
-  const sourceCells = cellSetAddress(source.cells);
-  const snapshot = semanticId({
-    kind: "signgraph.token-frame-reading/v1",
-    sourceCells,
-    specializationPredicate: source.predicate,
-  });
+  // Preserve the identity of both the source cells and the interpretation
+  // law. An admitted source is immutable, so neither changes across pages.
+  let identity = snapshotIdentities.get(source);
+  if (identity === undefined) {
+    const sourceCells = cellSetAddress(source.cells);
+    const snapshot = semanticId({
+      kind: "signgraph.token-frame-reading/v1",
+      sourceCells,
+      specializationPredicate: source.predicate,
+    });
+    identity = { snapshot, sourceCells };
+    snapshotIdentities.set(source, identity);
+  }
   return Object.freeze({
     kind: "signgraph.inherited-telling-query", version: 1,
-    snapshot, sourceCells,
-    selection: retainedCarrier(chosen),
+    ...identity,
+    selection: selected,
     total, offset, limit,
     next: offset + window.length < total ? offset + window.length : null,
     entries: window,
