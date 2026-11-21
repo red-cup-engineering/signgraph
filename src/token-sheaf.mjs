@@ -189,7 +189,9 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
         !keys.includes(key) || !descriptors[key].enumerable ||
         !Object.hasOwn(descriptors[key], "value")))
       throw new TypeError("signgraph " + label + ": only declared plain data fields are admitted");
-    return Object.fromEntries(Object.entries(descriptors).map(([key, slot]) => [key, slot.value]));
+    const data = Object.create(null);
+    for (const [key, slot] of Object.entries(descriptors)) data[key] = slot.value;
+    return data;
   };
   // Read a fixed inert set of OWN data coordinates. Destructuring raw input
   // would consult inherited source getters even when Reflect.ownKeys passed.
@@ -207,7 +209,7 @@ export function queryInheritedTellings(frame, selection = {}, page = {}) {
   // The original frame maker owns clone/merge/admission; this query never
   // re-interprets an in-flight mutation as one coherent historical source.
   const source = admitTokenFrame(frame);
-  const selected = retainedCarrier(chosen);
+  const selected = retainedCarrier({ ...chosen });
   const selector = coincidenceKey(selected);
   const exact = Object.hasOwn(chosen, "predicate") && Object.hasOwn(chosen, "object");
   const entries = [];

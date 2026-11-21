@@ -713,3 +713,21 @@ test("replayed pages cross sparse token intervals and retain the original contes
   assert.throws(() => queryInheritedTellings(frame, missing, { offset: 1 }), /outside admitted source/u);
   assert.deepEqual(queryInheritedTellings(frame, selection, { limit: 1 }), first);
 });
+
+test("query and page defaults do not depend on ambient fields", () => {
+  const frame = tokenFrame([cell("source", "reports", "fact", { for: ["witness"] })]);
+  const before = queryInheritedTellings(frame, {}, { limit: 1 });
+  let ambientReads = 0;
+  const prior = Object.getOwnPropertyDescriptor(Object.prototype, "reading");
+  Object.defineProperty(Object.prototype, "reading", {
+    configurable: true, get() { ambientReads++; return "absurd"; },
+  });
+  let after;
+  try { after = queryInheritedTellings(frame, {}, { limit: 1 }); }
+  finally {
+    if (prior === undefined) delete Object.prototype.reading;
+    else Object.defineProperty(Object.prototype, "reading", prior);
+  }
+  assert.equal(ambientReads, 0);
+  assert.deepEqual(after, before);
+});
