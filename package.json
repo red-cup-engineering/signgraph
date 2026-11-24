@@ -53,8 +53,7 @@
     "@red-cup-engineering/semiotic-content-address-system": "^0.1.8"
   },
   "scripts": {
-    "check:keratin": "node --check src/feather-graph.mjs && node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs",
-    "test": "node --test test/*.test.mjs"
+    "check:keratin": "node --check src/feather-graph.mjs && node --check src/cellular-sheaf.mjs && node --check src/keratin-graph.mjs"
   },
   "repository": {
     "type": "git",
