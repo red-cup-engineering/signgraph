@@ -1269,10 +1269,10 @@ export function planConnectedBarExchanges({ points, beforeBars, afterBars, dimen
   const n = initial.vertices, m = initial.bars;
   if (n > 64 || m > 128)
     throw new RangeError("connected bar exchange exceeds the bounded geometry profile");
-  const canonical = ([a, b]) => a < b ? [a, b] : [b, a];
+  const orderedBar = ([a, b]) => a < b ? [a, b] : [b, a];
   const order = ([a, b], [c, d]) => a - c || b - d;
   const key = ([a, b]) => a + ":" + b;
-  const sorted = bars => bars.map(canonical).sort(order);
+  const sorted = bars => bars.map(orderedBar).sort(order);
   let current = sorted(beforeBars);
   const target = sorted(afterBars), desired = new Set(target.map(key));
   const connected = bars => {
